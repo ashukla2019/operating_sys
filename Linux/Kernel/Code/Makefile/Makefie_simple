@@ -1,0 +1,20 @@
+CC = g++.exe
+INCLUDE = -I./
+
+all: main
+
+ifeq ("x","y")
+target: Dependencies
+	rule to make target
+endif
+
+main: main.o test.o
+	$(CC) -o main main.o test.o
+	
+main.o: main.cpp
+	$(CC) $(INCLUDE) -c main.cpp
+	
+test.o: test.cpp
+	$(CC) $(INCLUDE) -c test.cpp
+		
+	
