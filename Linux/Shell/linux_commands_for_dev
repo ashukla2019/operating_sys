@@ -1,0 +1,66 @@
+1. File & Project Management
+Command	Description
+ls	List files and directories
+cd	Change directory
+mkdir project_name	Create new project directory
+rm file.cpp	Remove a file
+rm -r build/	Remove a directory recursively
+cp source.cpp dest.cpp	Copy files
+mv old.cpp new.cpp	Rename or move files
+-----------------------------------------------------------------------------------------
+2. Compilation & Building
+Command	Description
+g++ main.cpp -o main	Compile a single file using g++
+g++ -Wall -Wextra file.cpp	Compile with warnings enabled
+g++ -std=c++17 main.cpp -o main	Specify C++ standard
+make	Use Makefile to build a project
+cmake .	Generate build files with CMake
+cmake --build build_dir/	Build using CMake
+ninja	Faster alternative build system (requires build.ninja)
+--------------------------------------------------------------------------------------
+3. Running & Testing
+Command	Description
+./main	Run compiled program
+valgrind ./main	Check for memory leaks
+time ./main	Measure execution time
+gdb ./main	Launch debugger
+lldb ./main	Use LLDB debugger (macOS, LLVM)
+./test_suite	Run unit tests (if you set them up with GoogleTest, Catch2, etc.)
+-----------------------------------------------------------------------------------------
+4. Debugging & Inspection
+Command	Description
+g++ -g main.cpp -o main	Compile with debug symbols
+gdb ./main	Debug with GDB
+strace ./main	Trace system calls
+lsof	List open files (good for debugging file handles)
+nm main	List symbols from object files or executables
+objdump -d main	Disassemble compiled binary
+readelf -a main	Inspect ELF file details
+---------------------------------------------------------------------------------------
+5. Code Navigation & Editing
+Command	Description
+vim main.cpp	Edit with Vim
+nano main.cpp	Edit with Nano
+emacs main.cpp	Edit with Emacs
+ctags -R .	Generate tags for source code navigation
+cscope -R	Code browser for large codebases
+grep "main"	Search for "main" in files
+grep -r "ClassName" .	Recursive grep through project
+find . -name "*.cpp"	Find all .cpp files recursively
+---------------------------------------------------------------------------------------
+6. Package Management
+Command	Description
+sudo apt install g++	Install g++ (Debian/Ubuntu)
+sudo yum install gcc-c++	Install g++ (RedHat/CentOS)
+sudo pacman -S gcc	Install gcc/g++ (Arch)
+brew install gcc	Install gcc on macOS via Homebrew
+vcpkg install <lib>	Install C++ libraries with vcpkg
+conan install .	Install dependencies using Conan
+---------------------------------------------------------------------------------------
+7. Documentation & Help
+Command	Description
+man g++	Manual page for the g++ compiler
+g++ --help	Command-line help for g++
+info g++	GNU info page for g++
+cppreference.com	(Online) Detailed C++ standard reference
+
