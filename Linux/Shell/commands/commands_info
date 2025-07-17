@@ -1,1 +1,157 @@
+File and Directory Management
+Command	Description
+ls	List files and directories
+cd	Change directory
+pwd	Show current directory path
+mkdir	Create a directory
+rmdir	Remove an empty directory
+rm	Remove files/directories
+cp	Copy files/directories
+mv	Move/rename files
+touch	Create an empty file
+stat	Show detailed file info
+file	Identify file type
+find	Search for files/directories
+tree	Display directory structure (requires install)
+
+📄 File Viewing and Editing
+Command	Description
+cat	View file contents
+less / more	Scroll through file
+head	View top lines of a file
+tail	View last lines of a file
+nano	Simple text editor
+vim / vi	Advanced text editor
+gedit	GUI editor (on GNOME systems)
+
+📦 Package Management
+🐧 Debian/Ubuntu:
+bash
+Copy
+Edit
+apt update
+apt install <package>
+apt remove <package>
+🔴 Red Hat/CentOS:
+bash
+Copy
+Edit
+yum install <package>
+dnf install <package>
+🧊 Arch:
+bash
+Copy
+Edit
+pacman -S <package>
+🔧 System Monitoring
+Command	Description
+top	Live process monitor
+htop	Enhanced version of top
+ps aux	List all processes
+free -h	Show memory usage
+df -h	Disk space usage
+du -sh *	Size of files/folders
+uptime	Show system uptime
+vmstat	Memory, CPU stats
+iostat	I/O stats (requires sysstat)
+
+📂 Disk and Filesystem
+Command	Description
+mount / umount	Mount/unmount devices
+blkid	Show block devices
+lsblk	List block devices
+fdisk / parted	Partition manager
+mkfs	Format disk (e.g., mkfs.ext4)
+df -h	Disk usage
+du	Directory/file usage
+
+🔐 Permissions and Ownership
+Command	Description
+chmod	Change file permissions
+chown	Change file ownership
+chgrp	Change group ownership
+umask	Default permission mask
+ls -l	View permissions and ownership
+
+🧪 Development and Compilation
+Command	Description
+gcc / g++	Compile C/C++ code
+make	Build projects using Makefiles
+cmake	Cross-platform build system
+ld	Linker
+gdb	Debugger
+valgrind	Memory debugging
+strace	Trace system calls
+
+🌐 Networking
+Command	Description
+ping	Check connectivity
+curl	Transfer data from/to a server
+wget	Download files from the web
+ifconfig / ip a	Network interface info
+netstat / ss	Show network connections
+traceroute	Trace network path
+nslookup / dig	DNS lookup
+scp	Copy files over SSH
+rsync	Sync files/directories
+
+🔄 Process and Job Management
+Command	Description
+&	Run in background
+jobs	List background jobs
+fg / bg	Bring job to foreground/background
+kill	Kill a process by PID
+killall	Kill process by name
+xkill	Click to kill a GUI app
+
+🧱 User Management
+Command	Description
+adduser / useradd	Add a new user
+passwd	Change password
+usermod	Modify user
+deluser / userdel	Delete user
+groups	Show user groups
+whoami	Current user
+sudo	Run as superuser
+su	Switch user
+
+🧪 Scripting and Variables
+Command	Description
+echo	Print to terminal
+read	Get user input
+export	Set environment variable
+source file.sh	Run a script in the current shell
+bash script.sh	Run a bash script
+
+📁 Archives and Compression
+Command	Description
+tar -cvf	Create archive
+tar -xvf	Extract archive
+gzip / gunzip	Compress/decompress
+zip / unzip	Create/extract zip files
+
+📋 Text Processing Tools
+Command	Description
+grep	Search text
+awk	Pattern scanning and processing
+sed	Stream editor
+cut	Cut sections from lines
+sort	Sort lines
+uniq	Remove duplicate lines
+tr	Translate characters
+wc	Word/line/byte count
+
+🧠 Others / Utilities
+Command	Description
+alias	Create shortcut commands
+history	Show command history
+cron / crontab	Schedule tasks
+date	Show system date/time
+cal	Show calendar
+uptime	System running time
+hostname	Show or set hostname
+who / w	Who is logged in
+
+
+
 
