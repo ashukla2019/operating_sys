@@ -1,1 +1,54 @@
+Makefile:
+---------------------------------------------------------------------------
+Simple makefile:
+all : app
 
+app: smart_ptr.cc
+	g++ smart_ptr.cc -o app
+	
+clean: 
+	rm -rf *.o
+	rm -rf app
+-----------------------------------------------------------------------------------------
+Linux shell variables:
+Common Shell Variable Operations
+Operation	  Example	                     Explanation
+Define	    greeting="Hello"	           Set a variable
+Access	    echo $greeting	             Retrieve value
+Append	    greeting="$greeting World"	 Append text
+Unset	      unset greeting	             Delete a variable
+-----------------------------------------------------------------------------------------
+Shell Special Variables
+Variable	    Meaning
+$0	          Script name
+$1, $2...	    Arguments to script
+$#	          Number of arguments
+$@	          All arguments
+$$	          PID of script
+$?	          Exit status of last command
+
+--------------------------------------------------------------------------------------
+What is PATH?
+PATH is an environment variable that tells the shell where to look for executable files (like gcc, ls, etc.).
+
+Print the Current PATH Variable:
+echo $PATH
+
+Temporarily Add a Directory to PATH
+export PATH=$PATH:/your/new/directory
+
+Permanently Set or Update PATH
+You can modify PATH in one of these config files (depending on your shell):
+
+Shell	File
+Bash	~/.bashrc or ~/.bash_profile
+Zsh	~/.zshrc
+Fish	~/.config/fish/config.fish
+
+Add to .bashrc (example):
+export PATH=$PATH:/home/user/mytools
+
+Then apply the changes:
+source ~/.bashrc
+
+-----------------------------------------------------------------------------------------
