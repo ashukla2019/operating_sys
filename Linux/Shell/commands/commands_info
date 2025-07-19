@@ -26,22 +26,14 @@ gedit	GUI editor (on GNOME systems)
 
 📦 Package Management
 🐧 Debian/Ubuntu:
-bash
-Copy
-Edit
 apt update
 apt install <package>
 apt remove <package>
 🔴 Red Hat/CentOS:
-bash
-Copy
-Edit
 yum install <package>
 dnf install <package>
+
 🧊 Arch:
-bash
-Copy
-Edit
 pacman -S <package>
 🔧 System Monitoring
 Command	Description
