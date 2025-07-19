@@ -96,10 +96,10 @@ xkill	Click to kill a GUI app
 
 🧱 User Management
 Command	Description
-adduser / useradd	Add a new user
+adduser / useradd
 passwd	Change password
 usermod	Modify user
-deluser / userdel	Delete user
+deluser / userdel	
 groups	Show user groups
 whoami	Current user
 sudo	Run as superuser
