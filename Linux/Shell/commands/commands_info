@@ -24,14 +24,16 @@ nano	Simple text editor
 vim / vi	Advanced text editor
 gedit	GUI editor (on GNOME systems)
 
-📦 Package Management
-🐧 Debian/Ubuntu:
-apt update
-apt install <package>
-apt remove <package>
-🔴 Red Hat/CentOS:
-yum install <package>
-dnf install <package>
+🔧 Common Unix Package Managers(install, remove, update etc)
+OS/Distribution	Package Manager	Command Examples
+Debian/Ubuntu	apt / dpkg	apt install, apt update, dpkg -i
+Red Hat/CentOS	yum / dnf	yum install, dnf update
+Arch Linux	pacman	pacman -S, pacman -R
+macOS (Unix-based)	Homebrew	brew install, brew update
+FreeBSD	pkg / ports	pkg install, portsnap fetch
+Gentoo	portage	emerge package-name
+OpenSUSE	zypper	zypper install, zypper update
+
 
 🧊 Arch:
 pacman -S <package>
