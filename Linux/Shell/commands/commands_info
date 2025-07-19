@@ -33,9 +33,6 @@ macOS (Unix-based)   	Homebrew	brew
 FreeBSD	               pkg/ports 
 OpenSUSE.            	zypper
 
-
-🧊 Arch:
-pacman -S <package>
 🔧 System Monitoring
 Command	Description
 top	Live process monitor
