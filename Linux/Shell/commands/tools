@@ -9,6 +9,38 @@ app: smart_ptr.cc
 clean: 
 	rm -rf *.o
 	rm -rf app
+‐---------------‐-------------------------------------------------
+Advanced makefile
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -g
+
+# Target executable
+TARGET = myprogram
+
+# Source and object files
+SRC = main.c math.c
+OBJ = $(SRC:.c=.o)
+
+# Default rule
+all: $(TARGET)
+
+# Link object files to create executable
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
+
+# Compile .c files into .o files
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
+
+# Clean generated files
+clean:
+	rm -f $(OBJ) $(TARGET)
+
+# Run the program
+run: $(TARGET)
+	./$(TARGET)
+
 -----------------------------------------------------------------------------------------
 Linux shell variables:
 Common Shell Variable Operations
