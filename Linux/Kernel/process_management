@@ -1,0 +1,182 @@
+Process Management in Operating System:
+
+1. What is a Process?
+A process is a program in execution.
+
+A program is a passive entity (set of instructions), whereas a process is an active entity (with program counter, stack, data, etc.).
+
+A process is the basic unit of CPU scheduling and resource management.
+------------------------------------
+2. Components of a Process
+Every process consists of:
+
+Text Section (Code) → Instructions to be executed.
+
+Data Section → Global variables.
+
+Heap → Dynamically allocated memory during runtime.
+
+Stack → Function calls, local variables, return addresses.
+
+Program Counter (PC) → Address of next instruction.
+
+Process Control Block (PCB) → Metadata of process (explained below).
+---------------------------------
+3. Process Control Block (PCB)
+Each process is represented by a PCB in the OS.
+The PCB stores all essential information about a process:
+
+Process ID (PID)
+
+Process State (running, waiting, etc.)
+
+Program Counter
+
+CPU Registers
+
+Memory Management Info (base, limit, page tables)
+
+Scheduling Info (priority, scheduling queues)
+
+I/O Status Info (open files, devices)
+
+👉 PCB acts as the identity card of a process.
+------------------------------------
+4. Process States
+A process moves through multiple states during execution:
+
+New → Process is being created.
+
+Ready → Waiting for CPU allocation.
+
+Running → Currently executing on CPU.
+
+Waiting/Blocked → Waiting for I/O or event.
+
+Terminated → Finished execution.
+
+Some systems also add: Suspended Ready and Suspended Blocked.
+
+📌 State Transition Diagram is often used to show movement between states.
+----------------------------------
+5. Process Scheduling
+Since CPU is limited, the OS uses scheduling to decide which process runs next.
+
+Types of Schedulers:
+Long-term Scheduler (Job Scheduler)
+
+Decides which jobs enter the system.
+
+Controls degree of multiprogramming.
+
+Medium-term Scheduler
+
+Suspends/resumes processes.
+
+Improves performance by reducing load.
+
+Short-term Scheduler (CPU Scheduler)
+
+Decides which ready process runs on CPU.
+
+Runs frequently (milliseconds).
+-------------------------------------
+6. Scheduling Queues
+Processes are managed using queues:
+
+Job Queue → All processes in the system.
+
+Ready Queue → All processes ready for CPU.
+
+Device Queue → Processes waiting for I/O devices.
+-----------------☆☆☆☆
+7. Context Switching
+When CPU switches from one process to another:
+
+Current process state is saved in its PCB.
+
+New process state is loaded from its PCB.
+
+👉 Context switching is overhead (no useful work, but essential for multitasking).
+----------☆☆☆☆☆☆☆☆☆☆☆☆☆-
+8. Types of Process
+Independent Process
+
+Does not affect or depend on others.
+
+Cooperating Process
+
+Can affect or be affected by others.
+
+Need for Inter-Process Communication (IPC).
+---------------------------------
+9. Inter-Process Communication (IPC)
+Processes need to communicate to share data.
+
+IPC Methods:
+Shared Memory → Processes share a memory region. Fast, but needs synchronization.
+
+Message Passing → Processes exchange messages (send/receive). Safer, but slower.
+
+IPC is crucial for client-server systems, parallel computing, and distributed systems.
+------------------------------------
+10. Process Synchronization
+When multiple processes access shared resources, synchronization is needed to avoid conflicts.
+
+Critical Section Problem → Section of code accessing shared resource.
+
+Synchronization Tools:
+
+Semaphores
+
+Mutex
+
+Monitors
+
+Spinlocks
+----------------------------------
+11. Threads vs Processes
+Process → Heavyweight, has own memory space.
+
+Thread → Lightweight, shares process resources.
+
+👉 Multi-threading improves CPU utilization but needs synchronization.
+----------------------------------
+12. Deadlock in Process Management
+Deadlock occurs when a set of processes are waiting indefinitely for resources held by each other.
+
+Conditions for deadlock (Coffman’s Conditions):
+
+Mutual Exclusion
+
+Hold and Wait
+
+No Preemption
+
+Circular Wait
+-----------------------------------
+13. Process Scheduling Algorithms
+Some important CPU scheduling algorithms:
+
+FCFS (First Come First Serve) – Non-preemptive, simple queue.
+
+SJF (Shortest Job First) – Preemptive/non-preemptive, optimal but hard to predict.
+
+Priority Scheduling – Based on priority levels.
+
+Round Robin – Time-sharing, fair for all.
+
+Multilevel Queue – Separate queues for types of processes.
+
+Multilevel Feedback Queue – Dynamic movement between queues.
+----------------------------------
+14. Advantages of Process Management
+Efficient CPU utilization.
+
+Supports multiprogramming & multitasking.
+
+Provides resource sharing.
+
+Ensures process isolation & protection.
+
+Handles concurrency & synchronization.
