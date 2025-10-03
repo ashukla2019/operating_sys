@@ -1,0 +1,137 @@
+
+Memory Management in Operating System:
+Memory management is one of the most important functions of an Operating System (OS). It deals with allocation, tracking, and deallocation of memory to processes and applications so that the CPU can execute efficiently without wastage or conflict.
+
+1. What is Memory Management?
+Memory is a large array of bytes or words where data and instructions are stored temporarily during execution.
+
+Memory management is the process of controlling and coordinating computer memory:
+
+Assigning blocks to programs.
+Reclaiming memory when it is no longer needed.
+
+Its aim: maximize utilization while ensuring fair and efficient access.
+---------------------------------
+2. Levels of Memory
+A computer system uses different types of memory at various speeds:
+
+Registers → Fastest, inside CPU, holds small data.
+
+Cache (L1, L2, L3) → Very fast, stores frequently used data.
+
+Main Memory (RAM) → Volatile, stores active processes.
+
+Secondary Storage (HDD/SSD) → Non-volatile, used when RAM is insufficient (via virtual memory).
+-------------------------------------
+3. Memory Management Responsibilities
+An OS memory manager performs the following:
+
+Tracking → Which parts of memory are free, used, or allocated.
+
+Allocation → Assigning memory blocks to processes when requested.
+
+Protection → Ensuring one process does not access another’s memory.
+
+Sharing → Allowing processes to share memory safely if required.
+
+Relocation → Moving processes in memory for efficient execution.
+
+Deallocation → Releasing memory when a process terminates.
+----------------------------------------
+4. Memory Allocation Techniques
+Memory allocation can be divided into two categories:
+
+🔹 A. Contiguous Memory Allocation
+Each process is allocated a single continuous block of memory.
+
+Two schemes:
+
+Fixed Partitioning
+
+Memory is divided into fixed partitions.
+
+Easy but leads to internal fragmentation (unused space inside a partition).
+
+Dynamic Partitioning
+
+Partitions are created dynamically as per process needs.
+
+Leads to external fragmentation (free spaces scattered).
+
+👉 Allocation Methods in Dynamic Partitioning:
+
+First Fit → Assign the first free block that is large enough.
+
+Best Fit → Assign the smallest free block that fits the process.
+
+Worst Fit → Assign the largest free block.
+
+🔹 B. Non-Contiguous Memory Allocation
+Processes do not need to occupy consecutive memory blocks.
+
+Paging
+
+Memory divided into fixed-size blocks:
+
+Frame (physical memory)
+
+Page (logical memory)
+
+Eliminates external fragmentation but may cause internal fragmentation.
+
+Segmentation
+
+Memory divided based on logical divisions (function, array, data, etc.).
+
+Each segment has variable size.
+
+Easier for programmer but leads to external fragmentation.
+
+Paged Segmentation
+
+Combines paging + segmentation for better efficiency.
+-------------------------------------
+5. Virtual Memory
+Definition: A memory management technique that provides an illusion of large memory to processes by using disk space as an extension of RAM.
+
+Implemented using demand paging (loading only required pages from disk).
+
+Advantages:
+
+Allows execution of larger programs.
+
+Provides process isolation.
+
+Disadvantages:
+
+Slower due to disk access (page faults).
+------------------------------------
+6. Fragmentation Problem
+Internal Fragmentation → Wasted space inside allocated block.
+
+External Fragmentation → Wasted space between allocated blocks.
+
+Solution:
+Compaction (rearranging memory).
+Paging (avoids external fragmentation).
+--------------------------------------
+7. Swapping
+Technique to move a process in and out of main memory to secondary storage to free up RAM.
+
+Increases CPU utilization but causes overhead due to swap time.
+----------------------------------------
+8. Memory Management in Modern OS
+Modern operating systems like Linux, Windows, macOS use a combination of:
+
+Paging + Segmentation.
+Virtual memory with demand paging.
+Cache management (multi-level).
+Memory protection via MMU (Memory Management Unit).
+----------------------------------------
+9. Advantages of Memory Management
+Efficient CPU utilization.
+
+Avoids memory leaks.
+Provides security and isolation.
+Allows multitasking.
+‐-----------------------------------------------------------------------------
