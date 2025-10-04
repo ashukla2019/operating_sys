@@ -136,11 +136,47 @@ Worst Fit — largest available hole
 🔹 B. Non-Contiguous Memory Allocation
 Processes do not need to occupy consecutive memory blocks.
 
-1) Paging: Memory divided into fixed-size blocks:
-Frame (physical memory)
-Page (logical memory)
-Eliminates external fragmentation but may cause internal fragmentation.
+1) 
 
+ChatGPT
+You said:
+Paging and segmentation
+ChatGPT said:
+Let’s go step-by-step and understand Paging and Segmentation — two important memory management techniques in operating systems.
+
+🧩 1. Paging
+🔹 Definition
+Paging is a memory management scheme that eliminates the need for contiguous allocation of physical memory.
+It divides both physical memory and logical memory (process) into fixed-size blocks called:
+
+Pages → blocks in logical memory (process)
+Frames → blocks in physical memory
+
+Each process is divided into pages of equal size, and these pages are loaded into any available frames in memory.
+
+Address Translation Example
+
+Assume:
+
+Logical Address Space = 32 KB
+
+Page Size = 4 KB
+
+Physical Memory = 16 KB
+
+Then:
+
+Logical Pages = 32 / 4 = 8 pages
+
+Physical Frames = 16 / 4 = 4 frames
+
+If page 0 is loaded in frame 2, page 1 in frame 3, etc.
+
+Logical Address = (Page Number, Offset)
+Physical Address = (Frame Number, Offset)
+
+➡️ Translation is done using the Page Table.
+---------------------
 2) Segmentation: Memory divided based on logical divisions (function, array, data, etc.).Each segment has variable size.
 Easier for programmer but leads to external fragmentation.
 
