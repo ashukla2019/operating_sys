@@ -44,52 +44,32 @@ Memory allocation can be divided into two categories:
 🔹 A. Contiguous Memory Allocation
 Each process is allocated a single continuous block of memory.
 
-Two schemes:
+ Two schemes:
+ 1) Fixed Partitioning:Memory is divided into                       fixed partitions.Easy but leads to internal fragmentation (unused space inside a partition).
 
-Fixed Partitioning
-
-Memory is divided into fixed partitions.
-
-Easy but leads to internal fragmentation (unused space inside a partition).
-
-Dynamic Partitioning
-
-Partitions are created dynamically as per process needs.
-
+ 2)  Dynamic Partitioning:Partitions are created dynamically as per process needs.
 Leads to external fragmentation (free spaces scattered).
 
 👉 Allocation Methods in Dynamic Partitioning:
 
-First Fit → Assign the first free block that is large enough.
+  First Fit → Assign the first free block    that is large enough.
 
-Best Fit → Assign the smallest free block that fits the process.
+  Best Fit → Assign the smallest free block that fits the process.
 
-Worst Fit → Assign the largest free block.
+  Worst Fit → Assign the largest free block.
 
 🔹 B. Non-Contiguous Memory Allocation
 Processes do not need to occupy consecutive memory blocks.
 
-Paging
-
-Memory divided into fixed-size blocks:
-
+1) Paging: Memory divided into fixed-size blocks:
 Frame (physical memory)
-
 Page (logical memory)
-
 Eliminates external fragmentation but may cause internal fragmentation.
 
-Segmentation
-
-Memory divided based on logical divisions (function, array, data, etc.).
-
-Each segment has variable size.
-
+2) Segmentation: Memory divided based on logical divisions (function, array, data, etc.).Each segment has variable size.
 Easier for programmer but leads to external fragmentation.
 
-Paged Segmentation
-
-Combines paging + segmentation for better efficiency.
+3) Paged Segmentation:Combines paging + segmentation for better efficiency.
 -------------------------------------
 5. Virtual Memory
 Definition: A memory management technique that provides an illusion of large memory to processes by using disk space as an extension of RAM.
