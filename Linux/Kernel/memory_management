@@ -17,9 +17,9 @@ A computer system uses different types of memory at various speeds:
 
 Registers → Fastest, inside CPU, holds small data.
 
-Cache (L1, L2, L3) → Very fast, stores frequently used data.
+Cache (L1, L2, L3) → Very fast, stores frequently used data. its static ram.
 
-Main Memory (RAM) → Volatile, stores active processes.
+Main Memory (RAM) → Volatile, stores active processes.its dynamic ram.
 
 Secondary Storage (HDD/SSD) → Non-volatile, used when RAM is insufficient (via virtual memory).
 -------------------------------------
