@@ -44,12 +44,6 @@ Memory allocation can be divided into two categories:
 🔹 A. Contiguous Memory Allocation
 Each process is allocated a single continuous block of memory.
 
- PT
-You said:
-Fixed and dynamic partioning
-ChatGPT said:
-Let’s break down Fixed and Dynamic Partitioning — two classical Memory Management techniques used in operating systems to manage main memory.
-
 🧠 1. Fixed Partitioning (Static Partitioning)
 📘 Definition:
 In fixed partitioning, the main memory is divided into a fixed number of partitions at system startup.
