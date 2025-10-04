@@ -44,20 +44,101 @@ Memory allocation can be divided into two categories:
 🔹 A. Contiguous Memory Allocation
 Each process is allocated a single continuous block of memory.
 
- Two schemes:
- 1) Fixed Partitioning:Memory is divided into                       fixed partitions.Easy but leads to internal fragmentation (unused space inside a partition).
+ PT
+You said:
+Fixed and dynamic partioning
+ChatGPT said:
+Let’s break down Fixed and Dynamic Partitioning — two classical Memory Management techniques used in operating systems to manage main memory.
 
- 2)  Dynamic Partitioning:Partitions are created dynamically as per process needs.
-Leads to external fragmentation (free spaces scattered).
+🧠 1. Fixed Partitioning (Static Partitioning)
+📘 Definition:
+In fixed partitioning, the main memory is divided into a fixed number of partitions at system startup.
+Each partition has a fixed size, and a process is loaded into one of these partitions.
 
-👉 Allocation Methods in Dynamic Partitioning:
+⚙️ How It Works:
+Memory is divided into partitions of equal or unequal size.
 
-  First Fit → Assign the first free block    that is large enough.
+Each partition can contain only one process at a time.
 
-  Best Fit → Assign the smallest free block that fits the process.
+A process is assigned to a partition that is large enough to accommodate it.
 
-  Worst Fit → Assign the largest free block.
+🧩 Example:
+Assume main memory = 1 GB divided as:
 
+Partition	Size	Status
+P1	256 MB	Free
+P2	256 MB	Free
+P3	512 MB	Free
+If a process of 200 MB arrives → it can fit into P1 or P2.
+If a process of 400 MB arrives → it must go into P3.
+
+✅ Advantages:
+Simple to implement
+
+Low overhead for OS (partitions known in advance)
+
+Fast allocation (just pick a free partition)
+
+❌ Disadvantages:
+Internal Fragmentation
+→ If process size < partition size, the unused space in that partition is wasted.
+(e.g., process 200 MB in 256 MB partition → 56 MB wasted)
+
+Limited number of processes
+→ Number of partitions = maximum number of processes in memory.
+
+Inefficient memory utilization
+→ Small processes waste space, large ones might not fit.
+
+⚡ 2. Dynamic Partitioning (Variable Partitioning)
+📘 Definition:
+In dynamic partitioning, memory is not pre-divided.
+Partitions are created dynamically when processes are loaded — each partition exactly fits the process size.
+
+⚙️ How It Works:
+When a process arrives, it is allocated exactly the amount of memory it needs.
+
+When it finishes, that memory is freed and can be reused.
+
+Over time, free memory becomes scattered → external fragmentation may occur.
+
+🧩 Example:
+Assume 1024 MB total memory.
+
+Process A → 200 MB
+Remaining = 824 MB
+
+Process B → 300 MB
+Remaining = 524 MB
+
+Process A finishes → 200 MB hole created
+Free blocks: 200 MB + 524 MB (not contiguous)
+
+If Process C = 250 MB → can’t fit in 200 MB hole, even though total free = 724 MB.
+
+✅ Advantages:
+No internal fragmentation (since memory fits process exactly)
+
+Better memory utilization
+
+Flexible — partitions created on demand
+
+❌ Disadvantages:
+External Fragmentation
+→ Free memory scattered in small holes.
+
+Compaction needed
+→ To combine free blocks, OS must occasionally compact memory, which is slow.
+
+More complex allocation algorithms
+→ Requires strategies like:
+
+First Fit — first hole large enough
+
+Best Fit — smallest hole large enough
+
+Worst Fit — largest available hole
+----------------------------------- 
 🔹 B. Non-Contiguous Memory Allocation
 Processes do not need to occupy consecutive memory blocks.
 
