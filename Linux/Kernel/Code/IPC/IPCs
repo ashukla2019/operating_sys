@@ -1,0 +1,143 @@
+
+
+
+🧩 IPC (Inter-Process Communication)
+IPC allows different processes to exchange data or signals.
+
+🔹 1. Unnamed Pipe
+🧠 Concept:
+Simple one-way communication between related processes (usually parent ↔ child).
+
+Exists only in memory while the processes are running.
+
+⚙️ How it works:
+Created using pipe() system call.
+
+Data written at one end (write-end) is read from the other end (read-end).
+
+int fd[2];
+pipe(fd);
+write(fd[1], "hello", 5);
+read(fd[0], buf, 5);
+✅ Use when:
+You just need simple communication between parent and child processes.
+
+Example: Shell pipeline — ls | grep ".cpp"
+
+❌ Don’t use when:
+You need unrelated processes to communicate (use Named Pipe instead).
+
+You need bidirectional communication (each pipe is one-way).
+
+🔹 2. Named Pipe (FIFO)
+🧠 Concept:
+Like an unnamed pipe, but has a name (file entry) in the filesystem.
+
+Allows communication between unrelated processes.
+
+⚙️ How it works:
+Created with mkfifo("myfifo", 0666);
+
+Processes open it using open() and read/write.
+
+mkfifo /tmp/myfifo
+# Terminal 1
+cat /tmp/myfifo
+# Terminal 2
+echo "Hello" > /tmp/myfifo
+✅ Use when:
+Processes are independent and need stream-like communication.
+
+You want to connect programs through a known file path.
+
+❌ Don’t use when:
+You need high throughput or random access — it’s sequential only.
+
+🔹 3. Shared Memory
+🧠 Concept:
+Fastest IPC — processes share a region of physical memory.
+
+No data copying; both can directly read/write the same area.
+
+⚙️ How it works:
+Use shmget() and shmat() (System V) or mmap() (POSIX).
+
+Needs synchronization (e.g., semaphores, mutex) to avoid race conditions.
+
+int shmid = shmget(key, 1024, IPC_CREAT|0666);
+char *data = (char*) shmat(shmid, NULL, 0);
+✅ Use when:
+You need very fast data exchange (like large data, video frames, sensor data).
+
+Processes are on the same machine.
+
+❌ Don’t use when:
+You need communication across machines.
+
+You can’t easily manage synchronization yourself.
+
+🔹 4. Message Queue
+🧠 Concept:
+Kernel-managed queue where messages are sent/received in structured format (message + type).
+
+Supports asynchronous communication.
+
+⚙️ How it works:
+Use msgget(), msgsnd(), msgrcv().
+
+msgsnd(msqid, &msg, sizeof(msg), 0);
+msgrcv(msqid, &msg, sizeof(msg), 0, 0);
+✅ Use when:
+You need to send discrete messages, not continuous streams.
+
+You need to prioritize or buffer messages.
+
+Producer-consumer style communication.
+
+❌ Don’t use when:
+You need very high speed (shared memory is faster).
+
+Message size is large (limited by kernel queue size).
+
+🔹 5. Socket
+🧠 Concept:
+Most flexible IPC method — can work locally (Unix domain socket) or remotely (TCP/UDP).
+
+Uses network protocols for bidirectional communication.
+
+⚙️ How it works:
+Use socket(), bind(), listen(), accept() etc.
+
+Two processes communicate like client and server.
+
+int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+✅ Use when:
+You need network or cross-machine communication.
+
+You’re building client-server, distributed, or microservice architectures.
+
+❌ Don’t use when:
+Both processes are local and performance-critical (shared memory is faster).
+
+🔹 6. Memory-Mapped File (mmap)
+🧠 Concept:
+Maps a file into memory so processes can read/write the file directly through memory.
+
+Persistent (changes reflect in the file).
+
+⚙️ How it works:
+Use mmap() system call on an open file descriptor.
+
+The same file can be mapped by multiple processes.
+
+int fd = open("data.bin", O_RDWR);
+void* ptr = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+✅ Use when:
+You want shared memory + file persistence.
+
+You need to share large data between processes and save it to disk.
+
+Example: Database caches, file-backed shared states.
+
+❌ Don’t use when:
+You don’t need persistence or file I/O overhead
