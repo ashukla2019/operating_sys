@@ -149,14 +149,7 @@ Best Fit — smallest hole large enough
 Worst Fit — largest available hole
 ----------------------------------- 
 🔹 B. Non-Contiguous Memory Allocation
-Processes do not need to occupy consecutive memory blocks.
-
-1) 
-
-ChatGPT
-You said:
-Paging and segmentation
-ChatGPT said:
+Processes do not need to occupy consecutive memory.
 Let’s go step-by-step and understand Paging and Segmentation — two important memory management techniques in operating systems.
 
 🧩 1. Paging
