@@ -22,6 +22,21 @@ Cache (L1, L2, L3) → Very fast, stores frequently used data. its static ram.
 Main Memory (RAM) → Volatile, stores active processes.its dynamic ram.
 
 Secondary Storage (HDD/SSD) → Non-volatile, used when RAM is insufficient (via virtual memory).
+
+---------------------------------------
+
+Dynamic RAM (DRAM)
+Stores data using capacitors — each bit is stored as an electrical charge that leaks over time.Needs constant refreshing (thousands of times per second) to maintain data.Slower but cheaper and denser (more memory in less space).
+Used in: Main memory (RAM) in computers and servers.
+
+Static RAM (SRAM)
+Stores data using flip-flops (bistable latching circuits).
+
+No refreshing needed — retains data as long as power is supplied.
+
+Faster but more expensive and larger in size.
+
+Used in: CPU cache (L1, L2, L3) and small high-speed buffers.
 -------------------------------------
 3. Memory Management Responsibilities
 An OS memory manager performs the following:
