@@ -27,86 +27,57 @@ Each process is represented by a PCB in the OS.
 The PCB stores all essential information about a process:
 
 Process ID (PID)
-
 Process State (running, waiting, etc.)
-
 Program Counter
-
 CPU Registers
-
 Memory Management Info (base, limit, page tables)
-
 Scheduling Info (priority, scheduling queues)
-
 I/O Status Info (open files, devices)
 
-👉 PCB acts as the identity card of a process.
+PCB acts as the identity card of a process.
 ------------------------------------
 4. Process States
 A process moves through multiple states during execution:
 
 New → Process is being created.
-
 Ready → Waiting for CPU allocation.
-
 Running → Currently executing on CPU.
-
 Waiting/Blocked → Waiting for I/O or event.
-
 Terminated → Finished execution.
 
 Some systems also add: Suspended Ready and Suspended Blocked.
 
-📌 State Transition Diagram is often used to show movement between states.
+State Transition Diagram is often used to show movement between states.
 ----------------------------------
 5. Process Scheduling
 Since CPU is limited, the OS uses scheduling to decide which process runs next.
 
 Types of Schedulers:
-Long-term Scheduler (Job Scheduler)
-
-Decides which jobs enter the system.
-
+Long-term Scheduler (Job Scheduler):Decides which jobs enter the system.
 Controls degree of multiprogramming.
 
-Medium-term Scheduler
+Medium-term Scheduler:Suspends/resumes processes.Improves performance by reducing load.
 
-Suspends/resumes processes.
-
-Improves performance by reducing load.
-
-Short-term Scheduler (CPU Scheduler)
-
-Decides which ready process runs on CPU.
-
-Runs frequently (milliseconds).
+Short-term Scheduler (CPU Scheduler):Decides which ready process runs on CPU.Runs frequently (milliseconds).
 -------------------------------------
 6. Scheduling Queues
 Processes are managed using queues:
 
 Job Queue → All processes in the system.
-
 Ready Queue → All processes ready for CPU.
-
 Device Queue → Processes waiting for I/O devices.
 -----------------☆☆☆☆
 7. Context Switching
 When CPU switches from one process to another:
 
 Current process state is saved in its PCB.
-
 New process state is loaded from its PCB.
-
-👉 Context switching is overhead (no useful work, but essential for multitasking).
+Context switching is overhead (no useful work, but essential for multitasking).
 ----------☆☆☆☆☆☆☆☆☆☆☆☆☆-
 8. Types of Process
-Independent Process
+Independent Process:Does not affect or depend on others.
 
-Does not affect or depend on others.
-
-Cooperating Process
-
-Can affect or be affected by others.
+Cooperating Process:Can affect or be affected by others.
 
 Need for Inter-Process Communication (IPC).
 ---------------------------------
