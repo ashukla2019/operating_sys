@@ -86,13 +86,7 @@ curl https://site     # HTTP request
 wget url              # download file
 
 
------------
-10 Disk & Memory Management
-df -h                 # disk usage
-du -sh /var/log       # directory size
-free -h               # memory usage
-lsblk                 # block devices
-mount                 # mounted filesystems
+
 
 -----------
 1️⃣1️⃣ Archiving & Compression
