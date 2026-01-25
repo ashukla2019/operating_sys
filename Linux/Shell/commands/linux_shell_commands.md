@@ -1,6 +1,6 @@
+# Commands:
 
 ## Login & System Info
-```bash
 whoami            # current user
 uname -a          # OS & kernel info
 uptime            # system running time
