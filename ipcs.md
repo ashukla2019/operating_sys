@@ -360,12 +360,44 @@ mmap()
 ## Example
 
 ``` cpp
-#include <sys/shm.h>
+#include <iostream>
 #include <cstring>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
-int shmid = shmget(key, 1024, IPC_CREAT | 0666);
+int main()
+{
+    // Create a shared memory segment of 1024 bytes
+    int shmid = shmget(1234, 1024, IPC_CREAT | 0666);
 
-char *ptr = (char*)shmat(shmid, NULL, 0);
+    if (shmid == -1)
+    {
+        std::cout << "Failed to create shared memory\n";
+        return 1;
+    }
+
+    // Attach the shared memory to this process
+    char* ptr = (char*)shmat(shmid, NULL, 0);
+
+    if (ptr == (char*)-1)
+    {
+        std::cout << "Failed to attach shared memory\n";
+        return 1;
+    }
+
+    // Write data into shared memory
+    strcpy(ptr, "Hello Shared Memory!");
+
+    std::cout << "Written Data : " << ptr << std::endl;
+
+    // Detach shared memory from this process
+    shmdt(ptr);
+
+    // Remove the shared memory segment
+    shmctl(shmid, IPC_RMID, NULL);
+
+    return 0;
+}
 ```
 
 ------------------------------------------------------------------------
