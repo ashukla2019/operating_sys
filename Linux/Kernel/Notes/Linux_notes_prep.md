@@ -1,7 +1,4 @@
-# Linux IPC (Inter-Process Communication) Interview Handbook
-## Senior Linux Embedded / System Software Interview Notes
-**Target Companies:** Qualcomm, NVIDIA, AMD, Intel, Cisco, Broadcom, Samsung, Red Hat
-
+# Linux IPC (Inter-Process Communication) 
 ---
 
 # Table of Contents
@@ -893,7 +890,7 @@ Message Queue.
 | mmap() | Maps files or memory directly into a process |
 -------------------------------------------------------------------------------
 # Linux Process Management
-## Senior Linux Embedded Interview Handbook
+
 
 ---
 
@@ -1735,8 +1732,6 @@ Removed
 ```
 ---------------------------------------------------------------
 # Linux System Calls & Interrupts
-## Senior Linux Embedded Interview Handbook
-**Target:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom
 
 ---
 
@@ -2904,8 +2899,6 @@ Kernel Mode
 - -----------------------------------------------------
 # Linux Memory Management - Part 1
 # Foundations
-## Senior Linux Embedded Interview Handbook
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -3823,8 +3816,6 @@ TLB
 --------------------------------------------------------------------
 # Linux Memory Management - Part 2
 # Memory Allocation
-## Senior Linux Embedded Interview Handbook
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -5721,7 +5712,6 @@ RAM
 --------------------------------------------------------------
 # Linux Memory Management - Part 4
 # Advanced Memory Management
-## Senior Linux Embedded Interview Handbook
 
 ---
 
@@ -6746,8 +6736,6 @@ Zones → Hardware-specific allocation
 -------------------------------------------------------------
 # Linux Virtual File System (VFS) - Part 1
 # VFS Fundamentals
-## Senior Linux Embedded Interview Handbook
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -9361,9 +9349,6 @@ If you can draw and explain this chain along with the `open()` and `read()` exec
 -------------------------------------------------------------------------
 # Linux Virtual File System (VFS) - Part 3
 # Page Cache, Buffered I/O, Direct I/O & Filesystems
-## Senior Linux Embedded Interview Handbook
-
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -10680,9 +10665,6 @@ Being able to explain **where the page cache sits**, **when the disk is accessed
 ------------------------------------------------------------------
 # Linux Virtual File System (VFS) - Part 4
 # Mounting, Block Layer & Complete Linux I/O Path
-## Senior Linux Embedded Interview Handbook
-
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -12099,12 +12081,10 @@ Page Cache
          Application
 ```
 
-If you can confidently explain **every box in this diagram**—what it is, why it exists, and how control moves from one layer to the next—you'll be well prepared for most VFS discussions in senior Linux embedded interviews.
+
 -------------------------------------------------------------------------------------
 # Linux Synchronization - Part 1
 # Synchronization Fundamentals
-## Senior Linux Embedded Interview Handbook
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -13322,8 +13302,6 @@ A good answer is:
 - -----------------------------------------------------------------------------
 # Linux Synchronization - Part 2
 # Advanced Synchronization Mechanisms
-## Senior Linux Embedded Interview Handbook
-**Target Companies:** Qualcomm | NVIDIA | AMD | Intel | Cisco | Broadcom | Samsung
 
 ---
 
@@ -14670,4 +14648,3 @@ A strong answer is:
 | Driver waiting for DMA/interrupt | Completion |
 | User-space mutex | Futex (used internally by `pthread_mutex`) |
 
-For Qualcomm, NVIDIA, Intel, and other Linux kernel interviews, you should also be comfortable explaining **why** a primitive is chosen—not just naming it. Understanding the trade-offs (sleeping vs busy waiting, fairness, scalability, interrupt context, and contention) is often more important than memorizing APIs.
