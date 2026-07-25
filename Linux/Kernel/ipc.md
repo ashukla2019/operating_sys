@@ -325,9 +325,142 @@ mmap()
 ## Example
 
 ```cpp
-int shmid = shmget(key, 1024, IPC_CREAT | 0666);
+# Simple Shared Memory Example in C (POSIX)
 
-char *ptr = (char*)shmat(shmid, NULL, 0);
+This example demonstrates how to use **POSIX Shared Memory** with `shm_open()` and `mmap()`.
+
+---
+
+## Writer Program (`writer.c`)
+
+```c
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <string.h>
+
+int main() {
+    const char *name = "/my_shared_memory";
+    const int SIZE = 1024;
+
+    // Create shared memory object
+    int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+
+    // Set the size
+    ftruncate(shm_fd, SIZE);
+
+    // Map shared memory
+    char *ptr = mmap(NULL, SIZE, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+    // Write data
+    strcpy(ptr, "Hello from shared memory!");
+
+    printf("Data written: %s\n", ptr);
+
+    munmap(ptr, SIZE);
+    close(shm_fd);
+
+    return 0;
+}
+```
+
+---
+
+## Reader Program (`reader.c`)
+
+```c
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+int main() {
+    const char *name = "/my_shared_memory";
+    const int SIZE = 1024;
+
+    // Open existing shared memory
+    int shm_fd = shm_open(name, O_RDONLY, 0666);
+
+    // Map shared memory
+    char *ptr = mmap(NULL, SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
+
+    // Read data
+    printf("Data read: %s\n", ptr);
+
+    munmap(ptr, SIZE);
+    close(shm_fd);
+
+    // Delete shared memory object (optional)
+    shm_unlink(name);
+
+    return 0;
+}
+```
+
+---
+
+## Compile
+
+```bash
+gcc writer.c -o writer -lrt
+gcc reader.c -o reader -lrt
+```
+
+> **Note:** On many modern Linux systems, `-lrt` is not required.
+
+---
+
+## Run
+
+```bash
+./writer
+./reader
+```
+
+---
+
+## Expected Output
+
+```text
+Data written: Hello from shared memory!
+Data read: Hello from shared memory!
+```
+
+---
+
+## Functions Used
+
+| Function | Purpose |
+|----------|---------|
+| `shm_open()` | Creates or opens a shared memory object. |
+| `ftruncate()` | Sets the size of the shared memory object. |
+| `mmap()` | Maps the shared memory into the process's address space. |
+| `strcpy()` | Writes data into shared memory. |
+| `munmap()` | Unmaps the shared memory. |
+| `close()` | Closes the shared memory file descriptor. |
+| `shm_unlink()` | Deletes the shared memory object. |
+
+---
+
+## Workflow
+
+```text
+Writer Process
+      |
+      | shm_open()
+      v
++-----------------------+
+|    Shared Memory      |
++-----------------------+
+      ^
+      | mmap()
+      |
+Reader Process
+```
+
+The writer creates the shared memory, writes a message into it, and exits. The reader opens the same shared memory object, reads the message, and optionally removes the shared memory using `shm_unlink()`.
+
 ```
 
 ---
@@ -439,9 +572,135 @@ msgctl()
 ## Example
 
 ```cpp
-msgsnd(msqid, &msg, sizeof(msg), 0);
+# Simple Message Queue Example in C (POSIX)
 
-msgrcv(msqid, &msg, sizeof(msg), 0, 0);
+This example demonstrates **POSIX Message Queues** using `mq_open()`, `mq_send()`, and `mq_receive()`.
+
+---
+
+## Sender Program (`sender.c`)
+
+```c
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <mqueue.h>
+#include <string.h>
+
+int main() {
+    mqd_t mq;
+    struct mq_attr attr;
+
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = 100;
+    attr.mq_curmsgs = 0;
+
+    // Create/Open message queue
+    mq = mq_open("/myqueue", O_CREAT | O_WRONLY, 0666, &attr);
+
+    char msg[] = "Hello from Sender!";
+
+    // Send message
+    mq_send(mq, msg, strlen(msg) + 1, 0);
+
+    printf("Message Sent: %s\n", msg);
+
+    mq_close(mq);
+
+    return 0;
+}
+```
+
+---
+
+## Receiver Program (`receiver.c`)
+
+```c
+#include <stdio.h>
+#include <fcntl.h>
+#include <mqueue.h>
+
+int main() {
+    mqd_t mq;
+    char buffer[100];
+
+    // Open existing message queue
+    mq = mq_open("/myqueue", O_RDONLY);
+
+    // Receive message
+    mq_receive(mq, buffer, 100, NULL);
+
+    printf("Message Received: %s\n", buffer);
+
+    mq_close(mq);
+
+    // Delete the message queue
+    mq_unlink("/myqueue");
+
+    return 0;
+}
+```
+
+---
+
+## Compile
+
+```bash
+gcc sender.c -o sender -lrt
+gcc receiver.c -o receiver -lrt
+```
+
+> **Note:** On many modern Linux systems, `-lrt` may not be required.
+
+---
+
+## Run
+
+```bash
+./sender
+./receiver
+```
+
+---
+
+## Expected Output
+
+```text
+Message Sent: Hello from Sender!
+Message Received: Hello from Sender!
+```
+
+---
+
+## Functions Used
+
+| Function | Purpose |
+|----------|---------|
+| `mq_open()` | Creates or opens a message queue. |
+| `mq_send()` | Sends a message to the queue. |
+| `mq_receive()` | Receives a message from the queue. |
+| `mq_close()` | Closes the message queue. |
+| `mq_unlink()` | Deletes the message queue. |
+
+---
+
+## Workflow
+
+```text
+Sender
+   |
+   | mq_send()
+   v
++------------------+
+|  Message Queue   |
++------------------+
+   ^
+   | mq_receive()
+   |
+Receiver
+```
+
 ```
 
 ---
@@ -779,3 +1038,13 @@ void *ptr = mmap(
 - How do processes synchronize while using shared memory?
 - Explain producer-consumer using message queues.
 - Which IPC mechanism would you choose for transferring large video frames and why?
+---------------
+Situation	Best Choice
+Parent ↔ Child communication	Unnamed Pipe
+Unrelated processes	Named Pipe
+Fast sharing of large data	Shared Memory
+Send commands/messages	Message Queue
+Efficient large file access	Memory-Mapped File
+Protect shared variable	Mutex
+Limited shared resources	Semaphore
+Very short critical section	Spin Lock
