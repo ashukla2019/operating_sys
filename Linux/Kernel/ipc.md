@@ -20,6 +20,21 @@
 12. Real-World Examples
 13. Interview Questions
 
+
+# IPC and Synchronization Mechanisms - Quick Reference
+
+| Situation | Best Choice |
+|-----------|-------------|
+| Parent ↔ Child communication | **Unnamed Pipe** |
+| Unrelated processes | **Named Pipe (FIFO)** |
+| Fast sharing of large data | **Shared Memory** |
+| Send commands/messages | **Message Queue** |
+| Efficient large file access | **Memory-Mapped File (`mmap`)** |
+| Protect shared variable | **Mutex** |
+| Limited shared resources | **Semaphore** |
+| Very short critical section | **Spin Lock** |
+
+
 ---
 
 # 1. What is IPC?
@@ -1039,12 +1054,3 @@ void *ptr = mmap(
 - Explain producer-consumer using message queues.
 - Which IPC mechanism would you choose for transferring large video frames and why?
 ---------------
-Situation	Best Choice
-Parent ↔ Child communication	Unnamed Pipe
-Unrelated processes	Named Pipe
-Fast sharing of large data	Shared Memory
-Send commands/messages	Message Queue
-Efficient large file access	Memory-Mapped File
-Protect shared variable	Mutex
-Limited shared resources	Semaphore
-Very short critical section	Spin Lock
