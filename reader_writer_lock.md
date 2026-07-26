@@ -90,84 +90,159 @@ Reader5 Running
 
 ```cpp
 #include <iostream>
-#include <mutex>
-#include <condition_variable>
+#include <mutex>                  // Provides std::mutex and std::unique_lock
+#include <condition_variable>     // Provides std::condition_variable
 
 class ReaderWriterLock
 {
 private:
 
+    // Protects all shared state inside this class.
+    // Every access to activeReaders and writerActive must
+    // happen while holding this mutex.
     std::mutex mtx;
+
+    // Used to block readers and writers efficiently.
+    // Instead of repeatedly checking a condition (busy waiting),
+    // threads sleep until they are notified.
     std::condition_variable cv;
 
+    // Number of readers currently reading the shared resource.
+    //
+    // Example:
+    // Reader1 enters -> activeReaders = 1
+    // Reader2 enters -> activeReaders = 2
+    // Reader3 enters -> activeReaders = 3
+    //
+    // When all readers leave, this becomes 0.
     int activeReaders = 0;
+
+    // Indicates whether a writer currently owns the lock.
+    //
+    // false -> No writer is writing.
+    // true  -> A writer is currently writing.
     bool writerActive = false;
 
 public:
 
-    //---------------------------------------------------
+    //----------------------------------------------------------
     // Acquire Read Lock
-    //---------------------------------------------------
+    //----------------------------------------------------------
     void lockRead()
     {
+        // Acquire the mutex before accessing shared variables.
+        //
+        // unique_lock automatically unlocks the mutex when
+        // the function exits (RAII).
         std::unique_lock<std::mutex> lock(mtx);
 
-        // Wait while a writer is writing.
+        // Wait until there is NO active writer.
+        //
+        // If writerActive == true,
+        // this thread sleeps.
+        //
+        // When notify_all() is called,
+        // wait() wakes up and checks the condition again.
+        //
+        // Predicate form automatically handles
+        // spurious wakeups.
         cv.wait(lock, [this]
         {
             return !writerActive;
         });
 
+        // Safe to read now because no writer exists.
+        //
+        // Increase the number of active readers.
         ++activeReaders;
+
+        // The mutex is automatically released when 'lock'
+        // goes out of scope.
     }
 
-    //---------------------------------------------------
+    //----------------------------------------------------------
     // Release Read Lock
-    //---------------------------------------------------
+    //----------------------------------------------------------
     void unlockRead()
     {
+        // Protect shared state while modifying activeReaders.
         std::unique_lock<std::mutex> lock(mtx);
 
+        // This reader is leaving.
         --activeReaders;
 
-        // If this is the last reader, wake waiting threads.
+        // If this was the LAST reader,
+        // wake up waiting threads.
+        //
+        // Why?
+        //
+        // Writers are waiting for:
+        //
+        // activeReaders == 0
+        //
+        // Once the last reader exits,
+        // writers may now continue.
         if(activeReaders == 0)
         {
             cv.notify_all();
         }
+
+        // Mutex released automatically.
     }
 
-    //---------------------------------------------------
+    //----------------------------------------------------------
     // Acquire Write Lock
-    //---------------------------------------------------
+    //----------------------------------------------------------
     void lockWrite()
     {
+        // Lock internal mutex before checking shared variables.
         std::unique_lock<std::mutex> lock(mtx);
 
-        // Wait until:
-        // 1. No writer is active
-        // 2. No readers are active
+        // Writer can proceed only if:
+        //
+        // 1. No writer is already writing.
+        // 2. No readers are currently reading.
+        //
+        // If either condition is false,
+        // the writer sleeps.
         cv.wait(lock, [this]
         {
             return !writerActive &&
                    activeReaders == 0;
         });
 
+        // Mark that a writer now owns the lock.
+        //
+        // Any future readers or writers must wait.
         writerActive = true;
+
+        // Mutex released automatically.
     }
 
-    //---------------------------------------------------
+    //----------------------------------------------------------
     // Release Write Lock
-    //---------------------------------------------------
+    //----------------------------------------------------------
     void unlockWrite()
     {
+        // Lock the mutex before changing shared state.
         std::unique_lock<std::mutex> lock(mtx);
 
+        // Writer has finished.
         writerActive = false;
 
+        // Wake every waiting thread.
+        //
+        // Some waiting readers may now proceed.
+        // A waiting writer may also proceed.
+        //
+        // Every awakened thread checks its wait()
+        // condition again.
         cv.notify_all();
+
+        // Mutex released automatically.
     }
 };
+
 ```
 
 ---
