@@ -1,6 +1,6 @@
 # ATM Example - Understanding Threads, Mutex & Condition Variable
 
-We will solve the same problem in three stages.
+We will solve the same problem in four stages.
 
 ```
 Program 1
@@ -9,17 +9,26 @@ Threads only
         ↓
 Race Condition
 
+
 Program 2
 ---------
 Mutex
         ↓
 Race Condition Fixed
 
+
 Program 3
+---------
+Mutex + Polling
+        ↓
+Repeated Checking Problem
+
+
+Program 4
 ---------
 Condition Variable
         ↓
-Busy Waiting Removed
+Waiting Without Wasting CPU
 ```
 
 ---
@@ -31,30 +40,30 @@ Busy Waiting Removed
 Initial Balance
 
 ```
-₹1000
+$1000
 ```
 
 Customer 1
 
 ```
-Deposit ₹1
+Deposit $1
 100000 times
 ```
 
 Customer 2
 
 ```
-Withdraw ₹1
+Withdraw $1
 100000 times
 ```
 
-Expected
+Expected result:
 
 ```
-1000
+$1000
 ```
 
-Actual
+Possible results:
 
 ```
 985
@@ -66,7 +75,9 @@ Actual
 1021
 ```
 
-Every run is different.
+Every run may produce a different result.
+
+---
 
 ## Code
 
@@ -78,17 +89,24 @@ using namespace std;
 
 int balance = 1000;
 
+
 void deposit()
 {
-    for(int i=0;i<100000;i++)
+    for(int i = 0; i < 100000; i++)
+    {
         balance++;
+    }
 }
+
 
 void withdraw()
 {
-    for(int i=0;i<100000;i++)
+    for(int i = 0; i < 100000; i++)
+    {
         balance--;
+    }
 }
+
 
 int main()
 {
@@ -105,18 +123,56 @@ int main()
 
 ---
 
-## Why?
+# Why Race Condition Happens?
 
-Deposit thread
+`balance++` is not a single operation internally.
+
+It is actually:
 
 ```
 Read balance
 
 ↓
 
+Increase value
+
+↓
+
+Write balance
+```
+
+Similarly:
+
+```
+balance--
+```
+
+is:
+
+```
+Read balance
+
+↓
+
+Decrease value
+
+↓
+
+Write balance
+```
+
+Example:
+
+Deposit thread:
+
+```
+Read balance
+
 1000
 
 ↓
+
+Increase
 
 1001
 
@@ -125,16 +181,16 @@ Read balance
 Write
 ```
 
-Withdraw thread
+Withdraw thread:
 
 ```
 Read balance
 
-↓
-
 1000
 
 ↓
+
+Decrease
 
 999
 
@@ -143,15 +199,11 @@ Read balance
 Write
 ```
 
-Both read
+Both threads read the same old value.
 
-```
-1000
-```
+One update is lost.
 
-One update gets lost.
-
-This is called
+This is called:
 
 ```
 Race Condition
@@ -161,19 +213,33 @@ Race Condition
 
 # Program 2 - Mutex
 
-Now only one customer can use the ATM.
+Now we protect the shared variable.
+
+A mutex allows only one thread at a time to execute the critical section.
 
 ```
-Customer A
+Thread A
 
-↓
+    |
+    v
 
-ATM
+ lock mutex
 
-↓
+    |
+    v
 
-Customer B waits
+ Update balance
+
+    |
+    v
+
+ unlock mutex
+
+
+Thread B waits
 ```
+
+---
 
 ## Code
 
@@ -184,27 +250,33 @@ Customer B waits
 
 using namespace std;
 
+
 int balance = 1000;
 
 mutex atmMutex;
 
+
 void deposit()
 {
-    for(int i=0;i<100000;i++)
+    for(int i = 0; i < 100000; i++)
     {
         lock_guard<mutex> lock(atmMutex);
+
         balance++;
     }
 }
 
+
 void withdraw()
 {
-    for(int i=0;i<100000;i++)
+    for(int i = 0; i < 100000; i++)
     {
         lock_guard<mutex> lock(atmMutex);
+
         balance--;
     }
 }
+
 
 int main()
 {
@@ -219,55 +291,57 @@ int main()
 }
 ```
 
-Output
+Output:
 
 ```
 1000
 ```
 
-Always.
-
 ---
 
-## Problem Solved
+## What Mutex Solves
 
-Mutex guarantees
+Mutex guarantees:
 
 ```
 Only one thread
 
-↓
+        ↓
 
-Access balance
+Can modify balance
+
+        ↓
+
+At a time
 ```
+
+The race condition is removed.
 
 ---
 
 # New Requirement
 
-Balance
+Current balance:
 
 ```
-₹500
+$500
 ```
 
-Customer wants
+Customer wants:
 
 ```
-Withdraw ₹1000
+Withdraw $1000
 ```
 
-Customer should wait
-
-until salary is deposited.
+The customer should wait until money is deposited.
 
 ---
 
-# Program 3 - Mutex Only (Busy Waiting)
+# Program 3 - Mutex Only (Polling)
 
-Without condition variable
+Without a condition variable, the thread repeatedly checks the condition.
 
-Customer keeps checking.
+---
 
 ## Code
 
@@ -279,9 +353,11 @@ Customer keeps checking.
 
 using namespace std;
 
+
 int balance = 500;
 
 mutex atmMutex;
+
 
 void withdraw()
 {
@@ -302,70 +378,62 @@ void withdraw()
 
         atmMutex.unlock();
 
+
         cout << "Waiting for money...\n";
+
 
         this_thread::sleep_for(
             chrono::milliseconds(500));
     }
 }
 
+
 void deposit()
 {
     this_thread::sleep_for(
         chrono::seconds(3));
 
+
     lock_guard<mutex> lock(atmMutex);
+
 
     balance += 1000;
 
     cout << "Salary Deposited\n";
 }
 
+
 int main()
 {
     thread t1(withdraw);
     thread t2(deposit);
 
+
     t1.join();
     t2.join();
+
 
     cout << "Balance = "
          << balance << endl;
 }
 ```
 
-Output
-
-```
-Waiting...
-
-Waiting...
-
-Waiting...
-
-Waiting...
-
-Salary Deposited
-
-Withdraw Successful
-```
-
 ---
 
 ## Problem
 
-Withdraw thread
+Withdraw thread does:
 
 ```
-Lock
+Lock mutex
 
 ↓
 
-Check
+Check balance
 
 ↓
 
-Unlock
+Unlock mutex
 
 ↓
 
@@ -373,24 +441,36 @@ Sleep
 
 ↓
 
+Check again
+
+↓
+
 Repeat
 ```
 
-This is
+The thread is not doing useful work.
+
+It is repeatedly asking:
 
 ```
-Busy Waiting
+"Is money available now?"
 ```
 
-CPU keeps waking the thread just to check the balance again.
+This is called:
+
+```
+Polling
+```
 
 ---
 
 # Program 4 - Condition Variable
 
-Now customer sleeps.
+Instead of repeatedly checking, the customer sleeps.
 
-Bank wakes customer.
+The bank wakes the customer when money arrives.
+
+---
 
 ## Code
 
@@ -399,61 +479,79 @@ Bank wakes customer.
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
 
 using namespace std;
 
+
 int balance = 500;
+
 
 mutex atmMutex;
 
 condition_variable cv;
 
+
 void withdraw()
 {
     unique_lock<mutex> lock(atmMutex);
 
+
     cout << "Waiting for salary...\n";
+
 
     cv.wait(lock, []()
     {
         return balance >= 1000;
     });
 
+
     balance -= 1000;
+
 
     cout << "Withdraw Successful\n";
 }
+
 
 void deposit()
 {
     this_thread::sleep_for(
         chrono::seconds(3));
 
+
     {
         lock_guard<mutex> lock(atmMutex);
 
+
         balance += 1000;
+
 
         cout << "Salary Deposited\n";
     }
 
+
     cv.notify_one();
 }
+
 
 int main()
 {
     thread t1(withdraw);
     thread t2(deposit);
 
+
     t1.join();
     t2.join();
+
 
     cout << "Final Balance = "
          << balance << endl;
 }
 ```
 
-Output
+---
+
+## Output
 
 ```
 Waiting for salary...
@@ -471,22 +569,24 @@ Final Balance = 500
 
 # What Happens Internally?
 
-### Withdraw Thread
+## Withdraw Thread
 
 ```
-Lock Mutex
+Acquire Mutex
 
 ↓
 
-Balance >=1000 ?
+Check condition:
+
+balance >= 1000 ?
 
 ↓
 
-No
+False
 
 ↓
 
-Automatically Unlock Mutex
+Release Mutex automatically
 
 ↓
 
@@ -495,18 +595,18 @@ Sleep
 
 ---
 
-### Deposit Thread
+## Deposit Thread
 
 ```
-Lock Mutex
+Acquire Mutex
 
 ↓
 
-Deposit Salary
+Increase balance
 
 ↓
 
-Unlock Mutex
+Release Mutex
 
 ↓
 
@@ -515,55 +615,112 @@ notify_one()
 
 ---
 
-### Withdraw Thread
+## Withdraw Thread
 
 ```
 Wake Up
 
 ↓
 
-Lock Mutex Again
+Acquire Mutex Again
 
 ↓
 
-Balance >=1000 ?
+Check condition again
 
 ↓
 
-Yes
+balance >= 1000 ?
 
 ↓
 
-Withdraw
+True
 
 ↓
 
-Exit
+Withdraw money
+
+↓
+
+Continue execution
 ```
 
 ---
 
-# Why Do We Still Need a Mutex?
+# Understanding the Lambda Condition
 
-A condition variable **does not protect shared data**.
+```cpp
+cv.wait(lock, []()
+{
+    return balance >= 1000;
+});
+```
 
-It only puts a thread to sleep and wakes it up.
+The lambda returns:
 
-The mutex is still required because both threads access the shared variable:
+```
+true
+```
+
+when:
+
+```
+balance >= 1000
+```
+
+Otherwise:
+
+```
+false
+```
+
+Internally, it behaves like:
+
+```cpp
+while(balance < 1000)
+{
+    cv.wait(lock);
+}
+```
+
+The thread exits `wait()` only when the condition becomes true.
+
+---
+
+# Why Do We Still Need Mutex?
+
+A condition variable does not protect shared data.
+
+It only provides:
+
+```
+Sleep
+
+and
+
+Wake Up
+```
+
+The shared variable:
 
 ```cpp
 balance
 ```
 
+is still accessed by multiple threads.
+
+Therefore, we need a mutex.
+
 ---
 
 # Summary
 
-| Problem | Solution |
-|----------|----------|
-| Run two tasks simultaneously | `std::thread` |
-| Prevent race condition | `std::mutex` |
-| Avoid busy waiting | `std::condition_variable` |
+| Requirement | Solution |
+|------------|----------|
+| Run tasks concurrently | `std::thread` |
+| Protect shared data | `std::mutex` |
+| Avoid repeated checking | `std::condition_variable` |
+| Wake waiting thread | `notify_one()` / `notify_all()` |
 
 ---
 
@@ -582,7 +739,7 @@ Mutex
 
 ↓
 
-Busy Waiting
+Polling Problem
 
 ↓
 
