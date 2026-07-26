@@ -1,64 +1,74 @@
 #include <iostream>
 #include <thread>
-#include <pthread.h>
-#include <chrono>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
 
-using namespace std;
-
-int sharedData = 0;
-
-// Reader-Writer Lock
-pthread_rwlock_t rwlock;
-
-// Reader
-void reader(int id)
+class ReaderWriterLock
 {
-    // Acquire read lock
-    pthread_rwlock_rdlock(&rwlock);
+private:
 
-    cout << "Reader " << id
-         << " reads : "
-         << sharedData << endl;
+    std::mutex mtx;
+    std::condition_variable cv;
 
-    this_thread::sleep_for(chrono::seconds(1));
+    int activeReaders = 0;
+    bool writerActive = false;
 
-    // Release read lock
-    pthread_rwlock_unlock(&rwlock);
-}
+public:
 
-// Writer
-void writer(int id)
-{
-    // Acquire write lock
-    pthread_rwlock_wrlock(&rwlock);
+    //------------------------------------
+    // Acquire Read Lock
+    //------------------------------------
+    void lockRead()
+    {
+        std::unique_lock<std::mutex> lock(mtx);
 
-    sharedData++;
+        // Wait while a writer is writing
+        cv.wait(lock, [this]
+        {
+            return !writerActive;
+        });
 
-    cout << "Writer " << id
-         << " writes : "
-         << sharedData << endl;
+        ++activeReaders;
+    }
 
-    this_thread::sleep_for(chrono::seconds(1));
+    //------------------------------------
+    // Release Read Lock
+    //------------------------------------
+    void unlockRead()
+    {
+        std::unique_lock<std::mutex> lock(mtx);
 
-    // Release write lock
-    pthread_rwlock_unlock(&rwlock);
-}
+        --activeReaders;
 
-int main()
-{
-    // Initialize reader-writer lock
-    pthread_rwlock_init(&rwlock, nullptr);
+        if(activeReaders == 0)
+            cv.notify_all();
+    }
 
-    thread r1(reader, 1);
-    thread r2(reader, 2);
-    thread w1(writer, 1);
+    //------------------------------------
+    // Acquire Write Lock
+    //------------------------------------
+    void lockWrite()
+    {
+        std::unique_lock<std::mutex> lock(mtx);
 
-    r1.join();
-    r2.join();
-    w1.join();
+        cv.wait(lock, [this]
+        {
+            return !writerActive && activeReaders == 0;
+        });
 
-    // Destroy lock
-    pthread_rwlock_destroy(&rwlock);
+        writerActive = true;
+    }
 
-    return 0;
-}
+    //------------------------------------
+    // Release Write Lock
+    //------------------------------------
+    void unlockWrite()
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+
+        writerActive = false;
+
+        cv.notify_all();
+    }
+};
