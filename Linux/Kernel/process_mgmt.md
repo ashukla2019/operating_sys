@@ -1338,3 +1338,929 @@ Every concurrent program is **not** parallel.
 - How Linux schedules processes?
 - What happens during context switching?
 - What information is saved inside PCB?
+
+--------------------------
+# Linux Process Control Block (`task_struct`) ⭐⭐⭐⭐⭐
+
+> **Interview Importance:** Extremely High (Qualcomm, NVIDIA, AMD, Broadcom)
+
+In Linux, every process and thread is represented by a kernel data structure called **`task_struct`**.
+
+A classical Operating Systems textbook refers to this as the **Process Control Block (PCB)**, whereas Linux implements it using **`task_struct`**.
+
+```
+                Process
+                    │
+                    ▼
+           +----------------+
+           |  task_struct   |
+           +----------------+
+           | PID            |
+           | State          |
+           | Priority       |
+           | Registers      |
+           | Memory Info    |
+           | Open Files     |
+           | Signals        |
+           | Parent         |
+           | Children       |
+           | Scheduling     |
+           +----------------+
+```
+
+### Important Fields
+
+| Field | Description |
+|--------|-------------|
+| pid | Unique Process ID |
+| tgid | Thread Group ID |
+| state | Current process state |
+| parent | Pointer to parent process |
+| children | List of child processes |
+| mm | Memory descriptor (`mm_struct`) |
+| files | Open file descriptor table |
+| signal | Pending signal information |
+| sched_class | Scheduling class |
+| prio | Dynamic process priority |
+
+> **Interview Tip**
+>
+> You are **not expected to memorize every member** of `task_struct`. Interviewers expect you to know **what information it stores** and why the kernel needs it.
+
+---
+
+# Process Creation in Linux
+
+Linux creates processes primarily using:
+
+- `fork()`
+- `vfork()`
+- `clone()`
+
+```
+             Parent Process
+                    │
+                 fork()
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+ Parent Process           Child Process
+```
+
+Initially, the parent and child **share the same physical memory pages** using **Copy-on-Write (CoW)**.
+
+Only when either process modifies a shared page does Linux allocate a new physical page.
+
+### Advantages
+
+- Fast process creation
+- Reduced memory usage
+- Efficient `fork()` followed by `exec()`
+
+---
+
+# fork() vs vfork() vs clone()
+
+| Feature | fork() | vfork() | clone() |
+|----------|---------|----------|----------|
+| Address Space | Copy-on-Write | Shared temporarily | Configurable |
+| Parent Blocks | No | Yes | Depends on flags |
+| Child Memory | Separate after CoW | Shared until exec()/exit() | Shared or Separate |
+| Typical Use | General process creation | Optimize fork()+exec() | Threads, Containers |
+
+### Interview Tip
+
+Linux threads are created using **`clone()`**, not `fork()`.
+
+---
+
+# exec() Family ⭐⭐⭐⭐⭐
+
+The `exec()` family **replaces the current process image** with a new program.
+
+```
+Parent
+   │
+fork()
+   │
+Child
+   │
+exec()
+   │
+New Program Starts
+```
+
+Common functions
+
+- `execl()`
+- `execv()`
+- `execvp()`
+- `execve()`
+
+### After a successful `exec()`
+
+- PID remains unchanged.
+- Address space is replaced.
+- Execution starts from the new program's entry point (`main()`).
+- Open file descriptors remain open unless marked with `FD_CLOEXEC`.
+
+---
+
+# wait() and waitpid()
+
+When a child process exits, its exit status remains available until the parent collects it.
+
+```
+Parent
+   │
+wait()
+   │
+Child Exits
+   │
+Resources Released
+```
+
+If the parent never calls `wait()` or `waitpid()`, the child becomes a **Zombie Process**.
+
+---
+
+# Zombie and Orphan Processes ⭐⭐⭐⭐⭐
+
+## Zombie Process
+
+A Zombie Process has finished execution, but its parent has **not yet collected** its exit status.
+
+```
+Child Exits
+      │
+   Zombie
+      │
+ wait()/waitpid()
+      │
+ Removed
+```
+
+### Characteristics
+
+- Uses no CPU
+- Does not execute
+- Occupies a PID entry
+- Exists until the parent collects its status
+
+---
+
+## Orphan Process
+
+An Orphan Process is still running, but its parent has terminated.
+
+```
+Parent Terminates
+        │
+ Child Continues
+        │
+ Adopted by systemd/init
+```
+
+Modern Linux systems automatically re-parent orphan processes to **systemd (PID 1)**.
+
+---
+
+## Zombie vs Orphan
+
+| Zombie | Orphan |
+|----------|----------|
+| Already exited | Still running |
+| Waiting for parent | Parent terminated |
+| Uses PID entry | Continues execution |
+| Removed by wait() | Adopted by systemd |
+
+---
+
+# Linux Completely Fair Scheduler (CFS)
+
+Linux uses the **Completely Fair Scheduler (CFS)** for normal processes.
+
+Instead of maintaining fixed-priority queues, CFS attempts to distribute CPU time fairly among runnable tasks.
+
+```
+Runnable Tasks
+       │
+       ▼
+ Red-Black Tree
+       │
+Smallest vruntime
+       │
+       ▼
+      CPU
+```
+
+### Important Concepts
+
+- `vruntime`
+- Run Queue
+- Red-Black Tree
+- Fair CPU allocation
+
+### Advantages
+
+- Prevents starvation
+- Good interactive performance
+- Scales efficiently with many runnable processes
+
+---
+
+# Real-Time Scheduling Policies
+
+Linux supports the following scheduling policies.
+
+| Policy | Description |
+|----------|-------------|
+| SCHED_OTHER | Default Completely Fair Scheduler |
+| SCHED_FIFO | Real-time First-In First-Out |
+| SCHED_RR | Real-time Round Robin |
+
+Real-time processes always have higher priority than normal CFS tasks.
+
+---
+
+# CPU Affinity
+
+CPU Affinity binds a process to one or more CPUs.
+
+```
+CPU0  ←  Process A
+
+CPU1  ←  Process B
+```
+
+### Advantages
+
+- Better cache locality
+- Fewer CPU migrations
+- Reduced context-switch overhead
+- Predictable execution
+
+Useful commands
+
+```bash
+taskset
+sched_setaffinity()
+```
+
+---
+
+# Signals Overview
+
+Signals provide asynchronous communication with processes.
+
+### Common Signals
+
+| Signal | Purpose |
+|----------|----------|
+| SIGINT | Interrupt (Ctrl+C) |
+| SIGTERM | Graceful termination |
+| SIGKILL | Immediate termination |
+| SIGSTOP | Suspend process |
+| SIGCONT | Resume process |
+| SIGCHLD | Child process terminated |
+
+---
+
+# Context Switch Internals
+
+A context switch saves the CPU state of the currently running process and restores the state of another process.
+
+```
+Running Process
+       │
+Save Registers
+       │
+Save Program Counter
+       │
+Save Stack Pointer
+       │
+Load Next Process
+       │
+Restore Registers
+       │
+Resume Execution
+```
+
+### Why Context Switching Is Expensive
+
+- Saving CPU registers
+- Restoring CPU registers
+- Updating memory-management information
+- Scheduler overhead
+- Cache pollution
+- Possible reduction in TLB efficiency
+
+> **Interview Tip**
+>
+> Modern CPUs may preserve TLB entries using features such as ASIDs or PCIDs, so a context switch does **not always flush the entire TLB**. However, context switches can still reduce cache and TLB efficiency.
+
+---
+
+# Process Debugging Commands
+
+| Command | Purpose |
+|----------|----------|
+| `ps` | List processes |
+| `top` | Monitor running processes |
+| `htop` | Interactive process monitor |
+| `pstree` | Display process hierarchy |
+| `pgrep` | Find process by name |
+| `pidof` | Find PID |
+| `strace` | Trace system calls |
+| `ltrace` | Trace library calls |
+| `lsof` | List open files |
+| `taskset` | Display or set CPU affinity |
+| `pmap` | Show process memory map |
+
+---
+
+# Production Scenarios ⭐⭐⭐⭐⭐
+
+## Scenario 1 – Zombie Processes Increasing
+
+### Symptoms
+
+- Large number of `<defunct>` processes
+- PID exhaustion
+
+### Debugging
+
+```bash
+ps -el | grep Z
+```
+
+### Root Cause
+
+Parent process never calls `wait()` or `waitpid()`.
+
+### Solution
+
+- Handle `SIGCHLD`
+- Call `wait()` or `waitpid()`
+
+---
+
+## Scenario 2 – High Context Switch Rate
+
+### Symptoms
+
+- High CPU utilization
+- Low throughput
+- Increased latency
+
+### Debugging
+
+```bash
+vmstat 1
+pidstat -w
+```
+
+### Possible Causes
+
+- Excessive threads
+- Lock contention
+- Frequent wake-ups
+- CPU oversubscription
+
+---
+
+## Scenario 3 – fork() Fails
+
+### Possible Reasons
+
+- `ENOMEM` (Insufficient memory)
+- `EAGAIN` (Process limit reached)
+- PID exhaustion
+
+---
+
+## Scenario 4 – Process Stuck in D State
+
+### Symptoms
+
+The process cannot be terminated, even using `SIGKILL`.
+
+### Common Causes
+
+- Waiting for disk I/O
+- NFS or network storage delays
+- Driver or hardware issues
+
+### Debugging
+
+```bash
+ps -eo pid,state,comm
+```
+
+---
+
+# Senior Interview Questions
+
+1. Why is `fork()` fast in Linux?
+2. Explain Copy-on-Write.
+3. Difference between `fork()`, `vfork()`, and `clone()`.
+4. What happens during `exec()`?
+5. Explain Zombie and Orphan processes.
+6. What information is stored in `task_struct`?
+7. How does the Linux Completely Fair Scheduler (CFS) work?
+8. What is `vruntime`?
+9. Why are context switches expensive?
+10. What is CPU affinity, and when should it be used?
+11. Explain `SCHED_FIFO` and `SCHED_RR`.
+12. How would you debug hundreds of Zombie processes?
+13. What does a process in **D (Uninterruptible Sleep)** state indicate?
+14. How do Linux threads differ from processes?
+15. How would you investigate high context-switch rates?--------------------------------
+# Answers to Senior Interview Questions
+
+---
+
+# 1. Why is `fork()` fast in Linux?
+
+`fork()` creates a new process by duplicating the parent's process descriptor (`task_struct`) and page tables.
+
+However, Linux **does not immediately copy all memory pages**.
+
+Instead, Linux uses **Copy-on-Write (CoW)**.
+
+Initially, the parent and child share the same physical memory pages.
+
+If either process modifies a page, only that page is copied.
+
+```
+Parent
+    │
+ fork()
+    │
+ ┌──┴──┐
+ │     │
+Parent Child
+   │
+Shared Memory Pages
+   │
+Write?
+   │
+Copy New Page
+```
+
+### Advantages
+
+- Fast process creation
+- Low memory overhead
+- Efficient for `fork()` followed by `exec()`
+
+---
+
+# 2. Explain Copy-on-Write (CoW).
+
+Copy-on-Write is an optimization technique used during `fork()`.
+
+Instead of copying all memory immediately, Linux marks shared pages as **read-only**.
+
+Both parent and child initially share the same physical pages.
+
+When one process writes to a page:
+
+1. Page Fault occurs.
+2. Kernel allocates a new page.
+3. Data is copied.
+4. Writing process gets the new page.
+
+```
+fork()
+
+↓
+
+Shared Pages
+
+↓
+
+Write Attempt
+
+↓
+
+Page Fault
+
+↓
+
+Allocate New Page
+
+↓
+
+Continue Execution
+```
+
+Advantages
+
+- Saves memory
+- Faster process creation
+- Avoids unnecessary copying
+
+---
+
+# 3. Difference between `fork()`, `vfork()`, and `clone()`.
+
+| Feature | fork() | vfork() | clone() |
+|----------|---------|----------|----------|
+| Address Space | Copy-on-Write | Shared temporarily | Configurable |
+| Parent Blocks | No | Yes | Depends |
+| Child Memory | Separate | Shared | Shared or Separate |
+| Typical Use | New Process | fork()+exec() optimization | Threads, Containers |
+
+### Interview Tip
+
+Linux threads are implemented using **`clone()`**.
+
+---
+
+# 4. What happens during `exec()`?
+
+The `exec()` family replaces the current process image with a new program.
+
+The process itself continues to exist.
+
+Only its program image changes.
+
+```
+fork()
+
+↓
+
+Child
+
+↓
+
+exec()
+
+↓
+
+Old Program Removed
+
+↓
+
+New Program Loaded
+
+↓
+
+main()
+```
+
+### After successful `exec()`
+
+- PID remains the same.
+- Address space changes.
+- Program starts from `main()`.
+- File descriptors remain open unless marked `FD_CLOEXEC`.
+
+---
+
+# 5. Explain Zombie and Orphan Processes.
+
+## Zombie Process
+
+A Zombie process has completed execution but still occupies an entry in the process table because the parent has not collected its exit status.
+
+```
+Child Exits
+
+↓
+
+Zombie
+
+↓
+
+wait()
+
+↓
+
+Removed
+```
+
+Characteristics
+
+- No CPU usage
+- No executable code
+- Occupies PID
+- Removed by `wait()` or `waitpid()`
+
+---
+
+## Orphan Process
+
+An Orphan process is still running after its parent terminates.
+
+Linux automatically assigns it to **systemd/init (PID 1)**.
+
+```
+Parent Dies
+
+↓
+
+Child Running
+
+↓
+
+systemd adopts child
+```
+
+---
+
+# 6. What information is stored in `task_struct`?
+
+`task_struct` is the Linux kernel's process descriptor.
+
+Important information stored includes:
+
+- Process ID (PID)
+- Thread Group ID (TGID)
+- Process State
+- Scheduling Information
+- CPU Registers
+- Parent Process
+- Child Processes
+- Memory Descriptor (`mm_struct`)
+- Open File Table
+- Signal Information
+- Credentials
+
+Every process and thread has its own `task_struct`.
+
+---
+
+# 7. How does the Linux Completely Fair Scheduler (CFS) work?
+
+The Completely Fair Scheduler (CFS) attempts to give every runnable process a fair share of CPU time.
+
+It maintains all runnable tasks in a **Red-Black Tree** ordered by **Virtual Runtime (`vruntime`)**.
+
+```
+Runnable Processes
+
+↓
+
+Red-Black Tree
+
+↓
+
+Smallest vruntime
+
+↓
+
+CPU
+```
+
+The process with the **smallest `vruntime`** runs next.
+
+Advantages
+
+- Fair scheduling
+- Prevents starvation
+- Excellent interactive performance
+
+---
+
+# 8. What is `vruntime`?
+
+`vruntime` (Virtual Runtime) is the amount of CPU time a process has effectively consumed.
+
+Instead of using actual execution time, CFS tracks **weighted runtime**.
+
+```
+Smaller vruntime
+
+↓
+
+Higher chance of running
+```
+
+Processes with lower priority (higher nice value) accumulate `vruntime` faster, causing them to receive less CPU time.
+
+---
+
+# 9. Why are context switches expensive?
+
+During a context switch, Linux must:
+
+- Save CPU registers
+- Save Program Counter
+- Save Stack Pointer
+- Load next process state
+- Switch memory mapping if required
+- Invoke scheduler logic
+
+Additional costs include:
+
+- Cache pollution
+- Reduced TLB efficiency
+- Scheduler overhead
+
+Frequent context switches reduce overall system performance.
+
+---
+
+# 10. What is CPU Affinity, and when should it be used?
+
+CPU Affinity binds a process or thread to a specific CPU core.
+
+```
+CPU0 ← Process A
+
+CPU1 ← Process B
+```
+
+Advantages
+
+- Better cache locality
+- Reduced CPU migration
+- Lower scheduling overhead
+- Predictable execution
+
+Useful in:
+
+- Real-time systems
+- High-performance networking
+- Embedded systems
+
+Commands
+
+```bash
+taskset
+sched_setaffinity()
+```
+
+---
+
+# 11. Explain `SCHED_FIFO` and `SCHED_RR`.
+
+These are Linux real-time scheduling policies.
+
+### SCHED_FIFO
+
+- First-In First-Out
+- Highest-priority task runs until:
+  - Blocks
+  - Terminates
+  - Voluntarily yields
+- No time slicing
+
+Suitable for deterministic real-time applications.
+
+---
+
+### SCHED_RR
+
+Round Robin scheduling for real-time tasks.
+
+Processes of equal priority receive fixed time slices.
+
+```
+P1
+
+↓
+
+P2
+
+↓
+
+P3
+
+↓
+
+P1
+```
+
+Provides fairness among equal-priority real-time tasks.
+
+---
+
+# 12. How would you debug hundreds of Zombie processes?
+
+### Symptoms
+
+```
+<defunct>
+```
+
+appears in process listings.
+
+### Debugging
+
+```bash
+ps -el | grep Z
+
+pstree
+
+strace -p <parent_pid>
+```
+
+### Root Cause
+
+Parent process is not calling:
+
+- `wait()`
+- `waitpid()`
+
+### Solution
+
+- Handle `SIGCHLD`
+- Call `wait()` or `waitpid()`
+
+---
+
+# 13. What does a process in **D (Uninterruptible Sleep)** state indicate?
+
+A process in **D state** is waiting for an operation that **cannot be interrupted by signals**, typically I/O.
+
+Common causes
+
+- Disk I/O
+- NFS delays
+- Storage failures
+- Driver issues
+
+Debugging
+
+```bash
+ps -eo pid,state,comm
+
+cat /proc/<pid>/stack
+
+dmesg
+```
+
+Even `SIGKILL` cannot terminate a process while it remains in this state.
+
+---
+
+# 14. How do Linux threads differ from processes?
+
+| Process | Thread |
+|----------|---------|
+| Independent execution unit | Lightweight execution unit |
+| Separate virtual address space | Shares process address space |
+| Separate file descriptor table (unless shared explicitly) | Typically shares process resources |
+| Higher creation overhead | Lower creation overhead |
+| IPC required for communication | Shared memory communication |
+
+Linux implements threads using the **`clone()`** system call.
+
+---
+
+# 15. How would you investigate high context-switch rates?
+
+### Step 1 – Measure Context Switches
+
+```bash
+vmstat 1
+
+pidstat -w
+
+sar -w
+```
+
+### Step 2 – Identify Busy Processes
+
+```bash
+top
+
+htop
+```
+
+### Step 3 – Check Thread Count
+
+```bash
+ps -eLf
+```
+
+### Step 4 – Look for Lock Contention
+
+Use:
+
+```bash
+perf
+
+strace
+```
+
+### Common Causes
+
+- Excessive threads
+- Lock contention
+- Frequent wake-ups
+- Short CPU bursts
+- CPU oversubscription
+- Improper scheduling policy
+
+### Solutions
+
+- Reduce unnecessary threads.
+- Increase task granularity.
+- Minimize lock contention.
+- Use appropriate scheduling policies.
+- Pin critical threads using CPU affinity if beneficial.
+- Profile before optimizing to identify the real bottleneck.
