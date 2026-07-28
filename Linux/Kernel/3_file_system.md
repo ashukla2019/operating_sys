@@ -1,793 +1,574 @@
-
-
-# Filesystem + VFS Complete Notes (Interview Ready)
+# Linux Filesystem, VFS & NFS (Interview Notes)
 
 ---
 
-## 1.  What is a Filesystem?
+# 1. What is a Filesystem?
 
-A filesystem is a method to store, organize, and retrieve data from storage devices.
+A **filesystem** defines how data is stored, organized, and retrieved from a storage device.
 
-### Responsibilities:
-- File storage & retrieval
-- Metadata management
-- Directory hierarchy
-- Permissions & security
-- Space allocation
+### Responsibilities
 
-### Examples:
-- Linux: ext4, XFS, Btrfs
-- Windows: NTFS
-- Network: NFS
+- Store files and directories
+- Maintain metadata
+- Manage free space
+- Enforce permissions
+- Locate file data on disk
 
----
+### Examples
 
-## 2. What is VFS (Virtual File System)?
-
-VFS is a kernel abstraction layer that provides a uniform interface to multiple filesystems.
-
-### It allows:
-- Same syscalls (`open`, `read`, `write`) for all filesystems
-- Plug-and-play filesystem support
+| Local Filesystem | Network Filesystem |
+|------------------|--------------------|
+| ext4             | NFS                |
+| XFS              | SMB/CIFS           |
+| Btrfs            |                    |
 
 ---
 
-## 3. Core VFS Data Structures (VERY IMPORTANT)
+# 2. What is VFS (Virtual File System)?
+
+The **Virtual File System (VFS)** is a kernel abstraction layer that provides a **common interface** for all filesystems.
+
+Applications always use the same system calls:
+
+```c
+open()
+read()
+write()
+close()
+```
+
+VFS hides whether the underlying filesystem is:
+
+- ext4
+- XFS
+- Btrfs
+- NFS
+- tmpfs
+
+Applications never know which filesystem is actually used.
 
 ---
 
-### 3.1 Superblock (`struct super_block`)
+# 3. VFS Core Data Structures
 
-Represents a mounted filesystem.
-
-#### Contains:
-- Filesystem type (ext4, xfs)
-- Block size
-- Root inode
-- Filesystem operations
-
-#### Key Pointer:
-super_block → root dentry
-
+| Object | Represents | Created |
+|---------|------------|---------|
+| `super_block` | Mounted filesystem | mount |
+| `inode` | File metadata | Loaded during lookup |
+| `dentry` | Filename → inode mapping | Path lookup |
+| `file` | Open file instance | open() |
+| `fd` | Process handle | open() |
 
 ---
 
-### 3.2 Inode (`struct inode`)
+## Relationship
 
-Represents file metadata (**NOT filename**).
+```
+fd
+ │
+ ▼
+struct file
+ │
+ ├── f_inode ──────────────► inode
+ │                            │
+ ├── f_path ─► dentry ────────┘
+ │               │
+ │               ▼
+ │          filename
+ │
+ ├── f_op
+ └── f_pos
 
-#### Contains:
-- File size
-- Permissions
-- Owner (UID/GID)
-- Timestamps
-- Block pointers (data location)
-
-#### Important:
-❗ Inode does NOT store filename
-
----
-
-### 3.3 Dentry (`struct dentry`)
-
-Represents directory entry (**name ↔ inode mapping**).
-
-#### Contains:
-- Filename
-- Pointer to inode
-- Parent directory
-
-#### Purpose:
-- Speeds up path lookup (dentry cache)
+inode
+  │
+  ▼
+super_block
+```
 
 ---
 
-### 3.4 File Object (`struct file`)
+# 4. Filesystem Lifecycle
 
-Represents an open file instance.
+Objects are created at different stages.
 
-#### Contains:
-- File offset
-- Flags (O_RDONLY, etc.)
-- Pointer to inode
-- File operations
-
----
-
-### 3.5 File Descriptor (FD)
-
-- Integer returned to user (0,1,2,...)
-- Index into process file table
+| Stage | Objects Created |
+|--------|-----------------|
+| mkfs | Disk superblock, inode table, data blocks |
+| mount | `struct super_block`, root dentry |
+| path lookup | dentries, inodes |
+| open | `struct file`, file descriptor |
+| read/write | Uses `file → inode` |
 
 ---
 
-# 📁 Filesystem + VFS Complete Lifecycle & Mapping (Interview Ready)
+# 5. Stage 1 : Filesystem Creation (mkfs)
 
----
-
-# 🧠 0. BIG PICTURE
-
-Different objects are created at different stages:
-
-| Stage       | Objects Created                                        |
-| ----------- | ------------------------------------------------------ |
-| mkfs        | Disk structures (superblock, inode table, data blocks) |
-| mount       | struct super_block, root dentry, root inode            |
-| path lookup | dentries + inodes (cached, lazy)                       |
-| open        | struct file + fd                                       |
-| read/write  | uses file → inode → data                               |
-
----
-
-# 🧱 1. FILESYSTEM CREATION (mkfs)
+Example:
 
 ```bash
 mkfs.ext4 /dev/sda1
 ```
 
-### ✅ Created ON DISK:
+Creates **on disk**:
 
-* Superblock (disk)
-* Inode table
-* Data blocks
-* Root directory inode
+```
+Disk
 
-### ❌ NOT created:
+├── Superblock
+├── Inode Table
+├── Data Blocks
+└── Root Directory
+```
 
-* struct super_block (kernel)
-* struct dentry
-* struct file
+Nothing is loaded into RAM yet.
+
+No kernel objects exist.
 
 ---
 
-# 🧱 2. MOUNT FLOW
+# 6. Stage 2 : Mount
+
+Example
 
 ```bash
 mount /dev/sda1 /mnt
 ```
 
-### Kernel actions:
+Kernel performs:
 
-```text
-read disk superblock
-↓
-create struct super_block
-↓
-load root inode
-↓
-create root dentry
+```
+Read Disk Superblock
+        │
+        ▼
+Create struct super_block
+        │
+        ▼
+Load Root Inode
+        │
+        ▼
+Create Root Dentry
 ```
 
-### Final mapping:
+Result
 
-```text
+```
 super_block
-   ↓
-s_root (dentry "/")
-   ↓
-inode (root directory)
+      │
+      ▼
+   s_root
+      │
+      ▼
+   root dentry
+      │
+      ▼
+   root inode
 ```
+
+Now the filesystem is accessible through VFS.
 
 ---
 
-# 🧱 3. PATH LOOKUP (LAZY CREATION)
+# 7. Stage 3 : Path Lookup
 
-Example:
+Suppose
 
 ```c
-open("/home/user/file.txt")
+open("/home/user/file.txt");
 ```
 
-### Step-by-step:
+VFS walks the pathname:
 
-```text
-start from root dentry ("/")
+```
+/
+
 ↓
-lookup "home"
+
+home
+
 ↓
-lookup "user"
+
+user
+
 ↓
-lookup "file.txt"
+
+file.txt
 ```
 
-### At each step:
+For each component:
 
-* Check dentry cache
-* If miss → filesystem lookup
-* Create dentry
-* Load inode into memory
+1. Check dentry cache.
+2. If missing, ask filesystem.
+3. Create dentry.
+4. Load inode.
 
-### Result:
+Result
 
-```text
-dentry("file.txt") → inode
 ```
-
----
-
-# 🧱 4. OPEN() FLOW (CRITICAL)
-
-```c
-open("/home/user/file.txt")
-```
-
-## Full Flow
-
-```text
-sys_open()
-↓
-path_openat()
-↓
-path lookup
-↓
-dentry + inode obtained
+dentry("file.txt")
+        │
+        ▼
+      inode
 ```
 
 ---
 
-## 🔥 FILE OBJECT CREATION
+# 8. Stage 4 : open()
 
-### 1. Allocate file
+After pathname lookup,
 
-```c
-struct file *file = alloc_empty_file();
+VFS creates:
+
 ```
-
----
-
-### 2. Attach path
-
-```c
-file->f_path.dentry = dentry;
-file->f_path.mnt    = vfsmount;
-```
-
----
-
-### 3. Attach inode
-
-```c
-file->f_inode = dentry->d_inode;
-```
-
----
-
-### 4. Set file operations
-
-```c
-file->f_op = inode->i_fop;
-```
-
----
-
-### 5. Call filesystem open
-
-```c
-if (file->f_op->open)
-    file->f_op->open(inode, file);
-```
-
----
-
-### 6. Initialize state
-
-```c
-file->f_pos = 0;
-file->f_flags = flags;
-```
-
----
-
-### 7. Assign fd
-
-```text
-fd → file (stored in process fd table)
-```
-
----
-
-# 🔗 FINAL OPEN MAPPING
-
-```text
-fd
-↓
 struct file
-   ├── f_path → dentry → inode
-   ├── f_inode → inode
-   ├── f_op → file_operations
-   └── f_pos
 ```
 
----
+and initializes it.
 
-# 🧱 5. READ() FLOW
+Conceptually
 
 ```c
-read(fd, buf, size)
+file->f_inode = inode;
+file->f_path  = path;
+file->f_op    = inode->i_fop;
+file->f_pos   = 0;
 ```
 
-## Steps
+Finally
 
-```text
+```
 fd
+
 ↓
+
 struct file
-↓
-file->f_op->read()
-↓
-inode
-↓
-page cache
-↓
-disk (if miss)
 ```
 
-## Important:
+gets stored in the process file descriptor table.
 
-* Uses f_pos
-* Updates f_pos after read
+Result
+
+```
+fd
+ │
+ ▼
+struct file
+ ├── f_inode
+ ├── f_path
+ ├── f_op
+ └── f_pos
+```
 
 ---
 
-# 🧱 6. WRITE() FLOW
+# 9. Stage 5 : read()
+
+Application
 
 ```c
-write(fd, buf, size)
+read(fd, buf, size);
 ```
 
-## Steps
+Flow
 
-```text
+```
 fd
-↓
+ │
+ ▼
 struct file
-↓
-file->f_op->write()
-↓
-page cache (dirty)
-↓
-mark inode dirty
-↓
-flush to disk later
+ │
+ ▼
+file->f_op->read_iter()
+ │
+ ▼
+filesystem implementation
+ │
+ ▼
+Page Cache
+ │
+ ▼
+Disk (if cache miss)
+```
+
+After reading,
+
+```
+file->f_pos
+```
+
+is updated.
+
+---
+
+# 10. Stage 6 : write()
+
+```
+fd
+ │
+ ▼
+struct file
+ │
+ ▼
+file->f_op->write_iter()
+ │
+ ▼
+Page Cache (Dirty)
+ │
+ ▼
+Disk (later)
 ```
 
 ---
 
-# 🔥 FULL END-TO-END FLOW
+# 11. How VFS Chooses the Correct Filesystem
 
-```text
-mkfs
-↓
-disk structures created
+This is the most important concept.
 
-----------------------------------
-
-mount
-↓
-super_block created
-↓
-root dentry + inode
-
-----------------------------------
-
-open()
-↓
-path lookup (dentry walk)
-↓
-inode found
-↓
-struct file created
-↓
-fd assigned
-
-----------------------------------
-
-read/write
-↓
-file → f_op → inode → page cache → disk
-```
-
----
-
-# 🧠 KEY POINTER RELATIONSHIPS
-
-```text
-[mkfs]
-disk structures created (superblock, inode table, root dir)
-
-[Mount]
-super_block → s_root → dentry        (filesystem loaded into RAM)
-
-[Path Resolution]
-dentry → inode                       (name → file)
-inode → super_block                 (belongs to FS)
-
-[Open]
-file → f_path → dentry → inode      (path tracking)
-file → f_inode → inode              (direct access)
-file → f_op → inode->i_fop          (operations bound)
-
-[Read]
-file → f_op → read()                (execute read)
-file → f_inode → inode → super_block (locate data)
-file → f_pos                        (offset updated)
-
-
-mkfs creates the filesystem on disk, mount brings it into memory, open binds a file handle to an inode, and read operates directly via file → inode without redoing path lookup.
-
-```
-
----
-
-# ⚠️ IMPORTANT INTERVIEW POINTS
-
-### 1. file vs inode
-
-* file = open instance
-* inode = metadata
-
-### 2. inode vs dentry
-
-* inode = data info
-* dentry = name mapping
-
-### 3. Why f_inode exists?
-
-* Shortcut to avoid dentry dereference
-
-### 4. When is struct file created?
-
-* Only during open()
-
-### 5. Is inode created at open?
-
-* No, loaded/cached from disk
-
----
-
-# 🧠 ONE-LINE SUMMARY
-
-**Disk stores data, superblock anchors filesystem, dentries resolve path, inodes hold metadata, and struct file represents an open instance used by read/write.**
-
----
-
-# 🚀 MEMORY TRICK
-
-```text
-FD → FILE → DENTRY → INODE → DATA
-```
-
-# Understanding VFS and NFS Mapping Internals
-
-This document explains how Linux Virtual File System (VFS) knows whether a file belongs to **ext4**, **NFS**, or any other filesystem.
-
-The most important concept is:
-
-> **VFS never checks "Is this ext4 or NFS?" during every read/write operation.**
->
-> The mapping is established **once during mount**, and all subsequent operations follow pointers stored inside kernel objects.
-
----
-
-# 1. Two Mounted Filesystems
-
-Suppose we mount two filesystems:
+Suppose we mount two filesystems.
 
 ```bash
-mount /dev/sda1 /local          # ext4
-mount -t nfs server:/share /nfs # NFS
+mount /dev/sda1 /local
+mount -t nfs server:/share /nfs
 ```
 
-After these commands, Linux has **two mounted filesystems**.
-
-Conceptually:
+Internally,
 
 ```
 Mount Table
 
-/local  ---------> super_block (ext4)
-/nfs    ---------> super_block (nfs)
+/local  ─────► super_block (ext4)
+/nfs    ─────► super_block (nfs)
 ```
 
-Each mounted filesystem owns its own `struct super_block`.
+Each mounted filesystem has its own
+
+```
+struct super_block
+```
 
 ---
 
-# 2. What is inside a super_block?
-
-## ext4
+## ext4 super_block
 
 ```
-super_block (ext4)
+super_block
 
-s_op    ---> ext4_super_operations
-s_root  ---> root dentry
+s_root
+s_op  → ext4_super_operations
 ```
-
-## NFS
-
-```
-super_block (nfs)
-
-s_op    ---> nfs_super_operations
-s_root  ---> root dentry
-```
-
-Notice that **each mounted filesystem has its own super_block**.
-
-This is the first level of mapping.
 
 ---
 
-# 3. Path Lookup
+## NFS super_block
 
-Suppose an application executes:
+```
+super_block
+
+s_root
+s_op → nfs_super_operations
+```
+
+---
+
+# 12. Path Lookup Across Mount Points
+
+Suppose
 
 ```c
-open("/local/a.txt");
+open("/local/file.txt");
 ```
 
-VFS begins pathname resolution from the root directory.
-
-Conceptually:
+VFS starts at
 
 ```
 /
-|
-+--- local
-|
-+--- nfs
+
+├── local
+└── nfs
 ```
 
-As VFS walks the pathname, it reaches:
+When it reaches
 
 ```
 /local
 ```
 
-VFS immediately recognizes:
+it recognizes a **mount point**.
 
-> `/local` is a mount point.
+Instead of continuing inside the root filesystem,
 
-Instead of continuing inside the root filesystem, it switches to the mounted filesystem.
+it switches into the mounted ext4 filesystem.
 
 ```
-Root Filesystem
-      |
-      +------ local (mount point)
-                  |
-                  +------ ext4 super_block
+Root FS
+     │
+     └──── local (mount)
+               │
+               ▼
+       ext4 super_block
 ```
 
-Now the lookup continues **inside ext4**.
+Similarly,
+
+```
+open("/nfs/file.txt");
+```
+
+becomes
+
+```
+Root FS
+     │
+     └──── nfs (mount)
+               │
+               ▼
+        nfs super_block
+```
+
+**Important**
+
+The pathname determines which mounted filesystem VFS enters.
 
 ---
 
-# 4. Path Lookup for NFS
+# 13. Where is Mount Information Stored?
 
-Now suppose:
+Conceptually,
 
-```c
-open("/nfs/a.txt");
-```
-
-Again VFS begins at:
-
-```
-/
-|
-+---- nfs
-```
-
-When it reaches:
-
-```
-/nfs
-```
-
-it finds another mount point.
-
-```
-Root Filesystem
-      |
-      +------ nfs (mount point)
-                  |
-                  +------ nfs super_block
-```
-
-Now lookup continues **inside the NFS filesystem**.
-
----
-
-## Important Observation
-
-The pathname determines **which mounted filesystem (super_block)** VFS enters.
-
-There is no filesystem detection during `read()`.
-
-The decision happens during pathname lookup.
-
----
-
-# 5. Where is this Mapping Stored?
-
-Linux keeps mount information using mount objects.
-
-Conceptually:
+Linux maintains mount objects.
 
 ```
 struct mount
 
-mount_point ---> "/local"
+mount_point
+      │
+      ▼
+"/local"
 
-root ---------> ext4 super_block->s_root
+root
+      │
+      ▼
+ext4 super_block->s_root
 ```
 
-Another mount:
+Another mount
 
 ```
 struct mount
 
-mount_point ---> "/nfs"
+mount_point
+      │
+      ▼
+"/nfs"
 
-root ---------> nfs super_block->s_root
+root
+      │
+      ▼
+nfs super_block->s_root
 ```
 
-So during pathname lookup:
+During pathname lookup,
 
-```
-/nfs
-```
-
-VFS follows:
-
-```
-mount object
-        |
-        v
-super_block
-```
-
-instead of remaining in the root filesystem.
+VFS follows these mount objects to switch filesystems.
 
 ---
 
-# 6. Path Lookup Result
+# 14. How read() Knows Whether It Is ext4 or NFS
 
-Suppose the lookup finishes for:
+After lookup,
 
-```
-/local/a.txt
-```
+the inode already belongs to its filesystem.
 
-The result is:
-
-```
-dentry
-   |
-inode
-   |
-super_block (ext4)
-```
-
-For NFS:
-
-```
-dentry
-   |
-inode
-   |
-super_block (nfs)
-```
-
-Notice something important:
-
-The inode already belongs to the correct filesystem.
-
----
-
-# 7. open()
-
-After pathname lookup, VFS allocates:
-
-```
-struct file
-```
-
-Conceptually:
-
-```c
-file->f_inode = inode;
-file->f_op = inode->i_fop;
-```
-
-This is one of the most important assignments in VFS.
-
----
-
-## Case 1: ext4
-
-The inode contains:
+Example:
 
 ```
 inode
-
-i_fop
- |
- +---- ext4_file_operations
-```
-
-Therefore:
-
-```
-file
-
-f_op
- |
- +---- ext4_file_operations
-```
-
----
-
-## Case 2: NFS
-
-The inode contains:
-
-```
-inode
-
-i_fop
- |
- +---- nfs_file_operations
-```
-
-Therefore:
-
-```
-file
-
-f_op
- |
- +---- nfs_file_operations
-```
-
-Notice:
-
-The `struct file` now remembers which filesystem implements file operations.
-
----
-
-# 8. read()
-
-Later the application executes:
-
-```c
-read(fd, buf, 4096);
-```
-
-VFS simply executes:
-
-```c
-file->f_op->read_iter(...);
-```
-
-There is **no switch statement** like:
-
-```c
-if (filesystem == ext4)
+ │
+ ▼
+super_block(ext4)
 ```
 
 or
 
-```c
-if (filesystem == nfs)
+```
+inode
+ │
+ ▼
+super_block(nfs)
 ```
 
-Instead, function pointers are used.
+Every inode stores filesystem-specific operations.
 
----
+For ext4
 
-## ext4
+```
+inode
+
+i_fop
+
+↓
+
+ext4_file_operations
+```
+
+For NFS
+
+```
+inode
+
+i_fop
+
+↓
+
+nfs_file_operations
+```
+
+During open(),
+
+VFS performs
+
+```c
+file->f_op = inode->i_fop;
+```
+
+Therefore
+
+For ext4
+
+```
+struct file
+
+f_op
+
+↓
+
+ext4_file_operations
+```
+
+For NFS
+
+```
+struct file
+
+f_op
+
+↓
+
+nfs_file_operations
+```
+
+Later,
+
+```c
+read(fd,...)
+```
+
+simply executes
+
+```c
+file->f_op->read_iter();
+```
+
+For ext4
 
 ```
 read()
@@ -797,9 +578,7 @@ read()
 ext4_read_iter()
 ```
 
----
-
-## NFS
+For NFS
 
 ```
 read()
@@ -807,9 +586,37 @@ read()
 ↓
 
 nfs_file_read()
+
+↓
+
+RPC
+
+↓
+
+NFS Server
+
+↓
+
+Server VFS
+
+↓
+
+ext4/xfs
+
+↓
+
+Disk
 ```
 
-The correct implementation is already stored inside:
+**VFS never checks**
+
+```
+if(ext4)
+
+if(nfs)
+```
+
+The correct implementation is already stored in
 
 ```
 file->f_op
@@ -817,272 +624,194 @@ file->f_op
 
 ---
 
-# 9. Why Doesn't VFS Need to Check?
-
-Because the mapping has already been established during:
-
-- mount
-- pathname lookup
-- open()
-
-After `open()`:
+# 15. Complete End-to-End Flow
 
 ```
+mkfs
+ │
+ ▼
+Disk Structures Created
+
+──────────────────────────────────
+
+mount
+ │
+ ▼
+struct super_block
+ │
+ ▼
+root dentry
+ │
+ ▼
+root inode
+
+──────────────────────────────────
+
+open()
+ │
+ ▼
+Path Lookup
+ │
+ ▼
+dentry
+ │
+ ▼
+inode
+ │
+ ▼
 struct file
-        |
-        +------ f_op
-```
+ │
+ ▼
+fd
 
-already points to the correct filesystem implementation.
+──────────────────────────────────
+
+read()
+ │
+ ▼
+file->f_op
+ │
+ ▼
+Filesystem Implementation
+
+      ext4
+         │
+         ▼
+      Page Cache
+         │
+         ▼
+        Disk
+
+      OR
+
+      NFS
+         │
+         ▼
+        RPC
+         │
+         ▼
+     NFS Server
+         │
+         ▼
+      Server VFS
+         │
+         ▼
+     ext4/xfs
+         │
+         ▼
+        Disk
+```
 
 ---
 
-# 10. Analogy: TV Remote vs AC Remote
+# 16. Interview Questions
 
-Imagine you have:
+### Difference between inode and dentry
+
+| inode | dentry |
+|--------|---------|
+| Metadata | Filename mapping |
+
+---
+
+### Difference between inode and file
+
+| inode | file |
+|--------|------|
+| Represents the file | Represents an open instance |
+
+---
+
+### When is `struct file` created?
+
+During
 
 ```
-TV Remote
-
-AC Remote
+open()
 ```
 
-Both contain a button named:
+---
+
+### When is inode created?
+
+It already exists on disk.
+
+The kernel loads (or caches) it during pathname lookup.
+
+---
+
+### Why does `struct file` contain `f_inode`?
+
+To directly access the inode without dereferencing the dentry every time.
+
+---
+
+### Why does `struct file` contain `f_op`?
+
+To call the correct filesystem implementation (ext4, NFS, XFS, etc.).
+
+---
+
+### Does VFS check whether a file belongs to ext4 or NFS during every read?
+
+**No.**
+
+During `open()`,
 
 ```
-Power
+file->f_op = inode->i_fop;
 ```
 
-When you press **Power**:
+From then on,
 
 ```
-TV Remote
-
-Power
+read()
 
 ↓
 
-TV turns on
+file->f_op->read_iter()
 ```
 
-```
-AC Remote
+directly invokes the correct filesystem implementation.
 
-Power
+---
+
+# Memory Trick
+
+```
+FD
 
 ↓
 
-AC turns on
-```
+FILE
 
-You never write:
+↓
 
-```c
-if (remote == TV)
-```
+DENTRY
 
-The remote itself already knows which signal to send.
+↓
 
-Similarly:
+INODE
 
-```
-struct file
-        |
-        +------ f_op
-```
+↓
 
-acts like the remote.
+SUPERBLOCK
 
-For ext4:
+↓
 
-```
-f_op
- |
- +---- ext4 operations
-```
+FILESYSTEM
 
-For NFS:
+↓
 
-```
-f_op
- |
- +---- nfs operations
-```
+PAGE CACHE
 
-Calling:
+↓
 
-```c
-file->f_op->read_iter();
-```
-
-is exactly like pressing the **Power** button on whichever remote you already have.
-
----
-
-# 11. Complete Mapping
-
-## ext4
-
-```
-mount("/dev/sda1", "/local")
-                |
-                v
-      super_block (ext4)
-                |
-                v
-             inode
-                |
-          i_fop
-                |
-                v
-     ext4_file_operations
-                |
-                v
-           struct file
-                |
-                v
- file->f_op->read_iter()
-                |
-                v
-        ext4_read_iter()
+DISK
 ```
 
 ---
 
-## NFS
+# One-Line Summary
 
-```
-mount("server:/share", "/nfs")
-                |
-                v
-      super_block (nfs)
-                |
-                v
-             inode
-                |
-          i_fop
-                |
-                v
-      nfs_file_operations
-                |
-                v
-           struct file
-                |
-                v
- file->f_op->read_iter()
-                |
-                v
-        nfs_file_read()
-                |
-                v
-          RPC to NFS Server
-```
-
----
-
-# 12. Complete VFS Flow
-
-```
-Application
-      |
-      v
-open("/local/a.txt")
-      |
-      v
-Path Lookup
-      |
-      +---- reaches "/local"
-      |
-      +---- mount object
-      |
-      +---- ext4 super_block
-      |
-      +---- dentry
-      |
-      +---- inode
-      |
-      +---- inode->i_fop
-      |
-      +---- create struct file
-      |
-      +---- file->f_op = inode->i_fop
-      |
-      v
-read()
-      |
-      v
-file->f_op->read_iter()
-      |
-      v
-ext4_read_iter()
-```
-
----
-
-## NFS Flow
-
-```
-Application
-      |
-      v
-open("/nfs/a.txt")
-      |
-      v
-Path Lookup
-      |
-      +---- reaches "/nfs"
-      |
-      +---- mount object
-      |
-      +---- nfs super_block
-      |
-      +---- dentry
-      |
-      +---- inode
-      |
-      +---- inode->i_fop
-      |
-      +---- create struct file
-      |
-      +---- file->f_op = inode->i_fop
-      |
-      v
-read()
-      |
-      v
-file->f_op->read_iter()
-      |
-      v
-nfs_file_read()
-      |
-      v
-RPC Client
-      |
-      v
-Network
-      |
-      v
-NFS Server
-      |
-      v
-Server VFS
-      |
-      v
-ext4/xfs
-      |
-      v
-Disk
-```
-
----
-
-# Key Takeaways
-
-1. Every mounted filesystem has its own `struct super_block`.
-2. Mount points (`/local`, `/nfs`) map to different `super_block` instances.
-3. Pathname lookup switches to the correct mounted filesystem using mount objects.
-4. Every inode belongs to one `super_block`.
-5. Every inode contains filesystem-specific operation tables (`i_fop`, `i_op`).
-6. `open()` copies `inode->i_fop` into `file->f_op`.
-7. `read()` simply calls `file->f_op->read_iter()`.
-8. VFS never checks whether a file belongs to ext4 or NFS during I/O—the correct implementation is already encoded in the pointers established during mount and open.
+**`mkfs` creates filesystem metadata on disk, `mount` creates the VFS objects, pathname lookup resolves names to inodes, `open()` creates a `struct file` and binds filesystem operations, and `read()/write()` invoke those operations without needing to identify the filesystem again.**
