@@ -347,445 +347,50 @@ fork();
 This is a **system call**, so execution switches from **user mode** to **kernel mode**.
 
 The kernel performs the following operations:
-
-- Creates a new **Process Control Block (PCB)** (`task_struct` in Linux)
-- Assigns a new **PID**
-- Creates a new virtual address space (using Copy-On-Write)
-- Creates page tables
-- Copies process information
-    - Registers
-    - Open file descriptors
-    - Current working directory
-    - Signal handlers
-    - Credentials
-- Adds the child process to the scheduler's run queue
-
-### Flow
-
-```text
-Parent Process
-      |
-    fork()
-      |
-      ▼
+```
+User
+ │
+ │ types "ls"
+ ▼
+Shell (running process)
+ │
+ │ fork()
+ ▼
 Kernel
-      |
-      ├── Create PCB (task_struct)
-      ├── Assign PID
-      ├── Copy process state
-      ├── Create page tables
-      ├── Setup Copy-On-Write memory
-      └── Add child to Ready Queue
-```
-
-### Result
-
-Now there are **two processes**.
-
-```text
-Parent
-   │
-   ├── Continues execution
-   │
-Child
-   │
-   └── Starts after fork()
-```
-
-At this point, the child process **exists** but **may not yet be running**.
-
-The scheduler decides when it gets CPU time.
-
----
-
-# Copy-On-Write (COW)
-
-Linux does **not** immediately copy the parent's entire memory.
-
-Instead:
-
-```text
-Parent Memory
-        ▲
-        │
-Shared Physical Pages
-        │
-        ▼
-Child Memory
-```
-
-Both processes initially share the same physical pages.
-
-When either process modifies a page:
-
-```text
-Write occurs
-      │
-      ▼
-Kernel copies only that page
-```
-
-This is called **Copy-On-Write**, making `fork()` efficient.
-
----
-
-# 2. Program Loading (`exec()`)
-
-Usually the child process executes:
-
-```c
-execve("/bin/ls", argv, envp);
-```
-
-Unlike `fork()`, **`exec()` does not create a new process**.
-
-Instead, it **replaces the current process image**.
-
-The kernel's executable loader performs the following:
-
-- Reads the ELF executable
-- Destroys the old address space
-- Creates a new virtual address space
-- Maps executable sections
-- Creates a new user stack
-- Creates a heap
-- Loads shared libraries
-- Initializes CPU registers
-- Sets the instruction pointer to the program entry point
-
----
-
-## Kernel Loader
-
-```text
-Executable (ELF)
-        │
-        ▼
-Kernel Loader
-        │
-        ├── Read ELF Header
-        ├── Map .text
-        ├── Map .rodata
-        ├── Map .data
-        ├── Map .bss
-        ├── Create Heap
-        ├── Create Stack
-        ├── Load Shared Libraries
-        ├── Initialize Registers
-        └── Jump to Program Entry
-```
-
----
-
-## Memory Layout After exec()
-
-```text
-High Address
-+----------------------+
-|        Stack         |
-+----------------------+
-|                      |
-|        Heap          |
-+----------------------+
-|        BSS           |
-+----------------------+
-|       Data           |
-+----------------------+
-|      Read Only       |
-+----------------------+
-|       Text           |
-+----------------------+
-Low Address
-```
-
----
-
-## Important Interview Point
-
-After `exec()`:
-
-- PID remains the same
-- Parent remains the same
-- Open file descriptors remain (unless marked `FD_CLOEXEC`)
-- Process image is completely replaced
-
----
-
-# 3. Scheduling
-
-Once the process is loaded:
-
-```text
-Process State
-
-NEW
+ │
+ ├── Creates child PCB
+ ├── Assigns PID
+ ├── Sets up Copy-On-Write memory
  │
  ▼
-READY
-```
-
-The kernel places the process into the **Ready Queue**.
-
-Example:
-
-```text
+Child process
+ │
+ │ exec("/bin/ls")
+ ▼
+Kernel ELF Loader
+ │
+ ├── Reads ELF executable
+ ├── Creates new address space
+ ├── Maps .text/.data/.bss
+ ├── Creates heap and stack
+ └── Initializes CPU registers
+ │
+ ▼
 Ready Queue
-
-+------+
-| P1   |
-+------+
-| P2   |
-+------+
-| P3   |
-+------+
-```
-
-The scheduler continuously decides:
-
-> "Which process should execute next?"
-
-Linux primarily uses the **Completely Fair Scheduler (CFS)**.
-
-The scheduler considers:
-
-- Priority
-- Nice value
-- Virtual runtime
-- CPU affinity
-- Scheduling policy
-
----
-
-# 4. Context Switch
-
-Suppose the scheduler decides to run **Process P2**.
-
-The kernel performs a **context switch**.
-
----
-
-## What is Context?
-
-A process context includes:
-
-- Program Counter (Instruction Pointer)
-- Stack Pointer
-- CPU Registers
-- Flags Register
-- Floating Point Registers
-- SIMD Registers
-- Page Table Pointer
-- Kernel Stack Pointer
-
----
-
-## Context Switch Flow
-
-```text
-Current Running Process
-        │
-        ▼
-Save CPU Registers
-        │
-        ▼
-Store Registers in PCB
-        │
-        ▼
-Scheduler Picks Next Process
-        │
-        ▼
-Load Registers from PCB
-        │
-        ▼
-Switch Page Tables
-        │
-        ▼
-Restore CPU State
-        │
-        ▼
-Resume Execution
-```
-
----
-
-## Diagram
-
-```text
-Current Process
-      │
-      ▼
-Save Registers
-      │
-      ▼
-PCB (Current Process)
-      │
-      ▼
-Scheduler
-      │
-      ▼
-PCB (Next Process)
-      │
-      ▼
-Load Registers
-      │
-      ▼
-Switch Address Space
-      │
-      ▼
-Continue Execution
-```
-
----
-
-# Who Loads the CPU Context?
-
-**Answer: The Kernel**
-
-More specifically:
-
-### Scheduler
-
-Responsible for deciding:
-
-> Which process should run next?
-
-It does **not** perform the actual register switching.
-
----
-
-### Context Switch Routine
-
-Responsible for:
-
-- Saving current CPU registers
-- Restoring next process registers
-- Switching page tables
-- Updating kernel stack
-- Returning to user mode
-
----
-
-### CPU
-
-The CPU simply executes whatever register state has been loaded.
-
-The CPU **does not decide** which process runs.
-
----
-
-# Complete Execution Flow
-
-```text
-                 User
-                  │
-                  ▼
-            Runs Program
-                  │
-                  ▼
-               fork()
-                  │
-                  ▼
-              Kernel
-                  │
-      Create Child Process
-                  │
-                  ▼
-          Create PCB (task_struct)
-                  │
-                  ▼
-          Assign New PID
-                  │
-                  ▼
-      Setup Copy-On-Write Memory
-                  │
-                  ▼
-          Child Calls exec()
-                  │
-                  ▼
-           Kernel ELF Loader
-                  │
-      Read Executable File
-                  │
-                  ▼
-     Map .text .data .bss Stack Heap
-                  │
-                  ▼
-      Initialize CPU Registers
-                  │
-                  ▼
-         Process State = READY
-                  │
-                  ▼
-           Scheduler Chooses
-                  │
-                  ▼
-          Context Switch Begins
-                  │
-        ┌─────────┴─────────┐
-        │                   │
-        ▼                   ▼
-Save Current         Load Next Process
-Registers            Registers
-        │                   │
-        └─────────┬─────────┘
-                  ▼
-         Switch Page Tables
-                  │
-                  ▼
-         Return to User Mode
-                  │
-                  ▼
-          CPU Executes Process
-```
-
----
-
-# Interview Summary
-
-### `fork()`
-
-- Creates a new process.
-- Kernel creates a new PCB.
-- Uses Copy-On-Write for memory.
-- Parent and child continue independently.
-
----
-
-### `exec()`
-
-- Does **not** create a new process.
-- Replaces the current process image.
-- Loads a new executable into memory.
-
----
-
-### Scheduler
-
-- Chooses the next READY process.
-- Implements scheduling policies (e.g., CFS).
-
----
-
-### Context Switch
-
-- Saves the current process's CPU state.
-- Restores the next process's CPU state.
-- Switches virtual memory.
-- Resumes execution.
-
----
-
-### CPU
-
-The CPU only executes instructions.
-
-It does **not** decide:
-
-- Which process runs
-- When context switching occurs
-- Which process gets CPU time
-
-Those decisions are entirely made by the **Linux kernel scheduler**.
+ │
+ ▼
+Scheduler selects the process
+ │
+ ▼
+Context Switch
+ │
+ ├── Save current process registers
+ ├── Load selected process registers
+ ├── Switch page tables
+ └── Return to user mode
+ │
+ ▼
+CPU executes the selected process
 ```
 ---
 
