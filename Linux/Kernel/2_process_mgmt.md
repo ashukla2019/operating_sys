@@ -336,37 +336,6 @@ PCB acts like the **identity card** of a process.
 This chapter explains what happens internally in Linux from the moment a process is created until it starts executing on the CPU.
 
 ---
-```
-# Overall Flow
-
-```text
-User runs program
-       │
-       ▼
-fork()
-       │
-       ▼
-Kernel creates child process
-       │
-       ▼
-exec()
-       │
-       ▼
-Kernel loads executable
-       │
-       ▼
-Process enters Ready Queue
-       │
-       ▼
-Scheduler selects process
-       │
-       ▼
-Context Switch
-       │
-       ▼
-CPU executes process
----
-
 # 1. Process Creation (`fork()`)
 
 Suppose a process executes:
