@@ -365,8 +365,6 @@ Context Switch
        │
        ▼
 CPU executes process
-```
-
 ---
 
 # 1. Process Creation (`fork()`)
