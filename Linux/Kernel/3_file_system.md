@@ -815,3 +815,220 @@ DISK
 # One-Line Summary
 
 **`mkfs` creates filesystem metadata on disk, `mount` creates the VFS objects, pathname lookup resolves names to inodes, `open()` creates a `struct file` and binds filesystem operations, and `read()/write()` invoke those operations without needing to identify the filesystem again.**
+
+----------------------------------------------------------------------
+# Linux Filesystem + VFS Flow (Short)
+
+When we want to perform file operations (`read/write`) on disk, we need a filesystem layer.
+
+---
+
+## a) Create filesystem
+
+Without a filesystem, disk contains only raw blocks.
+
+No:
+
+- File paths
+- Directories
+- Inodes
+- Metadata
+
+Example:
+
+```
+Disk
+ |
+ +-- Raw Blocks
+```
+
+---
+
+## b) `mkfs.ext4`
+
+Creates filesystem structures **on disk**:
+
+```
+Superblock
+Inode Table
+Data Blocks
+Root Directory
+```
+
+At this stage:
+
+- Disk filesystem exists.
+- No kernel VFS objects are created yet.
+
+---
+
+## c) Mount filesystem
+
+Example:
+
+```bash
+mount /dev/sda1 /mnt
+```
+
+During mount:
+
+- Filesystem driver (ext4/NFS/etc.) is already registered with VFS.
+- VFS selects the filesystem driver.
+- Kernel creates the in-memory representation of the mounted filesystem.
+
+---
+
+## d) After mount
+
+Kernel creates:
+
+```
+struct super_block
+        |
+        v
+      s_root
+        |
+        v
+   root dentry
+        |
+        v
+   root inode
+```
+
+Note:
+
+- Disk superblock → created by `mkfs`
+- `struct super_block` → created during mount in RAM
+
+---
+
+## e) `open()` flow
+
+Example:
+
+```c
+open("/home/user/file.txt");
+```
+
+Flow:
+
+```
+sys_open()
+    |
+    v
+path_lookup()
+```
+
+Path lookup provides:
+
+```
+struct path
+
+    |
+    +-- dentry
+          |
+          v
+        inode
+```
+
+The inode belongs to:
+
+```
+inode
+  |
+  v
+super_block
+  |
+  v
+filesystem (ext4/NFS)
+```
+
+---
+
+## f) Create open file instance
+
+VFS creates:
+
+```
+struct file
+```
+
+and fills:
+
+```c
+file->f_path  = path;
+file->f_inode = inode;
+file->f_pos   = 0;
+file->f_op    = inode->i_fop;
+```
+
+Meaning:
+
+```
+f_path
+ |
+ +-- mount
+ |
+ +-- dentry
+
+
+f_inode
+ |
+ v
+inode
+
+
+f_op
+ |
+ v
+filesystem operations
+
+
+f_pos
+ |
+ v
+current file offset
+```
+
+---
+
+## g) `read()` / `write()` flow
+
+Application uses:
+
+```
+fd
+ |
+ v
+struct file
+ |
+ v
+file->f_op
+ |
+ v
+filesystem operation
+```
+
+Examples:
+
+```
+ext4
+ |
+ v
+ext4_file_operations
+```
+
+```
+NFS
+ |
+ v
+nfs_file_operations
+```
+
+VFS does not check ext4 or NFS during every read/write.
+
+The correct filesystem operation is already stored in:
+
+```c
+file->f_op
+```
