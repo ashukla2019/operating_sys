@@ -336,21 +336,13 @@ PCB acts like the **identity card** of a process.
 This chapter explains what happens internally in Linux from the moment a process is created until it starts executing on the CPU.
 
 ---
-# 1. Process Creation (`fork()`)
-
-Suppose a process executes:
-
-```c
-fork();
-```
-
-This is a **system call**, so execution switches from **user mode** to **kernel mode**.
+# How process runs exactly
 
 The kernel performs the following operations:
 ```
 User
  │
- │ types "ls"
+ │ types "./myprogram"
  ▼
 Shell (running process)
  │
