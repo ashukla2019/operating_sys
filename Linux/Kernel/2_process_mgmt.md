@@ -330,13 +330,13 @@ Contains
 ```
 
 PCB acts like the **identity card** of a process.
-```
+
 # Process Creation to Execution Flow in Linux
 
 This chapter explains what happens internally in Linux from the moment a process is created until it starts executing on the CPU.
 
 ---
-
+```
 # Overall Flow
 
 ```text
