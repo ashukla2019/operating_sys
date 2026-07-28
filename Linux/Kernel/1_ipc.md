@@ -490,9 +490,11 @@ Synchronization is required.
 
 Common tools:
 
-- Mutex
-- Semaphore
-- Spinlock
+Mutex
+Semaphore
+Reader-Writer Lock
+Condition Variable
+Spinlock
 
 Otherwise,
 
@@ -1043,16 +1045,34 @@ void *ptr = mmap(
 
 ---
 
-## Advanced
-
-- Pipe vs Socket.
-- Shared Memory vs mmap().
-- Message Queue vs Shared Memory.
-- Why is shared memory faster than pipes?
-- Which IPC would you choose for a database cache?
-- Which IPC is best for distributed systems?
-- Explain IPC used in Linux shell pipelines.
-- How do processes synchronize while using shared memory?
-- Explain producer-consumer using message queues.
-- Which IPC mechanism would you choose for transferring large video frames and why?
+Need synchronization?
+        │
+        ▼
+Only one thread/process at a time?
+        │
+       YES ───────────────► Mutex
+        │
+        NO
+        │
+Multiple readers but one writer?
+        │
+       YES ───────────────► Reader-Writer Lock
+        │
+        NO
+        │
+Need to count available resources?
+        │
+       YES ───────────────► Semaphore
+        │
+        NO
+        │
+Need one thread to sleep until an event occurs?
+        │
+       YES ───────────────► Condition Variable
+        │
+        NO
+        │
+Need an extremely short lock where sleeping is too expensive?
+        │
+       YES ───────────────► Spinlock
 ---------------
