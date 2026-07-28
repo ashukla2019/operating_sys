@@ -456,3 +456,633 @@ mkfs creates the filesystem on disk, mount brings it into memory, open binds a f
 ```text
 FD → FILE → DENTRY → INODE → DATA
 ```
+
+# Understanding VFS and NFS Mapping Internals
+
+This document explains how Linux Virtual File System (VFS) knows whether a file belongs to **ext4**, **NFS**, or any other filesystem.
+
+The most important concept is:
+
+> **VFS never checks "Is this ext4 or NFS?" during every read/write operation.**
+>
+> The mapping is established **once during mount**, and all subsequent operations follow pointers stored inside kernel objects.
+
+---
+
+# 1. Two Mounted Filesystems
+
+Suppose we mount two filesystems:
+
+```bash
+mount /dev/sda1 /local          # ext4
+mount -t nfs server:/share /nfs # NFS
+```
+
+After these commands, Linux has **two mounted filesystems**.
+
+Conceptually:
+
+```
+Mount Table
+
+/local  ---------> super_block (ext4)
+/nfs    ---------> super_block (nfs)
+```
+
+Each mounted filesystem owns its own `struct super_block`.
+
+---
+
+# 2. What is inside a super_block?
+
+## ext4
+
+```
+super_block (ext4)
+
+s_op    ---> ext4_super_operations
+s_root  ---> root dentry
+```
+
+## NFS
+
+```
+super_block (nfs)
+
+s_op    ---> nfs_super_operations
+s_root  ---> root dentry
+```
+
+Notice that **each mounted filesystem has its own super_block**.
+
+This is the first level of mapping.
+
+---
+
+# 3. Path Lookup
+
+Suppose an application executes:
+
+```c
+open("/local/a.txt");
+```
+
+VFS begins pathname resolution from the root directory.
+
+Conceptually:
+
+```
+/
+|
++--- local
+|
++--- nfs
+```
+
+As VFS walks the pathname, it reaches:
+
+```
+/local
+```
+
+VFS immediately recognizes:
+
+> `/local` is a mount point.
+
+Instead of continuing inside the root filesystem, it switches to the mounted filesystem.
+
+```
+Root Filesystem
+      |
+      +------ local (mount point)
+                  |
+                  +------ ext4 super_block
+```
+
+Now the lookup continues **inside ext4**.
+
+---
+
+# 4. Path Lookup for NFS
+
+Now suppose:
+
+```c
+open("/nfs/a.txt");
+```
+
+Again VFS begins at:
+
+```
+/
+|
++---- nfs
+```
+
+When it reaches:
+
+```
+/nfs
+```
+
+it finds another mount point.
+
+```
+Root Filesystem
+      |
+      +------ nfs (mount point)
+                  |
+                  +------ nfs super_block
+```
+
+Now lookup continues **inside the NFS filesystem**.
+
+---
+
+## Important Observation
+
+The pathname determines **which mounted filesystem (super_block)** VFS enters.
+
+There is no filesystem detection during `read()`.
+
+The decision happens during pathname lookup.
+
+---
+
+# 5. Where is this Mapping Stored?
+
+Linux keeps mount information using mount objects.
+
+Conceptually:
+
+```
+struct mount
+
+mount_point ---> "/local"
+
+root ---------> ext4 super_block->s_root
+```
+
+Another mount:
+
+```
+struct mount
+
+mount_point ---> "/nfs"
+
+root ---------> nfs super_block->s_root
+```
+
+So during pathname lookup:
+
+```
+/nfs
+```
+
+VFS follows:
+
+```
+mount object
+        |
+        v
+super_block
+```
+
+instead of remaining in the root filesystem.
+
+---
+
+# 6. Path Lookup Result
+
+Suppose the lookup finishes for:
+
+```
+/local/a.txt
+```
+
+The result is:
+
+```
+dentry
+   |
+inode
+   |
+super_block (ext4)
+```
+
+For NFS:
+
+```
+dentry
+   |
+inode
+   |
+super_block (nfs)
+```
+
+Notice something important:
+
+The inode already belongs to the correct filesystem.
+
+---
+
+# 7. open()
+
+After pathname lookup, VFS allocates:
+
+```
+struct file
+```
+
+Conceptually:
+
+```c
+file->f_inode = inode;
+file->f_op = inode->i_fop;
+```
+
+This is one of the most important assignments in VFS.
+
+---
+
+## Case 1: ext4
+
+The inode contains:
+
+```
+inode
+
+i_fop
+ |
+ +---- ext4_file_operations
+```
+
+Therefore:
+
+```
+file
+
+f_op
+ |
+ +---- ext4_file_operations
+```
+
+---
+
+## Case 2: NFS
+
+The inode contains:
+
+```
+inode
+
+i_fop
+ |
+ +---- nfs_file_operations
+```
+
+Therefore:
+
+```
+file
+
+f_op
+ |
+ +---- nfs_file_operations
+```
+
+Notice:
+
+The `struct file` now remembers which filesystem implements file operations.
+
+---
+
+# 8. read()
+
+Later the application executes:
+
+```c
+read(fd, buf, 4096);
+```
+
+VFS simply executes:
+
+```c
+file->f_op->read_iter(...);
+```
+
+There is **no switch statement** like:
+
+```c
+if (filesystem == ext4)
+```
+
+or
+
+```c
+if (filesystem == nfs)
+```
+
+Instead, function pointers are used.
+
+---
+
+## ext4
+
+```
+read()
+
+↓
+
+ext4_read_iter()
+```
+
+---
+
+## NFS
+
+```
+read()
+
+↓
+
+nfs_file_read()
+```
+
+The correct implementation is already stored inside:
+
+```
+file->f_op
+```
+
+---
+
+# 9. Why Doesn't VFS Need to Check?
+
+Because the mapping has already been established during:
+
+- mount
+- pathname lookup
+- open()
+
+After `open()`:
+
+```
+struct file
+        |
+        +------ f_op
+```
+
+already points to the correct filesystem implementation.
+
+---
+
+# 10. Analogy: TV Remote vs AC Remote
+
+Imagine you have:
+
+```
+TV Remote
+
+AC Remote
+```
+
+Both contain a button named:
+
+```
+Power
+```
+
+When you press **Power**:
+
+```
+TV Remote
+
+Power
+
+↓
+
+TV turns on
+```
+
+```
+AC Remote
+
+Power
+
+↓
+
+AC turns on
+```
+
+You never write:
+
+```c
+if (remote == TV)
+```
+
+The remote itself already knows which signal to send.
+
+Similarly:
+
+```
+struct file
+        |
+        +------ f_op
+```
+
+acts like the remote.
+
+For ext4:
+
+```
+f_op
+ |
+ +---- ext4 operations
+```
+
+For NFS:
+
+```
+f_op
+ |
+ +---- nfs operations
+```
+
+Calling:
+
+```c
+file->f_op->read_iter();
+```
+
+is exactly like pressing the **Power** button on whichever remote you already have.
+
+---
+
+# 11. Complete Mapping
+
+## ext4
+
+```
+mount("/dev/sda1", "/local")
+                |
+                v
+      super_block (ext4)
+                |
+                v
+             inode
+                |
+          i_fop
+                |
+                v
+     ext4_file_operations
+                |
+                v
+           struct file
+                |
+                v
+ file->f_op->read_iter()
+                |
+                v
+        ext4_read_iter()
+```
+
+---
+
+## NFS
+
+```
+mount("server:/share", "/nfs")
+                |
+                v
+      super_block (nfs)
+                |
+                v
+             inode
+                |
+          i_fop
+                |
+                v
+      nfs_file_operations
+                |
+                v
+           struct file
+                |
+                v
+ file->f_op->read_iter()
+                |
+                v
+        nfs_file_read()
+                |
+                v
+          RPC to NFS Server
+```
+
+---
+
+# 12. Complete VFS Flow
+
+```
+Application
+      |
+      v
+open("/local/a.txt")
+      |
+      v
+Path Lookup
+      |
+      +---- reaches "/local"
+      |
+      +---- mount object
+      |
+      +---- ext4 super_block
+      |
+      +---- dentry
+      |
+      +---- inode
+      |
+      +---- inode->i_fop
+      |
+      +---- create struct file
+      |
+      +---- file->f_op = inode->i_fop
+      |
+      v
+read()
+      |
+      v
+file->f_op->read_iter()
+      |
+      v
+ext4_read_iter()
+```
+
+---
+
+## NFS Flow
+
+```
+Application
+      |
+      v
+open("/nfs/a.txt")
+      |
+      v
+Path Lookup
+      |
+      +---- reaches "/nfs"
+      |
+      +---- mount object
+      |
+      +---- nfs super_block
+      |
+      +---- dentry
+      |
+      +---- inode
+      |
+      +---- inode->i_fop
+      |
+      +---- create struct file
+      |
+      +---- file->f_op = inode->i_fop
+      |
+      v
+read()
+      |
+      v
+file->f_op->read_iter()
+      |
+      v
+nfs_file_read()
+      |
+      v
+RPC Client
+      |
+      v
+Network
+      |
+      v
+NFS Server
+      |
+      v
+Server VFS
+      |
+      v
+ext4/xfs
+      |
+      v
+Disk
+```
+
+---
+
+# Key Takeaways
+
+1. Every mounted filesystem has its own `struct super_block`.
+2. Mount points (`/local`, `/nfs`) map to different `super_block` instances.
+3. Pathname lookup switches to the correct mounted filesystem using mount objects.
+4. Every inode belongs to one `super_block`.
+5. Every inode contains filesystem-specific operation tables (`i_fop`, `i_op`).
+6. `open()` copies `inode->i_fop` into `file->f_op`.
+7. `read()` simply calls `file->f_op->read_iter()`.
+8. VFS never checks whether a file belongs to ext4 or NFS during I/O—the correct implementation is already encoded in the pointers established during mount and open.
