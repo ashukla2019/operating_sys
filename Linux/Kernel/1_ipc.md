@@ -22,17 +22,19 @@
 
 
 # IPC and Synchronization Mechanisms - Quick Reference
+| IPC Mechanism                     | Persistence                                                                                                                                                                                         |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unnamed Pipe**                  | Exists only as long as at least one process has the pipe open. Once all file descriptors are closed or the processes exit, the pipe is destroyed automatically.                                     |
+| **Named Pipe (FIFO)**             | The FIFO file persists in the filesystem until it is explicitly removed (e.g., `unlink()` or `rm`). The data inside it exists only while there are writers/readers; the FIFO object itself remains. |
+| **Message Queue (POSIX)**         | Persists in the kernel until `mq_unlink()` is called or the system reboots.                                                                                                                         |
+| **System V Message Queue**        | Persists until `msgctl(..., IPC_RMID, ...)` is called or the system reboots.                                                                                                                        |
+| **POSIX Shared Memory**           | Persists until `shm_unlink()` is called or the system reboots.                                                                                                                                      |
+| **System V Shared Memory**        | Persists until `shmctl(..., IPC_RMID, ...)` is called or the system reboots.                                                                                                                        |
+| **Semaphore (POSIX Named)**       | Persists until `sem_unlink()` is called or the system reboots.                                                                                                                                      |
+| **System V Semaphore**            | Persists until `semctl(..., IPC_RMID, ...)` is called or the system reboots.                                                                                                                        |
+| **Socket**                        | Exists only while the socket is open. Closing the socket destroys it.                                                                                                                               |
+| **UNIX Domain Socket (pathname)** | The socket file remains in the filesystem until removed (`unlink()`), even after the process exits. The communication endpoint no longer exists once the process terminates.                        |
 
-| Situation | Best Choice |
-|-----------|-------------|
-| Parent ↔ Child communication | **Unnamed Pipe** |
-| Unrelated processes | **Named Pipe (FIFO)** |
-| Fast sharing of large data | **Shared Memory** |
-| Send commands/messages | **Message Queue** |
-| Efficient large file access | **Memory-Mapped File (`mmap`)** |
-| Protect shared variable | **Mutex** |
-| Limited shared resources | **Semaphore** |
-| Very short critical section | **Spin Lock** |
 
 
 ---
