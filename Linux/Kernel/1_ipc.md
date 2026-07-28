@@ -1044,7 +1044,7 @@ void *ptr = mmap(
 - Explain `mmap()`.
 
 ---
-
+```
 Need synchronization?
         │
         ▼
@@ -1075,4 +1075,5 @@ Need one thread to sleep until an event occurs?
 Need an extremely short lock where sleeping is too expensive?
         │
        YES ───────────────► Spinlock
+```
 ---------------
