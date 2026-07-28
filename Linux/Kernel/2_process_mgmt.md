@@ -1054,63 +1054,10 @@ Shared memory.
 
 ---
 
-## Multiprogramming
-
-Multiple programs loaded into memory.
-
-CPU switches when one waits.
-
-Goal
-
-```
-Maximum CPU Utilization
-```
-
----
-
-## Multitasking
-
-Rapid switching between tasks.
-
-Appears simultaneous.
-
-Example
-
-- Music
-- Browser
-- IDE
-
-running together.
-
----
-
-## Multiprocessing
-
-Multiple CPUs or cores.
-
-True parallel execution.
-
-Example
-
-Quad-core processor.
-
----
-
-## Multithreading
-
-One process.
-
-Many threads.
-
-Shared memory.
-
-Example
-
-Browser
-
-- UI
-- Rendering
-- Network
+|**Multiprogramming** | Many programs in memory; CPU runs another when one waits for I/O. |
+| **Multitasking** | CPU rapidly switches between programs to make them appear simultaneous. |
+| **Multiprocessing** | Multiple CPU cores execute multiple tasks truly in parallel. |
+| **Multithreading** | One process creates multiple threads that share memory and work together.
 
 ---
 
