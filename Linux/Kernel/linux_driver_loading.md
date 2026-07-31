@@ -480,3 +480,230 @@ module_exit()
 8. What happens internally after `modprobe` loads a driver?
 9. Explain the sequence: **Driver Load → Registration → Device Match → probe()**.
 10. Which commands are used to load, unload, inspect, and debug kernel modules?
+
+-----------------
+# Simple Linux Kernel Driver (Hello World Module)
+
+This is the smallest Linux kernel driver used to understand **module loading and unloading**.
+
+---
+
+# hello.c
+
+```c
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Your Name");
+MODULE_DESCRIPTION("Simple Hello Driver");
+
+static int __init hello_init(void)
+{
+    printk(KERN_INFO "Hello Driver Loaded!\n");
+    return 0;
+}
+
+static void __exit hello_exit(void)
+{
+    printk(KERN_INFO "Hello Driver Unloaded!\n");
+}
+
+module_init(hello_init);
+module_exit(hello_exit);
+```
+
+---
+
+# Makefile
+
+```makefile
+obj-m += hello.o
+
+KDIR := /lib/modules/$(shell uname -r)/build
+PWD  := $(shell pwd)
+
+all:
+	make -C $(KDIR) M=$(PWD) modules
+
+clean:
+	make -C $(KDIR) M=$(PWD) clean
+```
+
+---
+
+# Build the Driver
+
+```bash
+make
+```
+
+Output:
+
+```
+hello.ko
+hello.o
+hello.mod.c
+```
+
+---
+
+# Load the Driver
+
+```bash
+sudo insmod hello.ko
+```
+
+or
+
+```bash
+sudo modprobe hello
+```
+
+---
+
+# Verify It Loaded
+
+```bash
+lsmod | grep hello
+```
+
+Example:
+
+```
+hello 16384 0
+```
+
+---
+
+# View Kernel Messages
+
+```bash
+dmesg | tail
+```
+
+Output:
+
+```
+Hello Driver Loaded!
+```
+
+---
+
+# Remove the Driver
+
+```bash
+sudo rmmod hello
+```
+
+Check the log again:
+
+```bash
+dmesg | tail
+```
+
+Output:
+
+```
+Hello Driver Unloaded!
+```
+
+---
+
+# Driver Execution Flow
+
+```
+hello.c
+    │
+    ▼
+make
+    │
+    ▼
+hello.ko
+    │
+    ▼
+insmod hello.ko
+    │
+    ▼
+module_init()
+    │
+    ▼
+hello_init()
+    │
+    ▼
+printk("Hello Driver Loaded")
+    │
+    ▼
+Driver Active
+    │
+    ▼
+rmmod hello
+    │
+    ▼
+module_exit()
+    │
+    ▼
+hello_exit()
+    │
+    ▼
+printk("Hello Driver Unloaded")
+```
+
+---
+
+# What Each Part Does
+
+```c
+MODULE_LICENSE("GPL");
+```
+- Declares the module license.
+- `"GPL"` enables access to GPL-only kernel symbols and avoids a kernel taint warning.
+
+```c
+MODULE_AUTHOR("Your Name");
+```
+- Stores author information.
+
+```c
+MODULE_DESCRIPTION("Simple Hello Driver");
+```
+- Stores a description visible via `modinfo`.
+
+```c
+static int __init hello_init(void)
+```
+- Runs **once** when the module is loaded.
+- Used for initialization (register devices, allocate memory, request IRQs, etc.).
+
+```c
+static void __exit hello_exit(void)
+```
+- Runs when the module is unloaded.
+- Used for cleanup (free memory, unregister devices, release IRQs, etc.).
+
+```c
+module_init(hello_init);
+```
+- Registers `hello_init()` as the module's entry point.
+
+```c
+module_exit(hello_exit);
+```
+- Registers `hello_exit()` as the module's cleanup function.
+
+```c
+printk(KERN_INFO "Hello Driver Loaded!\n");
+```
+- Prints a message to the kernel log (view with `dmesg`).
+
+---
+
+# Interview Takeaway
+
+This is a **kernel module**, not a real hardware driver. A real device driver extends this skeleton by:
+
+1. Registering with a kernel subsystem (platform, PCI, USB, I2C, SPI, etc.).
+2. Implementing `probe()` and `remove()`.
+3. Initializing hardware (map registers, request IRQs, allocate resources).
+4. Exposing interfaces to user space (character device, sysfs, netdev, etc.).
