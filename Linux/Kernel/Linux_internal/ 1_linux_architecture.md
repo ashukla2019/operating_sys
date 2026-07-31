@@ -1,11 +1,7 @@
 # Chapter 1 – Linux Architecture
 
----
-
-# Objectives
-
+## Objectives
 After completing this chapter, you should understand:
-
 - Overall Linux architecture
 - User Space vs Kernel Space
 - What happens when an application runs
@@ -18,12 +14,8 @@ After completing this chapter, you should understand:
 
 ---
 
-# What is Linux?
-
-Linux is an operating system kernel created by Linus Torvalds.
-
-A complete Linux operating system consists of:
-
+## What is Linux?
+Linux is an operating system kernel created by Linus Torvalds. A complete Linux operating system consists of:
 - Linux Kernel
 - GNU utilities
 - Libraries (glibc, musl, etc.)
@@ -32,10 +24,8 @@ A complete Linux operating system consists of:
 - Applications
 
 Example:
-
 ```
 Ubuntu
-│
 ├── Linux Kernel
 ├── GNU Tools
 ├── Bash
@@ -43,15 +33,11 @@ Ubuntu
 ├── Libraries
 └── Applications
 ```
-
-The kernel is the core of the operating system.
-
-Everything eventually goes through the kernel.
+The kernel is the core of the operating system. Everything eventually goes through the kernel.
 
 ---
 
-# High Level Linux Architecture
-
+## High Level Linux Architecture
 ```
 +---------------------------------------+
 | Applications                          |
@@ -75,12 +61,8 @@ Everything eventually goes through the kernel.
 
 ---
 
-# Responsibilities of the Kernel
-
-The kernel manages every important hardware resource.
-
-Main responsibilities include:
-
+## Responsibilities of the Kernel
+The kernel manages every important hardware resource. Main responsibilities include:
 - Process management
 - Thread scheduling
 - Virtual memory
@@ -92,194 +74,74 @@ Main responsibilities include:
 - Interrupt handling
 - Power management
 
-Think of the kernel as the manager of the entire computer.
-
-Applications cannot directly access hardware.
+Think of the kernel as the manager of the entire computer. Applications cannot directly access hardware.
 
 ---
 
-# User Space vs Kernel Space
-
+## User Space vs Kernel Space
 Linux separates execution into two areas.
 
-## User Space
-
-Applications execute here.
-
-Examples:
-
-- Chrome
-- Firefox
-- Python
-- GCC
-- Vim
-- Games
-
-Applications cannot:
-
+**User Space** — Applications execute here (Chrome, Firefox, Python, GCC, Vim, Games). Applications cannot:
 - Access physical memory
 - Access hardware directly
 - Execute privileged CPU instructions
 
 This protects the operating system.
 
----
-
-## Kernel Space
-
-Kernel code executes here.
-
-The kernel has complete access to:
-
-- CPU
-- RAM
-- Storage
-- Network card
-- USB
-- Interrupt controller
-- MMU
-
-Only trusted kernel code executes here.
+**Kernel Space** — Kernel code executes here. The kernel has complete access to CPU, RAM, Storage, Network card, USB, Interrupt controller, and MMU. Only trusted kernel code executes here.
 
 ---
 
-# Memory Layout
-
+## Memory Layout
 ```
-          CPU
-
-           │
-
-    +---------------+
-    | User Space    |
-    | Applications  |
-    +---------------+
-
-     System Calls
-
-           │
-
-    +---------------+
-    | Kernel Space  |
-    | Linux Kernel  |
-    +---------------+
-
-           │
-
-     Hardware Devices
+CPU
+  │
++---------------+
+| User Space    |
+| Applications  |
++---------------+
+  System Calls
+  │
++---------------+
+| Kernel Space  |
+| Linux Kernel  |
++---------------+
+  │
+Hardware Devices
 ```
 
 ---
 
-# Why Separate User and Kernel Space?
-
+## Why Separate User and Kernel Space?
 Imagine a buggy application writing random values into RAM.
 
-Without protection:
-
-- Kernel memory gets corrupted
-- File system gets corrupted
-- Entire OS crashes
-
-With separation:
-
-- Application crashes
-- Kernel remains safe
+Without protection: kernel memory gets corrupted, file system gets corrupted, entire OS crashes.
+With separation: the application crashes, but the kernel remains safe.
 
 This isolation is one of Linux's biggest strengths.
 
 ---
 
-# CPU Modes
+## CPU Modes
+Modern CPUs have privilege levels. Simplified: `User Mode → Kernel Mode → Hardware`
 
-Modern CPUs have privilege levels.
-
-Simplified:
-
-```
-User Mode
-
-↓
-
-Kernel Mode
-
-↓
-
-Hardware
-```
-
-User Mode
-
-- Restricted
-- Cannot execute privileged instructions
-
-Kernel Mode
-
-- Full privileges
-- Can access hardware directly
+**User Mode** — Restricted; cannot execute privileged instructions.
+**Kernel Mode** — Full privileges; can access hardware directly.
 
 The CPU switches between these modes during system calls and interrupts.
 
 ---
 
-# What is a System Call?
+## What is a System Call?
+Applications cannot directly perform privileged operations — instead they request the kernel. This request is called a **System Call**.
 
-Applications cannot directly perform privileged operations.
+Example: `printf() → write() → System Call → Kernel → Terminal`
 
-Instead they request the kernel.
-
-This request is called a **System Call**.
-
-Example:
-
-```
-printf()
-
-↓
-
-write()
-
-↓
-
-System Call
-
-↓
-
-Kernel
-
-↓
-
-Terminal
-```
-
-Examples of system calls:
-
-```
-open()
-
-read()
-
-write()
-
-close()
-
-fork()
-
-execve()
-
-socket()
-
-connect()
-
-mmap()
-```
+Examples of system calls: `open()`, `read()`, `write()`, `close()`, `fork()`, `execve()`, `socket()`, `connect()`, `mmap()`
 
 ---
 
-# Example
-
-Program:
-
+## Example
 ```c
 #include <unistd.h>
 
@@ -288,78 +150,25 @@ int main()
     write(1, "Hello\n", 6);
 }
 ```
-
-Flow:
-
-```
-Application
-
-↓
-
-glibc
-
-↓
-
-write()
-
-↓
-
-System Call
-
-↓
-
-Kernel
-
-↓
-
-Terminal Driver
-
-↓
-
-Screen
-```
+Flow: `Application → glibc → write() → System Call → Kernel → Terminal Driver → Screen`
 
 The application never writes directly to the display hardware.
 
 ---
 
-# Why Use Libraries?
-
+## Why Use Libraries?
 Instead of invoking system calls manually, applications use libraries.
 
-Example:
+Example: `printf() → glibc → write() → Kernel`
 
-```
-printf()
-
-↓
-
-glibc
-
-↓
-
-write()
-
-↓
-
-Kernel
-```
-
-Benefits:
-
-- Easier programming
-- Portable API
-- Optimized implementations
+Benefits: easier programming, portable API, optimized implementations.
 
 ---
 
-# Kernel Components
-
-The Linux kernel consists of many subsystems.
-
+## Kernel Components
+The Linux kernel consists of many subsystems:
 ```
 Linux Kernel
-│
 ├── Scheduler
 ├── Memory Manager
 ├── VFS
@@ -371,20 +180,14 @@ Linux Kernel
 ├── Block Layer
 └── Architecture-specific Code
 ```
-
 Each subsystem performs a specialized task.
 
 ---
 
-# Monolithic Kernel
-
-Linux uses a **Monolithic Kernel** architecture.
-
-All major services run inside kernel space.
-
+## Monolithic Kernel
+Linux uses a **Monolithic Kernel** architecture — all major services run inside kernel space.
 ```
 Kernel
-
 ├── Scheduler
 ├── Drivers
 ├── Memory
@@ -392,60 +195,27 @@ Kernel
 ├── Networking
 └── IPC
 ```
-
-Advantages:
-
-- Very fast
-- Direct function calls
-- High performance
-- Low overhead
-
-Disadvantages:
-
-- Buggy driver can crash the kernel
-- Large code base
+**Advantages:** very fast, direct function calls, high performance, low overhead.
+**Disadvantages:** a buggy driver can crash the kernel; large code base.
 
 ---
 
-# Microkernel
-
-A Microkernel keeps only minimal functionality inside the kernel.
-
-Everything else runs in user space.
-
+## Microkernel
+A Microkernel keeps only minimal functionality inside the kernel; everything else runs in user space.
 ```
 Kernel
-
 ├── IPC
 ├── Scheduling
 └── Memory
 
-Drivers
-
-↓
-
-User Space
-
-↓
-
-Servers
+Drivers → User Space → Servers
 ```
-
-Advantages:
-
-- Better isolation
-- Better reliability
-- Easier debugging
-
-Disadvantages:
-
-- More IPC
-- Slower than monolithic kernels
+**Advantages:** better isolation, better reliability, easier debugging.
+**Disadvantages:** more IPC, slower than monolithic kernels.
 
 ---
 
-# Monolithic vs Microkernel
-
+## Monolithic vs Microkernel
 | Feature | Monolithic | Microkernel |
 |----------|------------|-------------|
 | Performance | High | Lower |
@@ -458,260 +228,67 @@ Linux chooses performance over maximum isolation.
 
 ---
 
-# Loadable Kernel Modules (LKM)
-
+## Loadable Kernel Modules (LKM)
 Linux supports loading drivers without rebooting.
 
-Examples:
+Example: `USB Driver → Load Module → Kernel Starts Using Driver`
 
-```
-USB Driver
+Commands: `lsmod`, `insmod`, `rmmod`, `modprobe`
 
-↓
+Advantages: no reboot, smaller kernel image, easier driver updates.
 
-Load Module
-
-↓
-
-Kernel Starts Using Driver
-```
-
-Commands:
-
-```
-lsmod
-
-insmod
-
-rmmod
-
-modprobe
-```
-
-Advantages:
-
-- No reboot
-- Smaller kernel image
-- Easier driver updates
+**Kernel Module Flow:** `Driver.ko → insmod → Kernel → Driver Initialized → Device Ready`
 
 ---
 
-# Kernel Module Flow
-
+## Linux Boot Process (High Level)
 ```
-Driver.ko
-
-↓
-
-insmod
-
-↓
-
-Kernel
-
-↓
-
-Driver Initialized
-
-↓
-
-Device Ready
+Power ON → BIOS/UEFI → Bootloader (GRUB) → Linux Kernel → Initramfs
+→ systemd (PID 1) → Services → Login → Applications
 ```
-
----
-
-# Linux Boot Process (High Level)
-
-```
-Power ON
-
-↓
-
-BIOS / UEFI
-
-↓
-
-Bootloader (GRUB)
-
-↓
-
-Linux Kernel
-
-↓
-
-Initramfs
-
-↓
-
-systemd (PID 1)
-
-↓
-
-Services
-
-↓
-
-Login
-
-↓
-
-Applications
-```
-
 We will study the boot process in detail in a later chapter.
 
 ---
 
-# Complete Execution Flow
+## Complete Execution Flow
+Suppose you type: `cat notes.txt`
 
-Suppose you type:
-
-```
-cat notes.txt
-```
-
-Flow:
-
-```
-cat
-
-↓
-
-glibc
-
-↓
-
-open()
-
-↓
-
-Kernel
-
-↓
-
-VFS
-
-↓
-
-ext4
-
-↓
-
-Block Layer
-
-↓
-
-Storage Driver
-
-↓
-
-SSD
-
-↓
-
-Data Returned
-
-↓
-
-cat prints file
-```
+Flow: `cat → glibc → open() → Kernel → VFS → ext4 → Block Layer → Storage Driver → SSD → Data Returned → cat prints file`
 
 Every file access passes through the kernel.
 
----
+**Another example** — Typing: `ping google.com`
 
-# Another Example
-
-Typing:
-
-```
-ping google.com
-```
-
-Flow:
-
-```
-ping
-
-↓
-
-socket()
-
-↓
-
-Kernel Network Stack
-
-↓
-
-NIC Driver
-
-↓
-
-Network Card
-
-↓
-
-Internet
-
-↓
-
-Reply
-
-↓
-
-Kernel
-
-↓
-
-Application
-```
+Flow: `ping → socket() → Kernel Network Stack → NIC Driver → Network Card → Internet → Reply → Kernel → Application`
 
 Applications never communicate with hardware directly.
 
 ---
 
-# Key Interview Questions
+## Key Interview Questions
 
-### Why do we need User Space and Kernel Space?
-
+**Why do we need User Space and Kernel Space?**
 To protect the operating system and hardware from faulty or malicious applications while allowing controlled access through system calls.
 
----
-
-### Why can't applications access hardware directly?
-
+**Why can't applications access hardware directly?**
 Direct hardware access could corrupt memory, bypass security, and crash the system. The kernel safely manages all hardware resources.
 
----
-
-### What is the Linux Kernel?
-
+**What is the Linux Kernel?**
 The kernel is the core of the operating system. It manages CPU scheduling, memory, filesystems, networking, device drivers, and communication with hardware.
 
----
-
-### What is a system call?
-
+**What is a system call?**
 A controlled interface through which user-space applications request services from the kernel, such as file I/O, process creation, or networking.
 
----
-
-### Why does Linux use a monolithic kernel?
-
+**Why does Linux use a monolithic kernel?**
 Because direct function calls between kernel subsystems provide higher performance with lower overhead compared to message-passing architectures.
 
----
-
-### What is a kernel module?
-
+**What is a kernel module?**
 A piece of kernel code that can be loaded or unloaded at runtime to add functionality (such as a device driver) without rebuilding or rebooting the kernel.
 
 ---
 
-# Summary
-
+## Summary
 In this chapter, we learned:
-
 - Linux architecture
 - User Space vs Kernel Space
 - CPU privilege levels
