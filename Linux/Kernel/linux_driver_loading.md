@@ -57,6 +57,13 @@ make
 make modules
 make modules_install
 make install
+
+---------|---------|--------|
+| `make` | Builds the kernel image and built-in drivers | `vmlinux`, `bzImage`, built-in objects |
+| `make modules` | Compiles loadable kernel modules | `.ko` files |
+| `make modules_install` | Installs `.ko` files into `/lib/modules/<kernel-version>/` | Installed modules + dependency files |
+| `make install` | Installs the kernel into `/boot/` and updates boot configuration | `vmlinuz`, `System.map`, `config`, often `initramfs` |
+
 ```
 
 The driver is now permanently part of the kernel.
