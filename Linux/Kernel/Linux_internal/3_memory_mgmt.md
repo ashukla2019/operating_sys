@@ -652,13 +652,3 @@ File I/O --> Page Cache --> Filesystem --> Block Layer --> Storage
 For senior Linux interviews, don't just memorize definitions — be able to explain the **complete flow** and the reason each component exists.
 
 ---
-
-## Next Chapter
-
-### Chapter 4 – System Calls
-Topics:
-```
-User Application --> Library Function --> System Call --> CPU Privilege Transition
---> Kernel --> Kernel Subsystem --> Hardware
-```
-We will cover: what a system call really is; user → kernel transition; `syscall`; system-call numbers; arguments; kernel entry; kernel stack; return to user space; `read()`; `write()`; `openat()`; `mmap()`; `fork()`/`clone()`; `ioctl()`; `strace`; vDSO; `vsyscall` concept; system-call overhead; and important senior interview questions.
