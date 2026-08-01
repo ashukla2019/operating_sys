@@ -746,3 +746,6 @@ close()
 - SO_KEEPALIVE = Detect dead peers
 - Partial send()/recv() must be handled
 - TCP is byte-stream, not message-oriented
+
+-------------------------
+poll() is better than select() because it removes the fixed 1024 file descriptor limit, uses a more flexible array-based interface instead of a bitmap, supports more event types, and doesn't require tracking the highest file descriptor. However, both select() and poll() still scan all monitored file descriptors on every call, so both have O(n) complexity. For high-performance Linux servers, epoll() is preferred because it returns only the ready file descriptors, making it much more scalable.
