@@ -1,3 +1,4 @@
+'''
 1. CREATE FILESYSTEM
 
 /dev/sdb1
@@ -77,3 +78,5 @@ disk
    │
    ↓
 data → application
+
+'''
