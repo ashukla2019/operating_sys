@@ -2,6 +2,8 @@
 
 ## 1. CREATE FILESYSTEM
 
+
+```
 /dev/sdb1
     │
    mkfs
@@ -10,9 +12,12 @@ ext4 filesystem
     │
     └── superblock / inode structures / data
 
+```
 
 ## 2. MOUNT
 
+
+```
 ext4 filesystem
       │
     mount
@@ -24,8 +29,12 @@ ext4 filesystem
  /mnt/data
 
 
+```
+
 ## 3. CREATE FILE
 
+
+```
 /mnt/data/a.txt
        │
        ↓
@@ -38,8 +47,11 @@ ext4 filesystem
     ext4 → disk
 
 
+```
 ## 4. OPEN
 
+
+```
 open("/mnt/data/a.txt")
           │
           ↓
@@ -51,15 +63,19 @@ open("/mnt/data/a.txt")
           ↓
         inode
           │
-          ↓
+ 
+         ↓
      struct file
           │
           ↓
        FD = 3
 
 
+```
 ## 5. READ
 
+
+```
 read(3)
    │
    ↓
@@ -81,8 +97,12 @@ disk
 data → application
 
 
+```
+
 ## COMPLETE FLOW
 
+
+```
 /dev/sdb1
     │
    mkfs
@@ -133,6 +153,7 @@ disk
 data → application
 
 
+```
 ## VFS OBJECTS
 
 super_block
