@@ -438,43 +438,52 @@ Hardware interrupts notify the kernel.
 Example
 
 ```text
-printf()
+                 USER SPACE
+┌─────────────────────────────────────┐
+│                                     │
+│          Application                │
+│              │                      │
+│              ▼                      │
+│       libc / syscall wrapper        │
+│              │                      │
+└──────────────┼──────────────────────┘
+               │
+               │ syscall instruction
+               ▼
+════════════════════════════════════════
+        USER SPACE → KERNEL SPACE
+             privilege transition
+════════════════════════════════════════
+               │
+               ▼
+┌─────────────────────────────────────┐
+│             KERNEL SPACE             │
+│                                     │
+│       System Call Entry             │
+│              │                      │
+│              ▼                      │
+│       System Call Dispatcher        │
+│              │                      │
+│              ▼                      │
+│       System Call Handler           │
+│              │                      │
+│              ▼                      │
+│              VFS                    │
+│              │                      │
+│          Filesystem                 │
+│              │                      │
+│          Block Layer                │
+│              │                      │
+│        Device Driver                │
+│              │                      │
+│          SSD / HDD                  │
+│                                     │
+└──────────────────┬──────────────────┘
+                   │
+                   │ return
+                   ▼
+              USER SPACE
 
-↓
-
-glibc
-
-↓
-
-write()
-
-↓
-
-System Call
-
-↓
-
-Kernel
-
-↓
-
-VFS
-
-↓
-
-Filesystem
-
-↓
-
-Block Layer
-
-↓
-
-Disk Driver
-
-↓
-
-SSD/HDD
 ```
 
 Networking example
