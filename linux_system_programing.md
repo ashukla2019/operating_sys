@@ -2,17 +2,19 @@
 
 ## Senior C/C++ / Embedded Linux Interview Notes
 
-> Based primarily on **Robert Love — Linux System Programming**
+> Based primarily on **Robert Love --- Linux System Programming**
 >
-> **Goal:** Senior Software Engineer / Embedded Linux / C/C++ / Systems interview preparation.
+> **Goal:** Senior Software Engineer / Embedded Linux / C/C++ / Systems
+> interview preparation.
 >
-> This is a **revision guide**, not a replacement for the complete Linux kernel source or a full kernel-internals textbook.
+> This is a **revision guide**, not a replacement for the complete Linux
+> kernel source or a full kernel-internals textbook.
 
----
+------------------------------------------------------------------------
 
 # 1. Linux Architecture
 
-```text
+``` text
 +-----------------------------+
 |       User Application      |
 +-----------------------------+
@@ -53,7 +55,7 @@
 
 Deals mainly with:
 
-```text
+``` text
 Application
     ↓
 POSIX / libc
@@ -65,48 +67,49 @@ Kernel services
 
 Examples:
 
-* `fork()`
-* `exec()`
-* `open()`
-* `read()`
-* `write()`
-* `mmap()`
-* `pthread_create()`
-* `socket()`
-* `epoll()`
+-   `fork()`
+-   `exec()`
+-   `open()`
+-   `read()`
+-   `write()`
+-   `mmap()`
+-   `pthread_create()`
+-   `socket()`
+-   `epoll()`
 
 ### Linux Kernel Internals
 
 Deals with what happens **inside the kernel**:
 
-* `task_struct`
-* scheduler
-* virtual memory
-* page tables
-* VFS
-* inode
-* dentry
-* page cache
-* block layer
-* device drivers
-* kernel synchronization
-* system-call implementation
+-   `task_struct`
+-   scheduler
+-   virtual memory
+-   page tables
+-   VFS
+-   inode
+-   dentry
+-   page cache
+-   block layer
+-   device drivers
+-   kernel synchronization
+-   system-call implementation
 
----
+------------------------------------------------------------------------
 
 # 2. System Calls
 
-A system call is the controlled interface between user space and kernel space.
+A system call is the controlled interface between user space and kernel
+space.
 
 Example:
 
-```c
+``` c
 read(fd, buffer, size);
 ```
 
 Conceptually:
 
-```text
+``` text
 User program
      |
      | read()
@@ -129,20 +132,20 @@ User programs cannot directly perform privileged operations.
 
 Examples:
 
-* accessing hardware
-* creating processes
-* changing address spaces
-* accessing kernel-managed files
-* networking
-* memory mapping
+-   accessing hardware
+-   creating processes
+-   changing address spaces
+-   accessing kernel-managed files
+-   networking
+-   memory mapping
 
 The kernel provides controlled interfaces through system calls.
 
----
+------------------------------------------------------------------------
 
 # 3. User Space vs Kernel Space
 
-```text
+``` text
 User Space
 --------------------------------
 Application
@@ -171,7 +174,7 @@ IPC
 
 A system call usually causes a transition from:
 
-```text
+``` text
 User Mode
    ↓
 Kernel Mode
@@ -181,15 +184,16 @@ User Mode
 
 This is different from a normal function call.
 
----
+------------------------------------------------------------------------
 
 # 4. File Descriptors
 
-A file descriptor (FD) is a small integer used by a process to refer to an open file/resource.
+A file descriptor (FD) is a small integer used by a process to refer to
+an open file/resource.
 
 Standard descriptors:
 
-```text
+``` text
 0 → stdin
 1 → stdout
 2 → stderr
@@ -197,7 +201,7 @@ Standard descriptors:
 
 Example:
 
-```c
+``` c
 #include <unistd.h>
 
 int main()
@@ -209,15 +213,15 @@ int main()
 
 Here:
 
-```text
+``` text
 1 → stdout
 ```
 
----
+------------------------------------------------------------------------
 
 # 5. open()
 
-```c
+``` c
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -242,7 +246,7 @@ int main()
 
 ## Important
 
-```text
+``` text
 open()
   ↓
 returns file descriptor
@@ -252,7 +256,7 @@ fd
 read/write/close
 ```
 
----
+------------------------------------------------------------------------
 
 # 6. File Descriptor vs Open File
 
@@ -260,7 +264,7 @@ Important senior interview concept.
 
 A process has:
 
-```text
+``` text
 Process
   |
   v
@@ -283,7 +287,7 @@ File Descriptor Table
 
 Linux internally uses structures such as:
 
-```text
+``` text
 struct files_struct
 struct fdtable
 struct file
@@ -293,7 +297,7 @@ struct dentry
 
 Conceptually:
 
-```text
+``` text
 fd
  ↓
 struct file
@@ -305,13 +309,14 @@ inode
 filesystem
 ```
 
-This is a very important bridge between **system programming and VFS internals**.
+This is a very important bridge between **system programming and VFS
+internals**.
 
----
+------------------------------------------------------------------------
 
 # 7. read()
 
-```c
+``` c
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -349,34 +354,35 @@ int main()
 
 ## Return value
 
-```text
+``` text
 > 0  → number of bytes read
 0    → EOF
 < 0  → error
 ```
 
----
+------------------------------------------------------------------------
 
 # 8. write()
 
-```c
+``` c
 ssize_t n = write(fd, buffer, size);
 ```
 
 Return:
 
-```text
+``` text
 > 0 → bytes written
 < 0 → error
 ```
 
 Important:
 
-A successful `write()` does not necessarily mean the data is permanently stored on physical storage.
+A successful `write()` does not necessarily mean the data is permanently
+stored on physical storage.
 
 Data may go through:
 
-```text
+``` text
 Application
     ↓
 Kernel
@@ -392,19 +398,19 @@ Driver
 Storage
 ```
 
----
+------------------------------------------------------------------------
 
 # 9. lseek()
 
 Used to change the file offset.
 
-```c
+``` c
 off_t pos = lseek(fd, 0, SEEK_SET);
 ```
 
 Common:
 
-```text
+``` text
 SEEK_SET → beginning
 SEEK_CUR → current position
 SEEK_END → end
@@ -412,25 +418,25 @@ SEEK_END → end
 
 Example:
 
-```c
+``` c
 lseek(fd, 10, SEEK_SET);
 ```
 
 Moves the file offset to byte 10.
 
----
+------------------------------------------------------------------------
 
 # 10. dup() and dup2()
 
 Used to duplicate file descriptors.
 
-```c
+``` c
 int newfd = dup(fd);
 ```
 
 Typical use:
 
-```text
+``` text
 stdout
   ↓
 dup2(file_fd, STDOUT_FILENO)
@@ -442,7 +448,7 @@ file
 
 Example:
 
-```c
+``` c
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -463,13 +469,13 @@ int main()
 }
 ```
 
----
+------------------------------------------------------------------------
 
 # 11. fork()
 
 `fork()` creates a new process.
 
-```c
+``` c
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -501,7 +507,7 @@ int main()
 
 ## Return value
 
-```text
+``` text
 pid < 0 → failure
 
 pid == 0 → child
@@ -509,7 +515,7 @@ pid == 0 → child
 pid > 0 → parent receives child PID
 ```
 
----
+------------------------------------------------------------------------
 
 # 12. fork() and Copy-on-Write
 
@@ -523,7 +529,7 @@ Linux uses **Copy-on-Write (COW)**.
 
 Initially:
 
-```text
+``` text
 Parent
   |
   +---- page A
@@ -541,7 +547,7 @@ Physical pages can initially be shared.
 
 If child modifies a page:
 
-```text
+``` text
 Before:
 
 Parent ----+
@@ -560,13 +566,13 @@ Child ------- Physical Page B
 
 This reduces the cost of `fork()`.
 
----
+------------------------------------------------------------------------
 
 # 13. fork() + exec()
 
 Very common Linux process model:
 
-```text
+``` text
 fork()
    ↓
 new process
@@ -578,7 +584,7 @@ new program
 
 Example:
 
-```c
+``` c
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/wait.h>
@@ -608,13 +614,13 @@ int main()
 
 It replaces the current process image.
 
----
+------------------------------------------------------------------------
 
 # 14. Process Memory Layout
 
 Typical process:
 
-```text
+``` text
 High Address
 +------------------+
 | Stack            |
@@ -638,15 +644,15 @@ Low Address
 
 Important areas:
 
-* text
-* data
-* BSS
-* heap
-* stack
-* shared libraries
-* memory mappings
+-   text
+-   data
+-   BSS
+-   heap
+-   stack
+-   shared libraries
+-   memory mappings
 
----
+------------------------------------------------------------------------
 
 # 15. Process vs Thread
 
@@ -654,29 +660,29 @@ Important areas:
 
 Has its own:
 
-* virtual address space
-* page tables
-* resources
-* process context
+-   virtual address space
+-   page tables
+-   resources
+-   process context
 
 ## Thread
 
 Threads in the same process share:
 
-* code
-* global data
-* heap
-* address space
-* file descriptors
+-   code
+-   global data
+-   heap
+-   address space
+-   file descriptors
 
 Each thread has its own:
 
-* stack
-* registers
-* program counter
-* thread-local storage
+-   stack
+-   registers
+-   program counter
+-   thread-local storage
 
-```text
+``` text
 Process
  |
  +---- Thread 1
@@ -693,11 +699,11 @@ Shared:
 - FD table
 ```
 
----
+------------------------------------------------------------------------
 
 # 16. pthread_create()
 
-```c
+``` c
 #include <pthread.h>
 #include <stdio.h>
 
@@ -721,17 +727,17 @@ int main()
 
 Compile:
 
-```bash
+``` bash
 gcc program.c -pthread
 ```
 
----
+------------------------------------------------------------------------
 
 # 17. Race Condition
 
 Example:
 
-```c
+``` c
 int counter = 0;
 
 void* worker(void* arg)
@@ -745,7 +751,7 @@ void* worker(void* arg)
 
 With multiple threads:
 
-```text
+``` text
 Thread 1: read counter
 Thread 2: read counter
 Thread 1: increment
@@ -756,11 +762,11 @@ Thread 2: write
 
 Updates can be lost.
 
----
+------------------------------------------------------------------------
 
 # 18. Mutex
 
-```c
+``` c
 #include <pthread.h>
 #include <stdio.h>
 
@@ -802,7 +808,7 @@ int main()
 
 Provides mutual exclusion:
 
-```text
+``` text
 Thread 1
    ↓
  lock
@@ -816,7 +822,7 @@ Thread 2
 wait
 ```
 
----
+------------------------------------------------------------------------
 
 # 19. Condition Variable
 
@@ -824,7 +830,7 @@ Used when a thread must wait for a condition.
 
 Typical producer/consumer:
 
-```text
+``` text
 Producer
    ↓
 produce data
@@ -836,7 +842,7 @@ Consumer wakes
 
 Example:
 
-```c
+``` c
 pthread_mutex_lock(&lock);
 
 while (!data_ready)
@@ -855,7 +861,7 @@ Use `while`, not `if`.
 
 Because the condition must be checked again after waking.
 
----
+------------------------------------------------------------------------
 
 # 20. Signals
 
@@ -863,7 +869,7 @@ Signals are asynchronous notifications sent to a process/thread.
 
 Examples:
 
-```text
+``` text
 SIGINT
 SIGTERM
 SIGKILL
@@ -873,7 +879,7 @@ SIGCHLD
 
 Basic example:
 
-```c
+``` c
 #include <signal.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -896,17 +902,17 @@ int main()
 
 Press:
 
-```text
+``` text
 Ctrl+C
 ```
 
 to generate `SIGINT`.
 
----
+------------------------------------------------------------------------
 
 # 21. SIGKILL vs SIGTERM
 
-```text
+``` text
 SIGTERM
     ↓
 Can be handled
@@ -921,13 +927,13 @@ Cannot be blocked
 Kernel terminates process
 ```
 
----
+------------------------------------------------------------------------
 
 # 22. Pipe
 
 Pipe provides unidirectional IPC.
 
-```text
+``` text
 Process A
    |
    | write()
@@ -943,7 +949,7 @@ Process B
 
 Example:
 
-```c
+``` c
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -969,18 +975,18 @@ int main()
 }
 ```
 
-```text
+``` text
 fd[0] → read
 fd[1] → write
 ```
 
----
+------------------------------------------------------------------------
 
 # 23. Pipe with fork()
 
 Common pattern:
 
-```text
+``` text
 Parent
    |
    | write
@@ -994,7 +1000,7 @@ Child
 
 This is a classic interview coding problem.
 
----
+------------------------------------------------------------------------
 
 # 24. FIFO
 
@@ -1004,29 +1010,29 @@ Unlike an anonymous pipe, a FIFO exists in the filesystem namespace.
 
 Create:
 
-```bash
+``` bash
 mkfifo mypipe
 ```
 
 Writer:
 
-```bash
+``` bash
 echo "hello" > mypipe
 ```
 
 Reader:
 
-```bash
+``` bash
 cat < mypipe
 ```
 
----
+------------------------------------------------------------------------
 
 # 25. Shared Memory
 
 Processes can communicate through shared memory.
 
-```text
+``` text
 Process A
     |
     +--------+
@@ -1040,20 +1046,20 @@ Process B
 
 Advantages:
 
-* Very fast IPC
-* Avoids unnecessary copying between processes
+-   Very fast IPC
+-   Avoids unnecessary copying between processes
 
 But synchronization is still required.
 
 Typical combination:
 
-```text
+``` text
 Shared Memory
      +
 Semaphore/Mutex
 ```
 
----
+------------------------------------------------------------------------
 
 # 26. mmap()
 
@@ -1061,14 +1067,14 @@ Maps memory into a process address space.
 
 Common uses:
 
-* file mapping
-* shared memory
-* anonymous memory
-* device memory
+-   file mapping
+-   shared memory
+-   anonymous memory
+-   device memory
 
 Example:
 
-```c
+``` c
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -1101,13 +1107,13 @@ int main()
 }
 ```
 
----
+------------------------------------------------------------------------
 
 # 27. mmap() and Kernel Internals
 
 Important relationship:
 
-```text
+``` text
 Application
     |
     | mmap()
@@ -1129,19 +1135,19 @@ Physical pages
 
 Modern Linux internally uses structures such as:
 
-```text
+``` text
 mm_struct
 vm_area_struct
 page tables
 ```
 
----
+------------------------------------------------------------------------
 
 # 28. Virtual Memory
 
 Each process sees its own virtual address space.
 
-```text
+``` text
 Process A              Process B
 
 Virtual Address        Virtual Address
@@ -1155,22 +1161,23 @@ Physical Memory
 
 Advantages:
 
-* process isolation
-* memory protection
-* virtual address abstraction
-* demand paging
-* shared memory
-* memory mapping
+-   process isolation
+-   memory protection
+-   virtual address abstraction
+-   demand paging
+-   shared memory
+-   memory mapping
 
----
+------------------------------------------------------------------------
 
 # 29. Page Fault
 
-A page fault occurs when the CPU accesses a virtual address whose translation/page is not currently available as required.
+A page fault occurs when the CPU accesses a virtual address whose
+translation/page is not currently available as required.
 
 Typical flow:
 
-```text
+``` text
 CPU accesses virtual address
           ↓
        MMU
@@ -1190,18 +1197,18 @@ Return to process
 
 Important types/concepts:
 
-* minor fault
-* major fault
-* demand paging
-* copy-on-write fault
+-   minor fault
+-   major fault
+-   demand paging
+-   copy-on-write fault
 
----
+------------------------------------------------------------------------
 
 # 30. Page Cache
 
 File I/O often interacts with the page cache.
 
-```text
+``` text
 read()
   ↓
 VFS
@@ -1219,7 +1226,7 @@ Disk
 
 If data is already cached:
 
-```text
+``` text
 read()
   ↓
 Page Cache HIT
@@ -1229,7 +1236,7 @@ Return data
 
 Otherwise:
 
-```text
+``` text
 read()
   ↓
 Page Cache MISS
@@ -1243,9 +1250,10 @@ Page Cache populated
 Application
 ```
 
-This is an important connection between **Robert Love system programming** and **Linux kernel/storage internals**.
+This is an important connection between **Robert Love system
+programming** and **Linux kernel/storage internals**.
 
----
+------------------------------------------------------------------------
 
 # 31. VFS
 
@@ -1255,7 +1263,7 @@ Provides a common interface to different filesystems.
 
 Examples:
 
-```text
+``` text
 ext4
 XFS
 Btrfs
@@ -1265,7 +1273,7 @@ tmpfs
 
 Application sees:
 
-```text
+``` text
 open()
 read()
 write()
@@ -1274,19 +1282,19 @@ close()
 
 VFS hides filesystem-specific implementation.
 
----
+------------------------------------------------------------------------
 
 # 32. Path Lookup
 
 Example:
 
-```c
+``` c
 open("/home/user/file.txt", O_RDONLY);
 ```
 
 Conceptually:
 
-```text
+``` text
 "/home/user/file.txt"
           ↓
        Path lookup
@@ -1300,13 +1308,13 @@ Conceptually:
 
 Important structures:
 
-```text
+``` text
 struct file
 struct dentry
 struct inode
 ```
 
----
+------------------------------------------------------------------------
 
 # 33. struct file
 
@@ -1314,7 +1322,7 @@ For an open file, Linux maintains a `struct file`.
 
 Important conceptual fields:
 
-```text
+``` text
 struct file
 {
     f_op
@@ -1329,7 +1337,7 @@ struct file
 
 ### Important fields
 
-```text
+``` text
 f_op
     ↓
 file operations
@@ -1355,11 +1363,11 @@ private_data
 filesystem/device-specific data
 ```
 
----
+------------------------------------------------------------------------
 
 # 34. File Read Flow
 
-```text
+``` text
 Application
     |
     | read(fd, buffer, size)
@@ -1396,11 +1404,11 @@ Storage
 
 This is a very useful **senior Linux interview flow**.
 
----
+------------------------------------------------------------------------
 
 # 35. File Write Flow
 
-```text
+``` text
 Application
      |
      | write()
@@ -1438,14 +1446,14 @@ Important:
 
 For stronger durability requirements:
 
-```text
+``` text
 fsync()
 fdatasync()
 ```
 
 may be required.
 
----
+------------------------------------------------------------------------
 
 # 36. Socket Programming
 
@@ -1453,7 +1461,7 @@ Socket is the standard interface for network communication.
 
 TCP server flow:
 
-```text
+``` text
 socket()
    ↓
 bind()
@@ -1469,11 +1477,11 @@ send()/write()
 close()
 ```
 
----
+------------------------------------------------------------------------
 
 # 37. TCP Server Skeleton
 
-```c
+``` c
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -1512,13 +1520,13 @@ int main()
 }
 ```
 
----
+------------------------------------------------------------------------
 
 # 38. Blocking vs Non-Blocking I/O
 
 ## Blocking
 
-```text
+``` text
 read()
   ↓
 No data
@@ -1532,7 +1540,7 @@ Thread wakes
 
 ## Non-blocking
 
-```text
+``` text
 read()
   ↓
 No data
@@ -1542,17 +1550,17 @@ Returns immediately
 
 Set non-blocking:
 
-```c
+``` c
 fcntl(fd, F_SETFL, O_NONBLOCK);
 ```
 
----
+------------------------------------------------------------------------
 
 # 39. select()
 
 Allows monitoring multiple file descriptors.
 
-```text
+``` text
              +--- fd1
              |
 select() ----+--- fd2
@@ -1564,17 +1572,17 @@ Useful for I/O multiplexing.
 
 Limitations:
 
-* FD-set limitations
-* scanning overhead
-* less scalable for large numbers of FDs
+-   FD-set limitations
+-   scanning overhead
+-   less scalable for large numbers of FDs
 
----
+------------------------------------------------------------------------
 
 # 40. poll()
 
 Similar purpose to `select()`.
 
-```c
+``` c
 struct pollfd fds[2];
 
 fds[0].fd = fd;
@@ -1585,7 +1593,7 @@ poll(fds, 1, 1000);
 
 Advantages over `select()` include avoiding `fd_set` size limitations.
 
----
+------------------------------------------------------------------------
 
 # 41. epoll()
 
@@ -1593,7 +1601,7 @@ Linux-specific scalable I/O event mechanism.
 
 Typical flow:
 
-```text
+``` text
 epoll_create1()
        ↓
 epoll_ctl()
@@ -1605,7 +1613,7 @@ events
 
 Example:
 
-```c
+``` c
 int epfd = epoll_create1(0);
 
 struct epoll_event event;
@@ -1626,41 +1634,43 @@ int n = epoll_wait(epfd,
                    -1);
 ```
 
----
+------------------------------------------------------------------------
 
 # 42. select vs poll vs epoll
 
-| Feature              | select      | poll      | epoll       |
-| -------------------- | ----------- | --------- | ----------- |
-| Standard POSIX       | Yes         | Yes       | No          |
-| Linux specific       | No          | No        | Yes         |
-| Large FD scalability | Poor        | Better    | Better      |
-| FD scanning          | Yes         | Yes       | Event-based |
-| Common Linux servers | Less common | Sometimes | Very common |
+  Feature                select        poll        epoll
+  ---------------------- ------------- ----------- -------------
+  Standard POSIX         Yes           Yes         No
+  Linux specific         No            No          Yes
+  Large FD scalability   Poor          Better      Better
+  FD scanning            Yes           Yes         Event-based
+  Common Linux servers   Less common   Sometimes   Very common
 
 Senior interview answer:
 
-> `epoll` is generally preferred for large-scale Linux event-driven applications because it provides scalable event notification without repeatedly scanning the entire FD set.
+> `epoll` is generally preferred for large-scale Linux event-driven
+> applications because it provides scalable event notification without
+> repeatedly scanning the entire FD set.
 
----
+------------------------------------------------------------------------
 
 # 43. errno
 
 Many system calls indicate failure using:
 
-```text
+``` text
 -1
 ```
 
 and set:
 
-```c
+``` c
 errno
 ```
 
 Example:
 
-```c
+``` c
 int fd = open("missing.txt", O_RDONLY);
 
 if (fd < 0)
@@ -1671,7 +1681,7 @@ if (fd < 0)
 
 Or:
 
-```c
+``` c
 printf("%s\n", strerror(errno));
 ```
 
@@ -1679,13 +1689,13 @@ Important:
 
 Do not assume `errno` is meaningful after a successful call.
 
----
+------------------------------------------------------------------------
 
 # 44. Zombie Process
 
 A child becomes a zombie when:
 
-```text
+``` text
 Child terminates
       ↓
 Exit status retained
@@ -1693,7 +1703,7 @@ Exit status retained
 Parent has not called wait()
 ```
 
-```text
+``` text
 Parent
    |
    +---- Zombie Child
@@ -1701,23 +1711,23 @@ Parent
 
 Solution:
 
-```c
+``` c
 wait(NULL);
 ```
 
 or:
 
-```c
+``` c
 waitpid(child_pid, &status, 0);
 ```
 
----
+------------------------------------------------------------------------
 
 # 45. Orphan Process
 
 An orphan occurs when:
 
-```text
+``` text
 Parent terminates
       ↓
 Child still running
@@ -1727,23 +1737,23 @@ The child is adopted/re-parented by an appropriate system process.
 
 Do not confuse:
 
-```text
+``` text
 Zombie → child terminated, parent hasn't collected status
 
 Orphan → parent terminated, child still running
 ```
 
----
+------------------------------------------------------------------------
 
 # 46. wait() vs waitpid()
 
-```c
+``` c
 wait(NULL);
 ```
 
 Waits for a child.
 
-```c
+``` c
 waitpid(pid, &status, 0);
 ```
 
@@ -1751,19 +1761,19 @@ Waits for a specific child.
 
 Useful options include:
 
-```text
+``` text
 WNOHANG
 ```
 
 which allows non-blocking checking.
 
----
+------------------------------------------------------------------------
 
 # 47. Process Creation Flow
 
 Typical shell execution:
 
-```text
+``` text
 User enters command
        ↓
 Shell
@@ -1783,13 +1793,13 @@ wait()
 
 This is one of the most important Linux process flows.
 
----
+------------------------------------------------------------------------
 
 # 48. Memory Allocation
 
 User-level:
 
-```c
+``` c
 malloc()
 calloc()
 realloc()
@@ -1798,7 +1808,7 @@ free()
 
 Example:
 
-```c
+``` c
 int *p = malloc(10 * sizeof(int));
 
 if (!p)
@@ -1809,7 +1819,7 @@ free(p);
 
 Conceptually:
 
-```text
+``` text
 malloc()
    ↓
 libc allocator
@@ -1823,20 +1833,21 @@ Important:
 
 `malloc()` is **not itself a system call**.
 
-The allocator may obtain memory from the kernel using mechanisms such as:
+The allocator may obtain memory from the kernel using mechanisms such
+as:
 
-```text
+``` text
 brk()
 mmap()
 ```
 
----
+------------------------------------------------------------------------
 
 # 49. brk() vs mmap()
 
 Historically:
 
-```text
+``` text
 brk()/sbrk()
     ↓
 heap expansion
@@ -1844,7 +1855,7 @@ heap expansion
 
 `mmap()`:
 
-```text
+``` text
 anonymous mappings
 file mappings
 shared memory
@@ -1853,7 +1864,7 @@ large allocations
 
 Modern allocators can use both.
 
----
+------------------------------------------------------------------------
 
 # 50. /proc
 
@@ -1861,7 +1872,7 @@ Modern allocators can use both.
 
 Examples:
 
-```bash
+``` bash
 cat /proc/cpuinfo
 cat /proc/meminfo
 cat /proc/mounts
@@ -1871,14 +1882,14 @@ cat /proc/<pid>/maps
 
 Useful for debugging:
 
-```text
+``` text
 /proc/<pid>/maps
 /proc/<pid>/status
 /proc/<pid>/fd/
 /proc/<pid>/smaps
 ```
 
----
+------------------------------------------------------------------------
 
 # 51. /sys
 
@@ -1886,7 +1897,7 @@ Useful for debugging:
 
 Useful areas:
 
-```text
+``` text
 /sys/class
 /sys/devices
 /sys/block
@@ -1896,25 +1907,25 @@ Useful areas:
 
 Difference:
 
-```text
+``` text
 /proc → mainly processes/system/kernel information
 
 /sys  → mainly devices/kernel object model
 ```
 
----
+------------------------------------------------------------------------
 
 # 52. Device Driver Connection
 
 Application:
 
-```c
+``` c
 read(fd, buffer, size);
 ```
 
 For a device:
 
-```text
+``` text
 Application
      ↓
 read()
@@ -1932,7 +1943,7 @@ Hardware
 
 A device driver may provide operations such as:
 
-```text
+``` text
 open
 read
 write
@@ -1942,19 +1953,19 @@ mmap
 release
 ```
 
----
+------------------------------------------------------------------------
 
 # 53. ioctl()
 
 Used for device-specific control operations.
 
-```c
+``` c
 ioctl(fd, COMMAND, argument);
 ```
 
 Typical use:
 
-```text
+``` text
 Application
     ↓
 ioctl()
@@ -1966,9 +1977,10 @@ Driver
 Hardware
 ```
 
-Unlike `read()`/`write()`, `ioctl()` is commonly used for control/configuration operations.
+Unlike `read()`/`write()`, `ioctl()` is commonly used for
+control/configuration operations.
 
----
+------------------------------------------------------------------------
 
 # 54. Signal-Safe Programming
 
@@ -1980,13 +1992,13 @@ Signal handlers should use async-signal-safe functions.
 
 Example commonly safe:
 
-```c
+``` c
 write()
 ```
 
 Avoid doing complex operations such as:
 
-```c
+``` c
 printf()
 malloc()
 free()
@@ -1994,13 +2006,13 @@ free()
 
 inside a signal handler.
 
----
+------------------------------------------------------------------------
 
 # 55. Synchronization Mechanisms
 
 Linux/POSIX provides several mechanisms:
 
-```text
+``` text
 Mutex
    ↓
 Protect critical section
@@ -2022,7 +2034,7 @@ Atomic Operations
 Lock-free/small shared state operations
 ```
 
----
+------------------------------------------------------------------------
 
 # 56. Mutex vs Semaphore
 
@@ -2030,7 +2042,7 @@ Lock-free/small shared state operations
 
 Usually represents ownership:
 
-```text
+``` text
 lock
 critical section
 unlock
@@ -2042,7 +2054,7 @@ Represents a count/resource availability.
 
 Example:
 
-```text
+``` text
 Semaphore = 3
 
 Thread A → acquire → 2
@@ -2051,13 +2063,13 @@ Thread C → acquire → 0
 Thread D → waits
 ```
 
----
+------------------------------------------------------------------------
 
 # 57. Deadlock
 
 Four classic conditions:
 
-```text
+``` text
 1. Mutual exclusion
 2. Hold and wait
 3. No preemption
@@ -2066,7 +2078,7 @@ Four classic conditions:
 
 Example:
 
-```text
+``` text
 Thread 1:
 lock(A)
 lock(B)
@@ -2078,7 +2090,7 @@ lock(A)
 
 Possible deadlock:
 
-```text
+``` text
 Thread 1 holds A → waits B
 
 Thread 2 holds B → waits A
@@ -2088,13 +2100,13 @@ Solution:
 
 Always acquire locks in a consistent order.
 
----
+------------------------------------------------------------------------
 
 # 58. Atomic Operation
 
 Example:
 
-```c
+``` c
 #include <stdatomic.h>
 
 atomic_int counter = 0;
@@ -2102,19 +2114,21 @@ atomic_int counter = 0;
 atomic_fetch_add(&counter, 1);
 ```
 
-Atomic operations avoid certain race conditions without a traditional mutex.
+Atomic operations avoid certain race conditions without a traditional
+mutex.
 
 But:
 
-> Atomic does not automatically make an entire multi-step algorithm thread-safe.
+> Atomic does not automatically make an entire multi-step algorithm
+> thread-safe.
 
----
+------------------------------------------------------------------------
 
 # 59. Memory Ordering
 
 For advanced C++/Linux interviews:
 
-```text
+``` text
 relaxed
 acquire
 release
@@ -2124,7 +2138,7 @@ seq_cst
 
 Basic concept:
 
-```text
+``` text
 Release
    ↓
 publish data
@@ -2136,7 +2150,7 @@ observe published data
 
 C++ example:
 
-```cpp
+``` cpp
 std::atomic<bool> ready{false};
 
 data = 100;
@@ -2146,20 +2160,20 @@ ready.store(true, std::memory_order_release);
 
 Another thread:
 
-```cpp
+``` cpp
 if (ready.load(std::memory_order_acquire))
 {
     // data is visible
 }
 ```
 
----
+------------------------------------------------------------------------
 
 # 60. TCP vs UDP
 
 ## TCP
 
-```text
+``` text
 Connection-oriented
 Reliable
 Ordered
@@ -2169,7 +2183,7 @@ Congestion control
 
 ## UDP
 
-```text
+``` text
 Connectionless
 No delivery guarantee
 No ordering guarantee
@@ -2178,18 +2192,18 @@ Lower overhead
 
 Typical examples:
 
-```text
+``` text
 TCP → HTTP/HTTPS, SSH
 UDP → DNS, streaming/real-time applications
 ```
 
----
+------------------------------------------------------------------------
 
 # 61. Socket Address Flow
 
 Server:
 
-```text
+``` text
 socket()
    ↓
 bind()
@@ -2205,7 +2219,7 @@ close()
 
 Client:
 
-```text
+``` text
 socket()
    ↓
 connect()
@@ -2215,13 +2229,13 @@ send/recv
 close()
 ```
 
----
+------------------------------------------------------------------------
 
 # 62. Important System Calls to Know
 
 For senior interviews, know the purpose and usage of:
 
-```text
+``` text
 Process:
 fork
 vfork
@@ -2291,13 +2305,13 @@ epoll_ctl
 epoll_wait
 ```
 
----
+------------------------------------------------------------------------
 
 # 63. Important POSIX APIs
 
 Know these categories:
 
-```text
+``` text
 pthread_create()
 pthread_join()
 
@@ -2320,13 +2334,13 @@ getpid()
 getppid()
 ```
 
----
+------------------------------------------------------------------------
 
 # 64. System Call vs Library Function
 
 Example:
 
-```text
+``` text
 printf()
 ```
 
@@ -2334,7 +2348,7 @@ is a library function.
 
 It may eventually use:
 
-```text
+``` text
 write()
 ```
 
@@ -2342,7 +2356,7 @@ which is a system call.
 
 Similarly:
 
-```text
+``` text
 malloc()
 ```
 
@@ -2350,7 +2364,7 @@ is a library allocator.
 
 It may use:
 
-```text
+``` text
 mmap()
 brk()
 ```
@@ -2359,19 +2373,20 @@ to obtain memory from the kernel.
 
 Important interview distinction:
 
-```text
+``` text
 Library function ≠ necessarily system call
 ```
 
----
+------------------------------------------------------------------------
 
 # 65. Context Switch
 
-A context switch occurs when CPU execution changes from one execution context to another.
+A context switch occurs when CPU execution changes from one execution
+context to another.
 
 Example:
 
-```text
+``` text
 Thread A running
       ↓
 interrupt/scheduler
@@ -2385,7 +2400,7 @@ Thread B running
 
 Context includes things such as:
 
-```text
+``` text
 Registers
 Program Counter
 Stack Pointer
@@ -2397,7 +2412,7 @@ A process switch can involve address-space changes.
 
 Threads within the same process may share the address space.
 
----
+------------------------------------------------------------------------
 
 # 66. Process Scheduling
 
@@ -2405,7 +2420,7 @@ Linux uses a scheduler to decide which runnable task executes.
 
 Conceptually:
 
-```text
+``` text
 Runnable Tasks
       ↓
  Scheduler
@@ -2415,7 +2430,7 @@ Runnable Tasks
 
 Important concepts:
 
-```text
+``` text
 Runnable
 Running
 Sleeping
@@ -2425,23 +2440,24 @@ Waiting
 
 For modern Linux, know:
 
-```text
+``` text
 CFS
 Completely Fair Scheduler
 ```
 
-and be aware that newer Linux kernels also contain newer scheduling infrastructure such as EEVDF.
+and be aware that newer Linux kernels also contain newer scheduling
+infrastructure such as EEVDF.
 
 For interviews, focus on:
 
-* runnable tasks
-* scheduling
-* preemption
-* context switch
-* priority
-* CPU affinity
+-   runnable tasks
+-   scheduling
+-   preemption
+-   context switch
+-   priority
+-   CPU affinity
 
----
+------------------------------------------------------------------------
 
 # 67. CPU Affinity
 
@@ -2449,24 +2465,24 @@ Restricts a process/thread to selected CPUs.
 
 Command:
 
-```bash
+``` bash
 taskset -c 0 ./program
 ```
 
 Useful in:
 
-* real-time systems
-* performance tuning
-* NUMA systems
-* CPU isolation
+-   real-time systems
+-   performance tuning
+-   NUMA systems
+-   CPU isolation
 
----
+------------------------------------------------------------------------
 
 # 68. Nice Value
 
 Controls process scheduling priority indirectly.
 
-```bash
+``` bash
 nice -n 10 ./program
 ```
 
@@ -2474,13 +2490,13 @@ Lower nice value generally means higher scheduling priority.
 
 Higher nice value means lower priority.
 
----
+------------------------------------------------------------------------
 
 # 69. Real-Time Scheduling
 
 Important policies:
 
-```text
+``` text
 SCHED_FIFO
 SCHED_RR
 ```
@@ -2493,27 +2509,27 @@ Real-time scheduling does not automatically mean deterministic behavior.
 
 Other factors include:
 
-* interrupts
-* kernel preemption
-* locking
-* page faults
-* CPU frequency
-* hardware
-* I/O
+-   interrupts
+-   kernel preemption
+-   locking
+-   page faults
+-   CPU frequency
+-   hardware
+-   I/O
 
----
+------------------------------------------------------------------------
 
 # 70. Blocking System Call
 
 Example:
 
-```c
+``` c
 read(fd, buffer, size);
 ```
 
 If data isn't available and FD is blocking:
 
-```text
+``` text
 Process
    ↓
 read()
@@ -2529,13 +2545,13 @@ read returns
 
 The scheduler can run another task while this task is blocked.
 
----
+------------------------------------------------------------------------
 
 # 71. Important Interview Concept: Blocking Doesn't Mean CPU Busy-Wait
 
 Bad:
 
-```c
+``` c
 while (!data_ready)
 {
     // continuously check
@@ -2546,7 +2562,7 @@ This can waste CPU.
 
 Blocking:
 
-```text
+``` text
 wait
  ↓
 sleep
@@ -2560,13 +2576,13 @@ wake
 
 This is one reason blocking primitives are useful.
 
----
+------------------------------------------------------------------------
 
 # 72. epoll Event-Driven Architecture
 
 Large server:
 
-```text
+``` text
                 +---- Client 1
                 |
 epoll_wait() ---+---- Client 2
@@ -2576,11 +2592,12 @@ epoll_wait() ---+---- Client 2
                 +---- Client N
 ```
 
-Instead of creating one blocking thread per connection, an event loop can handle many connections.
+Instead of creating one blocking thread per connection, an event loop
+can handle many connections.
 
 Typical architecture:
 
-```text
+``` text
 Event Loop
     ↓
 epoll_wait()
@@ -2592,7 +2609,7 @@ Read/Write
 Application processing
 ```
 
----
+------------------------------------------------------------------------
 
 # 73. Common Interview Question
 
@@ -2600,7 +2617,7 @@ Application processing
 
 Short answer:
 
-```text
+``` text
 Application
     ↓
 read(fd,...)
@@ -2624,7 +2641,7 @@ device
 
 If data is already in page cache:
 
-```text
+``` text
 read()
   ↓
 page cache hit
@@ -2632,7 +2649,7 @@ page cache hit
 copy data to user buffer
 ```
 
----
+------------------------------------------------------------------------
 
 # 74. Common Interview Question
 
@@ -2640,7 +2657,7 @@ copy data to user buffer
 
 Conceptually:
 
-```text
+``` text
 open(path)
    ↓
 system call
@@ -2658,13 +2675,13 @@ FD allocated
 FD returned to application
 ```
 
----
+------------------------------------------------------------------------
 
 # 75. Common Interview Question
 
 ## What happens during fork()?
 
-```text
+``` text
 fork()
    ↓
 Kernel creates child task
@@ -2678,7 +2695,7 @@ FDs inherited
 Parent and child continue execution
 ```
 
----
+------------------------------------------------------------------------
 
 # 76. Common Interview Question
 
@@ -2688,7 +2705,7 @@ Parent and child continue execution
 
 Conceptually:
 
-```text
+``` text
 fork()
     ↓
 new process with largely separate resources
@@ -2702,18 +2719,18 @@ Linux threads are implemented using the `clone` mechanism.
 
 Resources that can be shared include:
 
-```text
+``` text
 Address space
 File descriptors
 Filesystem information
 Signal handlers
 ```
 
----
+------------------------------------------------------------------------
 
 # 77. fork() vs pthread_create()
 
-```text
+``` text
 fork()
   ↓
 new process
@@ -2729,21 +2746,23 @@ same process address space
 
 Use process when isolation is important.
 
-Use threads when shared memory and lower communication overhead are useful.
+Use threads when shared memory and lower communication overhead are
+useful.
 
----
+------------------------------------------------------------------------
 
 # 78. vfork()
 
 `vfork()` is a specialized process creation mechanism.
 
-Historically, the child temporarily shares the parent's address space until it performs `exec()` or `_exit()`.
+Historically, the child temporarily shares the parent's address space
+until it performs `exec()` or `_exit()`.
 
 Because of its semantics, misuse can be dangerous.
 
 For modern application programming:
 
-```text
+``` text
 fork()
 +
 exec()
@@ -2751,13 +2770,13 @@ exec()
 
 is generally easier to reason about.
 
----
+------------------------------------------------------------------------
 
-# 79. exit() vs _exit()
+# 79. exit() vs \_exit()
 
 Important after `fork()`.
 
-```text
+``` text
 exit()
     ↓
 libc cleanup
@@ -2769,9 +2788,11 @@ _exit()
 direct process termination
 ```
 
-In a child after `fork()`, particularly before `exec()`, `_exit()` is often safer if `exec()` fails, to avoid duplicating/incorrectly flushing inherited stdio state.
+In a child after `fork()`, particularly before `exec()`, `_exit()` is
+often safer if `exec()` fails, to avoid duplicating/incorrectly flushing
+inherited stdio state.
 
----
+------------------------------------------------------------------------
 
 # 80. Copying Data Across User/Kernel Boundary
 
@@ -2779,14 +2800,14 @@ Kernel cannot blindly dereference arbitrary user pointers.
 
 Conceptually Linux uses mechanisms such as:
 
-```text
+``` text
 copy_from_user()
 copy_to_user()
 ```
 
 Example driver concept:
 
-```text
+``` text
 User buffer
     ↓
 copy_from_user()
@@ -2796,7 +2817,7 @@ Kernel buffer
 
 and:
 
-```text
+``` text
 Kernel buffer
     ↓
 copy_to_user()
@@ -2806,13 +2827,13 @@ User buffer
 
 This is important when discussing system calls and device drivers.
 
----
+------------------------------------------------------------------------
 
 # 81. Kernel Stack vs User Stack
 
 Each thread has:
 
-```text
+``` text
 User stack
     ↓
 Application function calls
@@ -2824,7 +2845,7 @@ Used while executing kernel code for that task
 
 System-call transition:
 
-```text
+``` text
 User execution
      ↓
 system call
@@ -2838,7 +2859,7 @@ return
 User execution
 ```
 
----
+------------------------------------------------------------------------
 
 # 82. Interrupt vs System Call
 
@@ -2846,7 +2867,7 @@ User execution
 
 Explicitly requested by application.
 
-```text
+``` text
 Application
    ↓
 syscall
@@ -2858,7 +2879,7 @@ Kernel
 
 Usually generated asynchronously by hardware.
 
-```text
+``` text
 Hardware
    ↓
 Interrupt
@@ -2868,7 +2889,7 @@ CPU
 Kernel interrupt handler
 ```
 
----
+------------------------------------------------------------------------
 
 # 83. Interrupt vs Exception
 
@@ -2878,7 +2899,7 @@ Usually asynchronous.
 
 Example:
 
-```text
+``` text
 Network packet arrives
 Disk completion
 Timer interrupt
@@ -2890,21 +2911,22 @@ Synchronous with instruction execution.
 
 Examples:
 
-```text
+``` text
 Page fault
 Divide by zero
 Invalid instruction
 ```
 
----
+------------------------------------------------------------------------
 
 # 84. Bottom Half / Deferred Work
 
-Linux should avoid doing excessive work in the immediate interrupt context.
+Linux should avoid doing excessive work in the immediate interrupt
+context.
 
 Conceptually:
 
-```text
+``` text
 Hardware interrupt
        ↓
 Top half
@@ -2918,20 +2940,20 @@ More processing
 
 Modern Linux mechanisms include:
 
-```text
+``` text
 softirq
 tasklet (legacy/deprecated direction)
 workqueue
 threaded IRQ
 ```
 
----
+------------------------------------------------------------------------
 
 # 85. Kernel Synchronization
 
 Kernel code uses mechanisms such as:
 
-```text
+``` text
 spinlock
 mutex
 rwsem
@@ -2952,7 +2974,7 @@ Typically used where sleeping is not allowed.
 
 Concept:
 
-```text
+``` text
 Spinlock:
 
 CPU
@@ -2966,13 +2988,13 @@ retry
 
 Therefore holding a spinlock for a long time is bad.
 
----
+------------------------------------------------------------------------
 
 # 86. Kernel Memory Allocation
 
 Common kernel allocators:
 
-```text
+``` text
 kmalloc()
 kzalloc()
 vmalloc()
@@ -2990,11 +3012,11 @@ Virtually contiguous memory, but physical pages need not be contiguous.
 
 Like `kmalloc()` but memory is zeroed.
 
----
+------------------------------------------------------------------------
 
 # 87. User malloc vs Kernel kmalloc
 
-```text
+``` text
 malloc()
     ↓
 User-space allocator
@@ -3004,7 +3026,7 @@ Kernel mechanisms such as mmap/brk
 
 Whereas:
 
-```text
+``` text
 kmalloc()
     ↓
 Kernel memory allocator
@@ -3012,7 +3034,7 @@ Kernel memory allocator
 
 They operate in completely different contexts.
 
----
+------------------------------------------------------------------------
 
 # 88. Kernel Module Basics
 
@@ -3020,7 +3042,7 @@ A loadable kernel module can extend kernel functionality.
 
 Example structure:
 
-```c
+``` c
 #include <linux/module.h>
 #include <linux/kernel.h>
 
@@ -3043,20 +3065,20 @@ MODULE_LICENSE("GPL");
 
 Commands:
 
-```bash
+``` bash
 insmod module.ko
 lsmod
 rmmod module
 dmesg
 ```
 
----
+------------------------------------------------------------------------
 
 # 89. Kernel Module vs User Program
 
 User program:
 
-```text
+``` text
 main()
   ↓
 libc
@@ -3066,7 +3088,7 @@ system calls
 
 Kernel module:
 
-```text
+``` text
 module_init()
   ↓
 kernel
@@ -3074,20 +3096,21 @@ kernel
 
 Kernel module:
 
-* runs in kernel space
-* has kernel privileges
-* must not use normal user-space APIs
-* must be extremely careful with memory and synchronization
+-   runs in kernel space
+-   has kernel privileges
+-   must not use normal user-space APIs
+-   must be extremely careful with memory and synchronization
 
----
+------------------------------------------------------------------------
 
 # 90. Kernel Panic
 
-A kernel panic occurs when the kernel encounters a fatal condition from which it cannot safely continue.
+A kernel panic occurs when the kernel encounters a fatal condition from
+which it cannot safely continue.
 
 Potential causes:
 
-```text
+``` text
 Invalid memory access
 Kernel bug
 Driver bug
@@ -3097,23 +3120,23 @@ Hardware problems
 
 User-space segmentation fault:
 
-```text
+``` text
 One process dies
 ```
 
 Kernel panic:
 
-```text
+``` text
 Kernel cannot safely continue
 ```
 
----
+------------------------------------------------------------------------
 
 # 91. Important Debugging Tools
 
 Senior Linux interviews commonly expect:
 
-```text
+``` text
 gdb
 strace
 ltrace
@@ -3134,7 +3157,7 @@ sar
 dmesg
 ```
 
----
+------------------------------------------------------------------------
 
 # 92. strace
 
@@ -3142,13 +3165,13 @@ Shows system calls made by a process.
 
 Example:
 
-```bash
+``` bash
 strace ./program
 ```
 
 Useful:
 
-```bash
+``` bash
 strace -f ./program
 ```
 
@@ -3156,7 +3179,7 @@ strace -f ./program
 
 Example output concept:
 
-```text
+``` text
 openat(...)
 read(...)
 write(...)
@@ -3165,11 +3188,11 @@ close(...)
 
 Excellent tool for understanding:
 
-```text
+``` text
 Application → System Calls → Kernel
 ```
 
----
+------------------------------------------------------------------------
 
 # 93. ltrace
 
@@ -3177,7 +3200,7 @@ Shows library calls.
 
 Conceptually:
 
-```text
+``` text
 ltrace
    ↓
 library calls
@@ -3187,13 +3210,13 @@ strace
 system calls
 ```
 
----
+------------------------------------------------------------------------
 
 # 94. gdb
 
 Used for debugging:
 
-```text
+``` text
 breakpoints
 stack traces
 variables
@@ -3204,7 +3227,7 @@ core dumps
 
 Useful commands:
 
-```gdb
+``` gdb
 run
 break main
 next
@@ -3216,7 +3239,7 @@ thread apply all bt
 print variable
 ```
 
----
+------------------------------------------------------------------------
 
 # 95. Core Dump
 
@@ -3224,7 +3247,7 @@ When a process crashes, a core dump can contain process state.
 
 Useful for:
 
-```text
+``` text
 Segmentation faults
 Abort
 Unexpected crashes
@@ -3232,7 +3255,7 @@ Unexpected crashes
 
 Typical workflow:
 
-```text
+``` text
 Crash
  ↓
 core file
@@ -3242,7 +3265,7 @@ gdb executable core
 bt
 ```
 
----
+------------------------------------------------------------------------
 
 # 96. perf
 
@@ -3250,30 +3273,30 @@ Used for Linux performance analysis.
 
 Examples:
 
-```bash
+``` bash
 perf stat ./program
 ```
 
-```bash
+``` bash
 perf record ./program
 perf report
 ```
 
 Can help analyze:
 
-* CPU cycles
-* instructions
-* cache misses
-* branches
-* hotspots
+-   CPU cycles
+-   instructions
+-   cache misses
+-   branches
+-   hotspots
 
----
+------------------------------------------------------------------------
 
 # 97. Important Performance Concepts
 
 When debugging a slow Linux application, consider:
 
-```text
+``` text
 CPU
 Memory
 Cache
@@ -3288,13 +3311,13 @@ Disk latency
 
 Do not immediately assume:
 
-```text
+``` text
 CPU is slow
 ```
 
 Measure first.
 
----
+------------------------------------------------------------------------
 
 # 98. Common Senior Interview Questions
 
@@ -3302,9 +3325,10 @@ Measure first.
 
 No.
 
-`malloc()` is a user-space library allocator. It can request memory from the kernel through mechanisms such as `brk()` and `mmap()`.
+`malloc()` is a user-space library allocator. It can request memory from
+the kernel through mechanisms such as `brk()` and `mmap()`.
 
----
+------------------------------------------------------------------------
 
 ### Q2. Does `fork()` copy all memory?
 
@@ -3312,7 +3336,7 @@ No.
 
 Linux uses Copy-on-Write.
 
----
+------------------------------------------------------------------------
 
 ### Q3. Does `exec()` create a process?
 
@@ -3320,57 +3344,60 @@ No.
 
 It replaces the current process image.
 
----
+------------------------------------------------------------------------
 
 ### Q4. What happens to file descriptors after fork?
 
 The child inherits copies of the parent's file descriptors.
 
-The corresponding descriptors refer to the same underlying open file descriptions.
+The corresponding descriptors refer to the same underlying open file
+descriptions.
 
----
+------------------------------------------------------------------------
 
 ### Q5. Process vs thread?
 
 Process:
 
-```text
+``` text
 Separate address space
 ```
 
 Thread:
 
-```text
+``` text
 Shared address space within process
 ```
 
----
+------------------------------------------------------------------------
 
 ### Q6. Why use mutex?
 
 To protect shared data from concurrent access.
 
----
+------------------------------------------------------------------------
 
 ### Q7. Mutex vs spinlock?
 
 Mutex can sleep.
 
-Spinlock typically busy-waits and is used where sleeping is not permitted.
+Spinlock typically busy-waits and is used where sleeping is not
+permitted.
 
----
+------------------------------------------------------------------------
 
 ### Q8. What is a zombie?
 
-A terminated child whose exit status has not yet been collected by the parent.
+A terminated child whose exit status has not yet been collected by the
+parent.
 
----
+------------------------------------------------------------------------
 
 ### Q9. What is an orphan?
 
 A child whose parent has terminated while the child continues running.
 
----
+------------------------------------------------------------------------
 
 ### Q10. What is VFS?
 
@@ -3378,37 +3405,42 @@ Virtual File System.
 
 It provides a common abstraction/interface over different filesystems.
 
----
+------------------------------------------------------------------------
 
 ### Q11. What is page cache?
 
-Kernel cache used to cache file-backed data/pages, reducing repeated storage access.
+Kernel cache used to cache file-backed data/pages, reducing repeated
+storage access.
 
----
+------------------------------------------------------------------------
 
 ### Q12. What is `epoll`?
 
-Linux I/O event notification mechanism used to efficiently monitor many file descriptors.
+Linux I/O event notification mechanism used to efficiently monitor many
+file descriptors.
 
----
+------------------------------------------------------------------------
 
 ### Q13. What is a system call?
 
-Controlled interface through which user-space programs request services from the kernel.
+Controlled interface through which user-space programs request services
+from the kernel.
 
----
+------------------------------------------------------------------------
 
 ### Q14. What is a context switch?
 
-Switching CPU execution from one task/thread to another by saving/restoring execution context.
+Switching CPU execution from one task/thread to another by
+saving/restoring execution context.
 
----
+------------------------------------------------------------------------
 
 ### Q15. Why are system calls expensive compared with normal function calls?
 
-They involve a transition between user and kernel execution contexts and associated validation/state-management overhead.
+They involve a transition between user and kernel execution contexts and
+associated validation/state-management overhead.
 
----
+------------------------------------------------------------------------
 
 # 99. Must-Know Coding Problems
 
@@ -3416,7 +3448,7 @@ Practice writing these without looking at notes:
 
 ## Process
 
-```text
+``` text
 1. fork()
 2. fork() twice → calculate number of processes
 3. fork + exec
@@ -3427,7 +3459,7 @@ Practice writing these without looking at notes:
 
 ## Threads
 
-```text
+``` text
 7. Create two threads
 8. Race condition
 9. Fix race using mutex
@@ -3437,7 +3469,7 @@ Practice writing these without looking at notes:
 
 ## IPC
 
-```text
+``` text
 12. Pipe
 13. Pipe + fork
 14. FIFO
@@ -3446,7 +3478,7 @@ Practice writing these without looking at notes:
 
 ## File I/O
 
-```text
+``` text
 16. open/read/write/close
 17. dup2() output redirection
 18. File copy using read/write
@@ -3455,14 +3487,14 @@ Practice writing these without looking at notes:
 
 ## Networking
 
-```text
+``` text
 20. TCP server
 21. TCP client
 22. UDP server/client
 23. epoll server
 ```
 
----
+------------------------------------------------------------------------
 
 # 100. Senior-Level Architecture Connections
 
@@ -3470,7 +3502,7 @@ You should be able to explain these flows from memory.
 
 ## Process
 
-```text
+``` text
 fork()
  ↓
 task creation
@@ -3486,7 +3518,7 @@ scheduler
 
 ## File
 
-```text
+``` text
 open()
  ↓
 FD
@@ -3502,7 +3534,7 @@ filesystem
 
 ## Read
 
-```text
+``` text
 read()
  ↓
 syscall
@@ -3522,7 +3554,7 @@ device
 
 ## Write
 
-```text
+``` text
 write()
  ↓
 VFS
@@ -3544,7 +3576,7 @@ device
 
 ## Network
 
-```text
+``` text
 socket()
  ↓
 socket layer
@@ -3560,7 +3592,7 @@ NIC
 
 ## Thread
 
-```text
+``` text
 pthread_create()
  ↓
 clone mechanism
@@ -3572,7 +3604,7 @@ shared process resources
 scheduler
 ```
 
----
+------------------------------------------------------------------------
 
 # 101. Robert Love vs Linux Kernel Internals
 
@@ -3580,7 +3612,7 @@ scheduler
 
 Focus heavily on:
 
-```text
+``` text
 System calls
 Processes
 Threads
@@ -3597,7 +3629,7 @@ POSIX APIs
 
 Need additional knowledge of:
 
-```text
+``` text
 task_struct
 scheduler
 run queues
@@ -3623,7 +3655,7 @@ kernel memory allocators
 
 Therefore:
 
-```text
+``` text
 Robert Love
      +
 Linux Kernel Internals
@@ -3639,13 +3671,13 @@ C/C++ Multithreading
 Strong Senior Linux Systems Preparation
 ```
 
----
+------------------------------------------------------------------------
 
 # 102. Final 1-Day Revision Cheat Sheet
 
 ## Processes
 
-```text
+``` text
 fork()  → create process
 exec()  → replace process image
 wait()  → collect child
@@ -3654,7 +3686,7 @@ _exit() → terminate immediately
 
 ## Threads
 
-```text
+``` text
 pthread_create()
 pthread_join()
 mutex
@@ -3665,7 +3697,7 @@ rwlock
 
 ## Files
 
-```text
+``` text
 open()
 read()
 write()
@@ -3679,7 +3711,7 @@ fsync()
 
 ## Memory
 
-```text
+``` text
 malloc()
 mmap()
 munmap()
@@ -3689,7 +3721,7 @@ brk()
 
 ## IPC
 
-```text
+``` text
 pipe
 FIFO
 shared memory
@@ -3699,7 +3731,7 @@ semaphore
 
 ## Signals
 
-```text
+``` text
 SIGINT
 SIGTERM
 SIGKILL
@@ -3710,7 +3742,7 @@ sigaction()
 
 ## Networking
 
-```text
+``` text
 socket()
 bind()
 listen()
@@ -3722,7 +3754,7 @@ recv()
 
 ## I/O multiplexing
 
-```text
+``` text
 select()
 poll()
 epoll()
@@ -3730,7 +3762,7 @@ epoll()
 
 ## Kernel
 
-```text
+``` text
 task_struct
 mm_struct
 VMA
@@ -3746,7 +3778,7 @@ driver
 
 ## Debugging
 
-```text
+``` text
 gdb
 strace
 perf
@@ -3756,11 +3788,11 @@ dmesg
 /sys
 ```
 
----
+------------------------------------------------------------------------
 
 # 103. The 10 Flows You Must Be Able to Explain
 
-```text
+``` text
 1. fork() flow
 2. fork() + exec() flow
 3. process context switch
@@ -3773,15 +3805,16 @@ dmesg
 10. epoll event loop
 ```
 
-If you can explain these clearly at a whiteboard, you have a strong foundation for a **Senior Linux/C/C++ Systems interview**.
+If you can explain these clearly at a whiteboard, you have a strong
+foundation for a **Senior Linux/C/C++ Systems interview**.
 
----
+------------------------------------------------------------------------
 
 # Final Mental Model
 
 Remember this:
 
-```text
+``` text
                     USER SPACE
 -------------------------------------------------
 Application
@@ -3837,7 +3870,7 @@ CPU | RAM | Disk | NIC | Devices
 
 Whenever an interviewer gives you a Linux API, ask yourself:
 
-```text
+``` text
 What happens in user space?
         ↓
 Which system call?
@@ -3855,4 +3888,1383 @@ Does it involve locking?
 What happens at the hardware level?
 ```
 
-That thought process is what turns basic Linux API knowledge into **senior-level Linux systems knowledge**.
+That thought process is what turns basic Linux API knowledge into
+**senior-level Linux systems knowledge**.
+
+------------------------------------------------------------------------
+
+# 104. `fcntl()` and File Descriptor Control
+
+`fcntl()` provides operations on an open file descriptor.
+
+``` text
+fcntl()
+   |
+   +-- duplicate FD
+   +-- get/set FD flags
+   +-- get/set file status flags
+   +-- file locking
+```
+
+Important commands:
+
+``` text
+F_DUPFD
+F_DUPFD_CLOEXEC
+F_GETFD
+F_SETFD
+F_GETFL
+F_SETFL
+```
+
+## FD_CLOEXEC
+
+A descriptor with `FD_CLOEXEC` is automatically closed when `exec()`
+successfully replaces the process image.
+
+``` text
+fork()
+  |
+  +-- child
+       |
+      exec()
+       |
+       +-- CLOEXEC FD → closed
+       +-- normal FD  → remains open
+```
+
+Prefer `O_CLOEXEC` when creating descriptors when the API supports it,
+especially in multithreaded programs, to avoid races between descriptor
+creation and setting `FD_CLOEXEC`.
+
+------------------------------------------------------------------------
+
+# 105. `dup()`, `dup2()`, `dup3()`
+
+``` text
+dup(fd)
+    ↓
+new FD → same open file description
+```
+
+`dup2(oldfd, newfd)` makes `newfd` refer to the same open file
+description as `oldfd`.
+
+Typical shell redirection:
+
+``` text
+open("out.txt")
+      |
+      v
+dup2(fd, STDOUT_FILENO)
+      |
+      v
+exec()
+      |
+      v
+program stdout → out.txt
+```
+
+Important distinction:
+
+``` text
+Two FDs
+   |
+   +---- same open file description
+             |
+             +-- shared file offset
+             +-- shared status flags
+```
+
+`dup3()` additionally allows `O_CLOEXEC`.
+
+------------------------------------------------------------------------
+
+# 106. `stat()` and File Metadata
+
+Important APIs:
+
+``` text
+stat()
+fstat()
+lstat()
+fstatat()
+```
+
+`struct stat` provides metadata such as:
+
+``` text
+st_mode
+st_uid
+st_gid
+st_size
+st_nlink
+st_ino
+st_dev
+st_atime
+st_mtime
+st_ctime
+```
+
+## `stat()` vs `lstat()`
+
+``` text
+symlink → target
+```
+
+`stat()` follows the symbolic link.
+
+``` text
+lstat()
+   |
+   v
+metadata of the symlink itself
+```
+
+------------------------------------------------------------------------
+
+# 107. Directory APIs
+
+User-space directory traversal:
+
+``` c
+DIR *dir = opendir(".");
+struct dirent *entry;
+
+while ((entry = readdir(dir)) != NULL)
+    printf("%s\n", entry->d_name);
+
+closedir(dir);
+```
+
+Important APIs:
+
+``` text
+opendir()
+readdir()
+closedir()
+rewinddir()
+```
+
+Linux internally obtains directory information through lower-level
+filesystem mechanisms such as `getdents()`.
+
+Connection:
+
+``` text
+Application
+   |
+readdir()
+   |
+libc
+   |
+directory syscall/interface
+   |
+VFS
+   |
+filesystem
+```
+
+------------------------------------------------------------------------
+
+# 108. File Permissions, Ownership and `umask`
+
+Important APIs:
+
+``` text
+chmod()
+fchmod()
+chown()
+fchown()
+umask()
+access()
+```
+
+Permission model:
+
+``` text
+        user group other
+          |     |    |
+         rwx   rwx  rwx
+```
+
+Special bits:
+
+``` text
+setuid
+setgid
+sticky bit
+```
+
+## `umask`
+
+`umask` removes permission bits from newly created files/directories.
+
+Conceptually:
+
+``` text
+requested mode
+      &
+~umask
+      |
+      v
+actual initial mode
+```
+
+------------------------------------------------------------------------
+
+# 109. `openat()` Family
+
+Modern Linux code frequently uses directory-relative APIs:
+
+``` text
+openat()
+fstatat()
+unlinkat()
+mkdirat()
+renameat()
+```
+
+Concept:
+
+``` text
+directory FD
+     |
+     +---- openat(dirfd, "file", ...)
+```
+
+Benefits include:
+
+-   directory-relative operations
+-   avoiding repeated path traversal
+-   safer filesystem operations
+-   useful race-resistant designs
+
+Related concept:
+
+``` text
+AT_FDCWD
+```
+
+means the current working directory is used.
+
+------------------------------------------------------------------------
+
+# 110. Process Groups, Sessions and Job Control
+
+A process has:
+
+``` text
+PID  → process ID
+PPID → parent process ID
+PGID → process group ID
+SID  → session ID
+```
+
+Hierarchy:
+
+``` text
+Session
+   |
+   +-- Process Group
+   |      |
+   |      +-- Process
+   |      +-- Process
+   |
+   +-- Process Group
+          |
+          +-- Process
+```
+
+Important APIs:
+
+``` text
+setpgid()
+getpgid()
+setsid()
+getsid()
+tcsetpgrp()
+```
+
+This explains shell job control:
+
+``` text
+Shell
+ |
+ +-- foreground process group
+ |
+ +-- background process group
+```
+
+Terminal-generated signals such as `SIGINT` and `SIGTSTP` are associated
+with the terminal's foreground process group.
+
+------------------------------------------------------------------------
+
+# 111. Daemon Processes
+
+Traditional daemonization concept:
+
+``` text
+fork()
+  |
+  v
+parent exits
+  |
+  v
+child
+  |
+setsid()
+  |
+  v
+new session
+  |
+chdir("/")
+  |
+umask()
+  |
+close/redirect FDs
+  |
+  v
+daemon
+```
+
+Important considerations:
+
+-   detach from controlling terminal
+-   establish a suitable working directory
+-   set file-creation mask
+-   close or redirect standard descriptors
+-   handle signals correctly
+-   write logs through an appropriate logging mechanism
+
+Modern Linux services are commonly supervised by `systemd`, so
+understand both the traditional daemon model and service-manager-based
+execution.
+
+------------------------------------------------------------------------
+
+# 112. `fork()` + Threads
+
+A critical interview topic.
+
+If a multithreaded process calls:
+
+``` text
+fork()
+```
+
+the child initially contains only the thread that called `fork()`.
+
+Conceptually:
+
+``` text
+Parent
+ |
+ +-- T1
+ +-- T2
+ +-- T3
+      |
+    fork()
+      |
+      v
+Child
+ |
+ +-- T3 only
+```
+
+This can be dangerous if another thread held a mutex when `fork()`
+happened.
+
+The child may inherit the locked state but not the thread that can
+unlock it.
+
+Important API:
+
+``` text
+pthread_atfork()
+```
+
+Typical safe pattern in a child is to perform minimal work and then call
+`exec()`.
+
+------------------------------------------------------------------------
+
+# 113. POSIX Shared Memory
+
+POSIX shared memory commonly uses:
+
+``` text
+shm_open()
+ftruncate()
+mmap()
+munmap()
+shm_unlink()
+```
+
+Architecture:
+
+``` text
+Process A
+   |
+   +---- mmap()
+             |
+             v
+        Shared memory
+             ^
+             |
+   +---- mmap()
+   |
+Process B
+```
+
+The shared memory itself does not automatically provide synchronization.
+
+Combine it with:
+
+``` text
+mutex
+semaphore
+futex
+process-shared pthread synchronization
+```
+
+when required.
+
+------------------------------------------------------------------------
+
+# 114. Unix Domain Sockets
+
+Unix domain sockets provide local IPC using the socket API.
+
+``` text
+Process A
+    |
+    | AF_UNIX
+    v
+Unix Domain Socket
+    |
+    v
+Process B
+```
+
+Common types:
+
+``` text
+SOCK_STREAM
+SOCK_DGRAM
+SOCK_SEQPACKET
+```
+
+Important advantage:
+
+``` text
+local IPC
++
+socket semantics
++
+FD passing
+```
+
+------------------------------------------------------------------------
+
+# 115. Passing File Descriptors with `SCM_RIGHTS`
+
+A Unix domain socket can transfer an open file descriptor between
+processes.
+
+Concept:
+
+``` text
+Process A
+   |
+   | sendmsg()
+   | SCM_RIGHTS
+   v
+Unix socket
+   |
+   v
+Process B
+   |
+   +---- received FD
+```
+
+This is an important senior-level Linux IPC concept.
+
+Use cases:
+
+-   privilege separation
+-   service architectures
+-   passing accepted sockets
+-   passing device/file access
+-   supervisor/worker designs
+
+------------------------------------------------------------------------
+
+# 116. `ioctl()`
+
+`ioctl()` is commonly used for device- or subsystem-specific control
+operations.
+
+``` c
+ioctl(fd, request, argument);
+```
+
+Conceptually:
+
+``` text
+User Application
+      |
+    ioctl()
+      |
+      v
+    Kernel
+      |
+      v
+VFS / subsystem / driver
+```
+
+Typical uses:
+
+``` text
+device configuration
+terminal configuration
+network/device control
+driver-specific commands
+```
+
+`ioctl()` is not a universal replacement for `read()`/`write()`; it is
+generally used for control operations that do not map naturally to
+byte-stream I/O.
+
+------------------------------------------------------------------------
+
+# 117. Time and Clocks
+
+Important APIs:
+
+``` text
+clock_gettime()
+nanosleep()
+clock_nanosleep()
+timer_create()
+timer_settime()
+```
+
+Important clocks:
+
+``` text
+CLOCK_REALTIME
+CLOCK_MONOTONIC
+```
+
+Use `CLOCK_REALTIME` for wall-clock time.
+
+Use `CLOCK_MONOTONIC` for elapsed-time measurement because it is not
+affected by normal wall-clock adjustments.
+
+Example:
+
+``` text
+start = CLOCK_MONOTONIC
+       |
+       v
+operation
+       |
+       v
+end = CLOCK_MONOTONIC
+       |
+       v
+elapsed = end - start
+```
+
+------------------------------------------------------------------------
+
+# 118. `timerfd`, `eventfd`, and `signalfd`
+
+Linux provides file-descriptor-based interfaces that integrate naturally
+with `poll()`/`epoll()`.
+
+``` text
+                    epoll
+                  /   |   \
+                 /    |    \
+             socket eventfd timerfd
+                        |
+                     signalfd
+```
+
+## `eventfd`
+
+Useful for event notification between threads/processes.
+
+## `timerfd`
+
+Represents timer expirations as readable events.
+
+## `signalfd`
+
+Allows signals to be consumed through a file descriptor rather than
+relying only on traditional signal handlers.
+
+These APIs are particularly useful in event-driven architectures.
+
+------------------------------------------------------------------------
+
+# 119. `mmap()` in More Depth
+
+Important flags:
+
+``` text
+MAP_PRIVATE
+MAP_SHARED
+MAP_ANONYMOUS
+```
+
+Protection:
+
+``` text
+PROT_READ
+PROT_WRITE
+PROT_EXEC
+```
+
+Typical flow:
+
+``` text
+mmap()
+   |
+   v
+Virtual Memory Area
+   |
+   v
+First access
+   |
+   v
+Page fault
+   |
+   v
+Kernel resolves mapping
+   |
+   v
+Physical page
+```
+
+## `MAP_PRIVATE`
+
+Writes are private to the process and can involve Copy-on-Write.
+
+## `MAP_SHARED`
+
+Writes can be visible to other mappings of the same shared object and
+can be propagated according to the mapping/storage semantics.
+
+## `msync()`
+
+Can be used to request synchronization of a mapped file's modified
+contents with the underlying file.
+
+------------------------------------------------------------------------
+
+# 120. `malloc()` Internals
+
+User-space allocation:
+
+``` text
+malloc()
+   |
+   v
+libc allocator
+   |
+   +---- reuse existing heap memory
+   |
+   +---- brk()/heap growth
+   |
+   +---- mmap() for suitable allocations
+```
+
+Important concepts:
+
+``` text
+heap
+arena
+fragmentation
+allocation overhead
+thread contention
+```
+
+Do not confuse:
+
+``` text
+malloc()
+```
+
+with:
+
+``` text
+kernel memory allocation
+```
+
+`malloc()` is a user-space allocator. The kernel ultimately provides
+virtual/physical memory through mechanisms such as page allocation and
+virtual memory management.
+
+------------------------------------------------------------------------
+
+# 121. Resource Limits
+
+Linux exposes process resource limits through:
+
+``` text
+getrlimit()
+setrlimit()
+prlimit()
+```
+
+Important limits:
+
+``` text
+RLIMIT_NOFILE
+RLIMIT_NPROC
+RLIMIT_AS
+RLIMIT_CORE
+```
+
+Examples:
+
+``` text
+Too many open files
+        |
+RLIMIT_NOFILE
+```
+
+``` text
+Core dump size
+        |
+RLIMIT_CORE
+```
+
+Resource limits are important when diagnosing production failures.
+
+------------------------------------------------------------------------
+
+# 122. Thread Lifecycle APIs
+
+Important pthread APIs beyond `pthread_create()`:
+
+``` text
+pthread_join()
+pthread_detach()
+pthread_exit()
+pthread_cancel()
+pthread_once()
+```
+
+Lifecycle:
+
+``` text
+pthread_create()
+      |
+      v
+   running
+      |
+      +---- pthread_exit()
+      |
+      +---- return from start routine
+      |
+      +---- pthread_cancel()
+      |
+      v
+terminated
+      |
+      +---- pthread_join()
+```
+
+Detached threads cannot be joined.
+
+------------------------------------------------------------------------
+
+# 123. Thread-Local Storage
+
+Thread-local storage provides data that is logically private to each
+thread.
+
+Concept:
+
+``` text
+Process
+ |
+ +-- Thread 1 → TLS-A
+ |
+ +-- Thread 2 → TLS-B
+ |
+ +-- Thread 3 → TLS-C
+```
+
+Useful APIs:
+
+``` text
+pthread_key_create()
+pthread_setspecific()
+pthread_getspecific()
+pthread_key_delete()
+```
+
+This is useful when libraries need per-thread state without sharing one
+global object.
+
+------------------------------------------------------------------------
+
+# 124. Condition Variables: Correct Pattern
+
+A condition variable is used together with a mutex and a predicate.
+
+Correct pattern:
+
+``` c
+pthread_mutex_lock(&lock);
+
+while (!condition)
+    pthread_cond_wait(&cond, &lock);
+
+consume_or_modify_state();
+
+pthread_mutex_unlock(&lock);
+```
+
+Why `while`?
+
+``` text
+wake up
+   |
+   v
+reacquire mutex
+   |
+   v
+recheck predicate
+```
+
+Reasons include:
+
+-   spurious wakeups
+-   another thread consuming/changing the condition first
+-   multiple waiting threads
+
+The condition variable itself does not store the condition. The shared
+predicate does.
+
+------------------------------------------------------------------------
+
+# 125. Priority Inversion and Robust Synchronization
+
+## Priority inversion
+
+``` text
+High priority thread
+        |
+      waits
+        |
+        v
+mutex held by low priority thread
+        ^
+        |
+medium priority work
+```
+
+Possible mitigation:
+
+``` text
+priority inheritance
+```
+
+Also know:
+
+``` text
+lock ordering
+trylock
+timeouts
+short critical sections
+```
+
+## Robust mutex
+
+Robust mutexes can help detect the case where the thread/process owning
+a mutex terminates unexpectedly while holding it.
+
+The recovery path must be designed carefully; simply detecting the
+failure does not automatically restore application invariants.
+
+------------------------------------------------------------------------
+
+# 126. `exec()` Family and `CLOEXEC`
+
+Important APIs:
+
+``` text
+execl()
+execle()
+execlp()
+execv()
+execvp()
+execve()
+```
+
+Concept:
+
+``` text
+fork()
+   |
+   v
+child
+   |
+ execve()
+   |
+   v
+same PID
+new program image
+```
+
+`exec()` does not create a new PID.
+
+Open file descriptors normally survive `exec()` unless marked
+close-on-exec.
+
+Therefore:
+
+``` text
+fork()
+   |
+   +-- FD table copied
+           |
+         exec()
+           |
+           +-- normal FD → remains
+           +-- CLOEXEC FD → closed
+```
+
+------------------------------------------------------------------------
+
+# 127. Process Termination
+
+Important APIs:
+
+``` text
+exit()
+_exit()
+_exit() / _Exit()
+wait()
+waitpid()
+waitid()
+```
+
+Important distinction:
+
+``` text
+exit()
+  |
+  +-- user-space cleanup
+  +-- stdio flushing
+  +-- atexit handlers
+  |
+  v
+kernel process termination
+```
+
+`_exit()` terminates the process without performing the normal
+user-space `exit()` cleanup.
+
+This distinction matters after `fork()`, especially before `exec()`.
+
+------------------------------------------------------------------------
+
+# 128. `/proc` for Runtime Debugging
+
+Important process files:
+
+``` text
+/proc/<pid>/status
+/proc/<pid>/stat
+/proc/<pid>/maps
+/proc/<pid>/smaps
+/proc/<pid>/fd/
+/proc/<pid>/fdinfo/
+/proc/<pid>/limits
+```
+
+Useful connections:
+
+``` text
+/proc/<pid>/maps
+      |
+      v
+Virtual address space
+      |
+      +-- executable
+      +-- shared libraries
+      +-- heap
+      +-- stack
+      +-- mmap regions
+```
+
+`/proc/<pid>/fd/` exposes symbolic links representing the process's open
+descriptors.
+
+------------------------------------------------------------------------
+
+# 129. Namespaces, cgroups and Capabilities
+
+These topics bridge Linux system programming with containers.
+
+## Namespaces
+
+Important namespace types:
+
+``` text
+PID
+mount
+network
+UTS
+IPC
+user
+cgroup
+time
+```
+
+Concept:
+
+``` text
+Container
+   |
+   +-- namespace isolation
+   +-- cgroups
+   +-- capabilities
+   |
+   v
+Linux Kernel
+```
+
+## PID namespace
+
+A process can have different PID views in different namespaces.
+
+## Network namespace
+
+Provides an isolated network stack containing interfaces, routes, ports,
+etc.
+
+## Mount namespace
+
+Provides an isolated view of the filesystem mount tree.
+
+------------------------------------------------------------------------
+
+# 130. cgroups
+
+Control groups organize processes and control/measure resource usage.
+
+Concept:
+
+``` text
+cgroup
+ |
+ +-- CPU limits/accounting
+ +-- memory limits/accounting
+ +-- I/O controls
+ +-- process membership
+```
+
+This is a major building block used by container runtimes.
+
+------------------------------------------------------------------------
+
+# 131. Linux Capabilities
+
+Traditional Unix privilege was largely represented by root/non-root.
+
+Linux capabilities split privileged operations into smaller units.
+
+Concept:
+
+``` text
+Process
+   |
+   +-- capabilities
+          |
+          +-- CAP_NET_ADMIN
+          +-- CAP_SYS_ADMIN
+          +-- CAP_NET_RAW
+          +-- ...
+```
+
+This is important for understanding why containers can run with reduced
+privileges.
+
+------------------------------------------------------------------------
+
+# 132. Seccomp
+
+Seccomp can restrict the system calls a process is allowed to make.
+
+Concept:
+
+``` text
+Application
+    |
+    v
+system call
+    |
+    v
+seccomp policy
+    |
+    +---- allowed → kernel service
+    |
+    +---- denied  → blocked
+```
+
+Common container security architecture:
+
+``` text
+Namespaces
++
+cgroups
++
+capabilities
++
+seccomp
+```
+
+------------------------------------------------------------------------
+
+# 133. `io_uring`
+
+Modern Linux asynchronous I/O interface.
+
+Core concepts:
+
+``` text
+Submission Queue (SQ)
+Completion Queue (CQ)
+
+SQE → Submission Queue Entry
+CQE → Completion Queue Entry
+```
+
+Architecture:
+
+``` text
+Application
+     |
+     v
+Submission Queue
+     |
+     v
+Kernel
+     |
+     v
+Completion Queue
+     |
+     v
+Application
+```
+
+Compared with `epoll`:
+
+``` text
+epoll
+  |
+  +-- primarily readiness notification
+
+io_uring
+  |
+  +-- submission + completion model
+  +-- asynchronous operations
+  +-- broad I/O operation support
+```
+
+Know the conceptual model first; deep kernel implementation can be
+studied later.
+
+------------------------------------------------------------------------
+
+# 134. Advanced Event-Driven Architecture
+
+A modern Linux server can combine:
+
+``` text
+                 +----------------+
+                 |     epoll      |
+                 +----------------+
+                  /      |       \
+                 /       |        \
+             socket   eventfd   timerfd
+                |
+             network
+                |
+             worker threads
+                |
+          shared state
+                |
+             mutex/atomic
+```
+
+A more modern architecture may use:
+
+``` text
+io_uring
+   |
+   +-- network I/O
+   +-- file I/O
+   +-- timers
+   +-- asynchronous operations
+```
+
+Interview focus:
+
+-   avoid blocking the event loop
+-   handle partial reads/writes
+-   manage backpressure
+-   avoid FD leaks
+-   use correct synchronization
+-   handle shutdown cleanly
+-   monitor resource limits
+
+------------------------------------------------------------------------
+
+# 135. Senior Linux System Programming Checklist
+
+Before considering System Programming complete, be able to explain:
+
+``` text
+[ ] libc vs system call
+[ ] user mode vs kernel mode
+[ ] FD table
+[ ] struct file / open file description
+[ ] inode / dentry
+[ ] open/read/write/close
+[ ] lseek
+[ ] dup/dup2/dup3
+[ ] fcntl
+[ ] CLOEXEC
+[ ] stat/fstat/lstat
+[ ] directory APIs
+[ ] permissions/umask
+[ ] openat family
+
+[ ] fork
+[ ] COW
+[ ] exec family
+[ ] wait/waitpid
+[ ] exit/_exit
+[ ] zombie/orphan
+[ ] process groups
+[ ] sessions
+[ ] job control
+[ ] daemonization
+[ ] resource limits
+
+[ ] pthreads
+[ ] mutex
+[ ] condition variable
+[ ] RW lock
+[ ] semaphore
+[ ] atomics
+[ ] memory ordering
+[ ] TLS
+[ ] thread cancellation
+[ ] fork + threads
+[ ] priority inversion
+
+[ ] signals
+[ ] sigaction
+[ ] signal masks
+[ ] SIGCHLD
+[ ] async-signal-safety
+
+[ ] pipe/FIFO
+[ ] shared memory
+[ ] POSIX shared memory
+[ ] message queues
+[ ] Unix domain sockets
+[ ] SCM_RIGHTS
+
+[ ] mmap
+[ ] page faults
+[ ] malloc
+[ ] brk
+[ ] fragmentation
+
+[ ] blocking/non-blocking I/O
+[ ] select
+[ ] poll
+[ ] epoll
+[ ] LT vs ET
+[ ] eventfd
+[ ] timerfd
+[ ] signalfd
+[ ] io_uring
+
+[ ] TCP/UDP
+[ ] socket lifecycle
+[ ] socket options
+[ ] Unix sockets
+
+[ ] /proc
+[ ] /sys
+[ ] ioctl
+[ ] termios
+[ ] debugging
+[ ] strace
+[ ] gdb
+[ ] core dumps
+[ ] perf
+
+[ ] namespaces
+[ ] cgroups
+[ ] capabilities
+[ ] seccomp
+```
+
+------------------------------------------------------------------------
+
+# 136. Final System Programming Mental Model
+
+``` text
+                    USER SPACE
+┌─────────────────────────────────────────────┐
+│ Application                                 │
+│                                             │
+│ C/C++                                       │
+│ libc / pthreads                             │
+│                                             │
+│ Files ─ Processes ─ Threads ─ IPC           │
+│ Memory ─ Sockets ─ epoll ─ io_uring         │
+└──────────────────────┬──────────────────────┘
+                       │
+                  System Calls
+                       │
+                       ▼
+                    KERNEL
+┌─────────────────────────────────────────────┐
+│ Process Management                          │
+│ Scheduler                                   │
+│ Virtual Memory / Page Tables                │
+│ VFS / Filesystems / Page Cache              │
+│ Networking                                  │
+│ IPC                                         │
+│ Block Layer                                 │
+│ Device Drivers                              │
+│ Interrupts                                  │
+│ Synchronization                             │
+│ Security / Namespaces / cgroups             │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+                    HARDWARE
+```
+
+The key interview principle is:
+
+> Don't memorize APIs in isolation. Be able to explain what happens from
+> the application API, through the system call boundary, into the
+> relevant kernel subsystem, and finally to the hardware when
+> applicable.
