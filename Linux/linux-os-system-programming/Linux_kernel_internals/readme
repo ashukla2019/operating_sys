@@ -1,0 +1,18 @@
+Chapter 23 → Linux Architecture
+Chapter 24 → System Call Internals
+Chapter 25 → task_struct + Process Internals
+Chapter 26 → Scheduler Internals
+Chapter 27 → mm_struct + VMA
+Chapter 28 → Page Tables + COW
+Chapter 29 → Kernel Memory Management
+Chapter 30 → VFS
+Chapter 31 → inode/dentry/file
+Chapter 32 → Page Cache
+Chapter 33 → ext4
+Chapter 34 → Block Layer
+Chapter 35 → Device Drivers
+Chapter 36 → Interrupts
+Chapter 37 → Kernel Synchronization
+Chapter 38 → Kernel Modules
+Chapter 39 → Boot Process
+Chapter 40 → Kernel Debugging
