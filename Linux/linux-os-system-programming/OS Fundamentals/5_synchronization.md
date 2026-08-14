@@ -1,2365 +1,3070 @@
-# Chapter 4 — CPU Scheduling
+# Chapter 5 — Synchronization
 
 > **Three-layer approach**
 >
-> This chapter covers CPU Scheduling from:
+> This chapter covers synchronization from:
 > 1. **[OS] Operating System concepts**
-> 2. **[LSP] Linux System Programming**
+> 2. **[LSP] Linux System Programming + C/C++ code**
 > 3. **[KERNEL] Linux Kernel Internals**
 >
-> It also includes working/flows, C code, Linux commands, practical experiments, performance concepts, and senior-level interview questions.
+> The goal is to understand not only *which primitive to use*, but also **why it works, what happens when a thread blocks, and what the kernel does underneath**.
 
 ---
 
-# 1. What Is CPU Scheduling? [OS]
+# 1. Why Synchronization Is Needed [OS]
 
-CPU scheduling is the mechanism used by an operating system to decide:
-
-> **Which runnable execution unit should get the CPU next?**
-
-In a multitasking system:
-
-```text
-Runnable tasks
-     |
-     +-- Task A
-     +-- Task B
-     +-- Task C
-     +-- Task D
-            |
-            v
-        Scheduler
-            |
-            v
-           CPU
-```
-
-The scheduler tries to use CPU resources efficiently while providing appropriate responsiveness, fairness, throughput, and priority behavior.
-
----
-
-# 2. Why Do We Need Scheduling? [OS]
-
-A CPU can execute only a limited number of instructions simultaneously.
-
-Suppose:
-
-```text
-CPU cores = 2
-
-Runnable tasks:
-A
-B
-C
-D
-E
-```
-
-The scheduler decides which tasks run on the available CPUs.
-
-```text
-             Scheduler
-                 |
-       +---------+---------+
-       |                   |
-       v                   v
-     CPU 0               CPU 1
-       |                   |
-       v                   v
-     Task A              Task B
-
-Task C/D/E wait for CPU time
-```
-
-On a single CPU, only one task executes at an instant.
-
-On multiple CPUs/cores, multiple tasks can execute simultaneously.
-
----
-
-# 3. Program vs Process vs Thread [OS]
-
-Scheduling happens at the level of executable entities.
-
-```text
-Program
-   |
-   v
-Process
-   |
-   +-- Thread 1
-   +-- Thread 2
-   +-- Thread 3
-```
-
-Modern Linux schedules individual tasks/threads rather than treating a multithreaded process as one indivisible CPU execution unit.
-
-Therefore:
-
-```text
-Process
-  |
-  +-- Thread A ----> schedulable
-  +-- Thread B ----> schedulable
-  +-- Thread C ----> schedulable
-```
-
----
-
-# 4. Basic CPU States [OS]
-
-A simplified model:
-
-```text
-          +---------+
-          |  Ready  |
-          +---------+
-               |
-               | dispatch
-               v
-          +---------+
-          | Running |
-          +---------+
-           /   |   \
-          /    |    \
-       I/O   preempt  exit
-        |      |       |
-        v      |       v
-    +---------+ |  Terminated
-    | Blocked | |
-    +---------+ |
-        |       |
-        | event |
-        +-------+
-          Ready
-```
-
-Typical states:
-
-```text
-Ready
-Running
-Blocked/Waiting
-Terminated
-```
-
-Exact kernel state representation is more detailed.
-
----
-
-# 5. Ready vs Running [OS]
-
-## Ready
-
-The task can run but is waiting for CPU time.
-
-```text
-Task A -> Ready
-```
-
-## Running
-
-The task is currently executing on a CPU.
-
-```text
-Task A -> Running
-```
-
-A preemptive scheduler can move:
-
-```text
-Running -> Ready
-```
-
-when another task should run.
-
----
-
-# 6. CPU Burst and I/O Burst [OS]
-
-A process/thread often alternates between CPU work and I/O waiting.
-
-```text
-CPU burst
-    |
-    v
-I/O request
-    |
-    v
-I/O wait
-    |
-    v
-CPU burst
-    |
-    v
-I/O request
-```
+When multiple threads execute concurrently and access shared data, their operations can interleave.
 
 Example:
 
 ```text
-Read file
-   |
-   v
-Process data
-   |
-   v
-Read network data
-   |
-   v
-Process data
+Thread A                    Thread B
+
+read counter = 10
+                            read counter = 10
+counter = 11
+                            counter = 11
 ```
 
-This distinction is important for scheduling.
+Expected:
+
+```text
+counter = 12
+```
+
+Actual:
+
+```text
+counter = 11
+```
+
+This is a **race condition**.
+
+Synchronization provides mechanisms to control access to shared resources.
 
 ---
 
-# 7. CPU-Bound vs I/O-Bound Tasks [OS]
+# 2. Concurrency vs Parallelism [OS]
 
-## CPU-bound
+## Concurrency
 
-Most time is spent using the CPU.
+Multiple tasks make progress during overlapping periods.
+
+```text
+Time →
+
+A: ███     ███
+B:    ███     ███
+```
+
+## Parallelism
+
+Multiple tasks actually execute simultaneously on different CPUs/cores.
+
+```text
+CPU 0:  AAAAAAAA
+CPU 1:  BBBBBBBB
+```
+
+Synchronization is required for both concurrent and parallel programs when shared state exists.
+
+---
+
+# 3. Shared Data
 
 Examples:
 
 ```text
-Compression
-Encryption
-Scientific computation
-Image processing
+Global variables
+Heap objects
+Shared memory
+Files
+Sockets
+Kernel data structures
+Device state
+Reference counters
+Queues
 ```
 
-Pattern:
+Example:
 
-```text
-CPU ======== CPU ======== CPU
+```c
+int counter = 0;
 ```
 
-## I/O-bound
-
-Frequently waits for I/O.
-
-Examples:
-
-```text
-Network server
-Database client
-File processing
-```
-
-Pattern:
-
-```text
-CPU == I/O wait == CPU == I/O wait
-```
-
-A good scheduler should keep the CPU busy while also maintaining responsiveness.
+If multiple threads modify `counter`, access must be designed carefully.
 
 ---
 
-# 8. Scheduling Goals [OS]
+# 4. Race Condition [OS]
 
-Important scheduling metrics:
+A race condition occurs when the result depends on the timing/interleaving of concurrent operations.
+
+Example:
+
+```c
+counter++;
+```
+
+It looks like one operation, but conceptually it may involve:
 
 ```text
-CPU utilization
-Throughput
-Turnaround time
-Waiting time
-Response time
-Fairness
-Latency
-Priority guarantees
+LOAD counter
+ADD 1
+STORE counter
+```
+
+Two threads can interleave these operations.
+
+```text
+Thread A              Thread B
+
+LOAD 0
+                      LOAD 0
+ADD 1
+                      ADD 1
+STORE 1
+                      STORE 1
+```
+
+Final value:
+
+```text
+1
+```
+
+Expected:
+
+```text
+2
 ```
 
 ---
 
-# 9. CPU Utilization [OS]
+# 5. Critical Section [OS]
 
-CPU utilization:
+A critical section is a section of code that accesses shared state and must be protected against unsafe concurrent access.
 
-> Percentage of time the CPU is doing useful work.
+```c
+lock();
+
+shared_data++;
+
+unlock();
+```
 
 Conceptually:
 
 ```text
-CPU utilization =
-busy time / total time
+          Critical Section
+       +--------------------+
+       | shared data access |
+       +--------------------+
+              protected
 ```
-
-High utilization is generally desirable, but:
-
-> 100% CPU utilization is not automatically a sign of a healthy system.
-
-A system can have 100% CPU while suffering from poor latency, excessive contention, or inefficient work.
 
 ---
 
-# 10. Throughput [OS]
+# 6. Requirements of a Good Critical-Section Solution [OS]
 
-Throughput:
+Important properties:
 
-> Number of tasks completed per unit time.
+## Mutual exclusion
+
+Only one thread enters the protected critical section at a time.
+
+## Progress
+
+If no thread is inside the critical section, a suitable waiting thread should eventually be able to enter.
+
+## Bounded waiting
+
+A thread should not wait forever under the intended scheduling/fairness assumptions.
+
+---
+
+# 7. Atomicity [OS]
+
+An operation is atomic when other threads cannot observe it in an intermediate state.
 
 Example:
 
 ```text
-100 requests / second
+Atomic:
+    counter = 5 -> 6
+
+Non-atomic conceptual sequence:
+    load
+    modify
+    store
 ```
 
-Higher throughput is generally desirable for batch/server workloads.
+Atomicity does not automatically solve every synchronization problem.
+
+For example:
+
+```c
+atomic_increment(counter);
+```
+
+may make an increment atomic, but a larger multi-variable invariant may still require a mutex.
 
 ---
 
-# 11. Turnaround Time [OS]
+# 8. Visibility and Ordering [OS]
 
-Turnaround time:
+Synchronization is not only about preventing simultaneous access.
 
-```text
-Completion time - Arrival time
-```
-
-Example:
+It also establishes rules about:
 
 ```text
-Arrival    = 2
-Completion = 10
-
-Turnaround = 10 - 2 = 8
-```
-
-It measures total time from submission/arrival until completion.
-
----
-
-# 12. Waiting Time [OS]
-
-Waiting time is the time a task spends waiting in the ready queue for CPU service.
-
-A common relationship:
-
-```text
-Waiting Time =
-Turnaround Time - CPU execution time
-```
-
-Depending on the model, I/O waiting is not counted as ready-queue waiting.
-
----
-
-# 13. Response Time [OS]
-
-Response time:
-
-```text
-First CPU service/start time - Arrival time
+Visibility
+Ordering
+Memory effects
 ```
 
 Example:
 
 ```text
-Arrival = 0
-First execution = 3
+Thread A:
+data = 100;
+ready = true;
 
-Response time = 3
+Thread B:
+if (ready)
+    use(data);
 ```
 
-This is especially important for interactive systems.
+Without appropriate synchronization, reasoning about visibility and ordering can be incorrect.
+
+A mutex or correctly used atomic operations can establish the required synchronization.
 
 ---
 
-# 14. Example of the Three Main Timing Metrics
+# 9. Synchronization Primitives
+
+Important primitives:
+
+```text
+Mutex
+Semaphore
+Condition variable
+Spinlock
+Reader-writer lock
+Barrier
+Atomic operations
+Futex
+```
+
+At a high level:
+
+```text
+Mutex       -> mutual exclusion
+Semaphore   -> counting/resource synchronization
+Cond var    -> wait for a condition
+Spinlock    -> busy-wait mutual exclusion
+RWLock      -> multiple readers / one writer
+Barrier     -> synchronize phases
+Atomic      -> indivisible atomic operations
+Futex       -> efficient user-space/kernel-assisted waiting
+```
+
+---
+
+# 10. Mutex [OS]
+
+A mutex provides mutual exclusion.
+
+Basic pattern:
+
+```c
+lock(mutex);
+
+/* critical section */
+
+unlock(mutex);
+```
+
+Only one owner can hold the mutex at a time.
+
+---
+
+# 11. Mutex Working
 
 Suppose:
 
 ```text
-Arrival time = 2
-First execution = 5
-Completion = 12
-CPU burst = 4
+Thread A -> lock
+Thread B -> lock
 ```
 
-Then:
+If A obtains the mutex:
 
 ```text
-Response time
-= 5 - 2
-= 3
-
-Turnaround time
-= 12 - 2
-= 10
-
-Waiting time
-= 10 - 4
-= 6
-```
-
----
-
-# 15. Scheduling: Preemptive vs Non-Preemptive [OS]
-
-## Non-preemptive
-
-Once a task gets the CPU, it keeps it until:
-
-```text
-terminates
-or
-blocks/waits
-```
-
-Example:
-
-```text
-Task A running
-     |
-     +-- finishes/block
-     |
-     v
-Task B runs
-```
-
-## Preemptive
-
-The OS can interrupt a running task and schedule another runnable task.
-
-```text
-Task A running
-     |
-     | timer/priority event
-     v
-Task A -> Ready
-Task B -> Running
-```
-
-Modern general-purpose operating systems are preemptive.
-
----
-
-# 16. Dispatcher [OS]
-
-The **dispatcher** is the mechanism that gives the CPU to the task selected by the scheduler.
-
-Conceptually:
-
-```text
-Scheduler
-   |
-   | selects Task B
-   v
-Dispatcher
-   |
-   | context switch
-   v
-Task B runs
-```
-
-The dispatcher may perform:
-
-```text
-Context switch
-Switch to appropriate execution context
-Transfer CPU control
-```
-
----
-
-# 17. Context Switch [OS]
-
-A context switch occurs when execution changes from one task to another.
-
-```text
-Task A
-  |
-  | save execution state
-  v
-Scheduler
-  |
-  | select Task B
-  v
-restore Task B state
-  |
-  v
-Task B
-```
-
-State can include architecture-dependent:
-
-```text
-Registers
-Program counter
-Stack pointer
-Processor state
-Scheduling state
-Memory-management context where applicable
-```
-
-Context switching has overhead.
-
----
-
-# 18. Why Context Switching Costs Time [OS]
-
-The CPU is not doing application work during portions of a context switch.
-
-There may be:
-
-```text
-Register save/restore
-Scheduler work
-Cache disruption
-TLB/address-space effects
-Kernel bookkeeping
-```
-
-Modern CPUs and kernels optimize these operations heavily.
-
-Therefore:
-
-```text
-Too many switches
-       |
-       v
-More overhead
-       |
-       v
-Less useful application work
-```
-
----
-
-# 19. Dispatch Latency [OS]
-
-Dispatch latency is the time required to stop one task and start another.
-
-For interactive/real-time workloads, low dispatch latency can be important.
-
-Conceptually:
-
-```text
-Task A stops
-    |
-    | dispatch latency
-    v
-Task B starts
-```
-
----
-
-# 20. FCFS — First Come First Served [OS]
-
-FCFS schedules tasks in arrival order.
-
-Example:
-
-```text
-A -> B -> C
-```
-
-If:
-
-```text
-A = 8 ms
-B = 2 ms
-C = 1 ms
-```
-
-Then:
-
-```text
-|---- A ----|-- B --|-C-|
-0           8       10  11
-```
-
-Advantages:
-
-```text
-Simple
-Easy to implement
-Predictable ordering
-```
-
-Problem:
-
-> Convoy effect.
-
----
-
-# 21. Convoy Effect [OS]
-
-Suppose:
-
-```text
-A = long CPU task
-B = short task
-C = short task
-D = short task
-```
-
-FCFS:
-
-```text
-A--------------------|B|C|D|
-```
-
-B/C/D wait behind A.
-
-This can produce poor response time for short tasks.
-
-This is the **convoy effect**.
-
----
-
-# 22. SJF — Shortest Job First [OS]
-
-SJF chooses the task with the shortest CPU burst.
-
-Example:
-
-```text
-A = 8
-B = 2
-C = 1
-```
-
-Order:
-
-```text
-C -> B -> A
-```
-
-Advantages:
-
-```text
-Good average waiting time
-Good average turnaround time
-```
-
-Important theoretical result:
-
-> If CPU burst lengths are known accurately, non-preemptive SJF minimizes average waiting time for a set of jobs.
-
-Practical problem:
-
-> The OS generally does not know the future CPU burst exactly.
-
----
-
-# 23. SRTF — Shortest Remaining Time First [OS]
-
-SRTF is the preemptive form of shortest-job scheduling.
-
-The scheduler chooses the task with the shortest remaining CPU time.
-
-Example:
-
-```text
-A running
+Mutex
  |
- | B arrives with shorter remaining time
- v
-A -> Ready
-B -> Running
+ +-- owner = A
+
+A -> enters critical section
+B -> waits
 ```
 
-Advantages:
+After A unlocks:
 
 ```text
-Good response for short jobs
-Can reduce average waiting time
-```
-
-Problems:
-
-```text
-More preemption
-Need burst estimates
-Long jobs may starve
+A -> unlock
+B -> can acquire
 ```
 
 ---
 
-# 24. Priority Scheduling [OS]
+# 12. Mutex Does Not Protect Automatically
 
-Each task gets a priority.
-
-```text
-Task A -> priority 5
-Task B -> priority 1
-Task C -> priority 10
-```
-
-Depending on the system:
-
-```text
-higher number = higher priority
-```
-
-or the opposite.
-
-Always check the API/system semantics.
-
-High-priority tasks are favored.
-
----
-
-# 25. Starvation [OS]
-
-Starvation occurs when a task waits indefinitely or for an excessively long time because other tasks continually receive service first.
-
-Example:
-
-```text
-High priority
-High priority
-High priority
-High priority
-...
-Low priority -> keeps waiting
-```
-
----
-
-# 26. Aging [OS]
-
-Aging gradually increases the priority of a waiting task.
-
-```text
-Low priority
-    |
-    | waits
-    v
-priority increases
-    |
-    v
-eventually scheduled
-```
-
-Aging is one way to reduce starvation.
-
----
-
-# 27. Round Robin [OS]
-
-Round Robin gives each runnable task a time quantum.
-
-Example:
-
-```text
-A -> B -> C -> A -> B -> C
-```
-
-Suppose:
-
-```text
-Quantum = 10 ms
-```
-
-Timeline:
-
-```text
-| A | B | C | A | B | C |
-```
-
-Advantages:
-
-```text
-Good responsiveness
-Simple
-Fair time sharing
-```
-
----
-
-# 28. Choosing the Round-Robin Quantum [OS]
-
-If quantum is too small:
-
-```text
-Many context switches
-High overhead
-```
-
-If quantum is too large:
-
-```text
-RR approaches FCFS
-Poor responsiveness
-```
-
-Therefore:
-
-```text
-small quantum
-    |
-    +-- responsiveness
-    +-- more overhead
-
-large quantum
-    |
-    +-- less switching
-    +-- worse interactive response
-```
-
----
-
-# 29. Multilevel Queue [OS]
-
-Tasks are divided into queues.
-
-Example:
-
-```text
-+----------------------+
-| System / high        |
-+----------------------+
-| Interactive          |
-+----------------------+
-| Batch                |
-+----------------------+
-```
-
-Each queue may have its own scheduling policy.
-
----
-
-# 30. Multilevel Feedback Queue — MLFQ [OS]
-
-MLFQ allows tasks to move between queues based on behavior.
-
-Conceptually:
-
-```text
-High priority
-     |
-     v
-+---------+
-| Queue 1 |
-+---------+
-     |
-     | CPU-heavy behavior
-     v
-+---------+
-| Queue 2 |
-+---------+
-     |
-     v
-+---------+
-| Queue 3 |
-+---------+
-```
-
-Interactive tasks may remain favored while CPU-heavy tasks may move lower.
-
-MLFQ attempts to balance:
-
-```text
-response
-fairness
-throughput
-```
-
----
-
-# 31. Scheduling Algorithm Comparison [OS]
-
-| Algorithm | Preemptive? | Main Advantage | Main Problem |
-|---|---:|---|---|
-| FCFS | No | Simple | Convoy effect |
-| SJF | No | Low average waiting | Burst prediction |
-| SRTF | Yes | Good short-job response | Starvation/preemption |
-| Priority | Either | Priority control | Starvation |
-| Round Robin | Yes | Responsiveness | Quantum tuning |
-| MLFQ | Usually | Adaptive behavior | Complexity |
-
----
-
-# 32. Important Interview Distinction: Fairness vs Priority [OS]
-
-Fairness does not always mean:
-
-```text
-Everyone gets exactly equal CPU time.
-```
-
-A scheduler may intentionally give different service based on:
-
-```text
-Priority
-Policy
-Nice value
-Real-time requirements
-Scheduling class
-CPU affinity
-```
-
-A good answer should distinguish:
-
-```text
-fairness
-vs
-priority
-vs
-latency
-```
-
----
-
-# 33. Linux Scheduling — Big Picture [KERNEL]
-
-Linux scheduling can be visualized as:
-
-```text
-                 Runnable Tasks
-                      |
-          +-----------+-----------+
-          |                       |
-          v                       v
-     Scheduling classes      CPU affinity
-          |
-          v
-       Scheduler
-          |
-          v
-      Run queue(s)
-          |
-          v
-       CPU core
-```
-
-The exact implementation is kernel-version dependent.
-
-For interview preparation, understand the concepts rather than memorizing old kernel internals as if they were permanent.
-
----
-
-# 34. Linux `task_struct` and Scheduling [KERNEL]
-
-Linux represents a schedulable task with:
+This is not enough:
 
 ```c
-struct task_struct
+pthread_mutex_t lock;
+int counter;
+
+counter++;
 ```
 
-It contains or references scheduling-related state.
-
-Conceptually:
-
-```text
-task_struct
- |
- +-- state
- +-- scheduling information
- +-- priority-related fields
- +-- CPU/scheduling information
- +-- relationships
- +-- memory/resource references
-```
-
-Exact fields change across Linux versions.
-
----
-
-# 35. Runnable Task [KERNEL]
-
-A runnable task is a task that can execute when selected by the scheduler.
-
-Conceptually:
-
-```text
-Runnable
-   |
-   v
-Scheduler
-   |
-   v
-CPU
-```
-
-A task blocked on I/O is not competing for CPU in the same way as a runnable task.
-
----
-
-# 36. Run Queue [KERNEL]
-
-A run queue is the scheduler's structure for tracking runnable tasks associated with a CPU/scheduling context.
-
-Conceptually:
-
-```text
-CPU 0
- |
- +-- Run queue
- |     +-- Task A
- |     +-- Task B
- |     +-- Task C
- |
- +-- Scheduler
-```
-
-Modern Linux has per-CPU scheduling structures and more complex scheduling-class-specific data structures.
-
----
-
-# 37. Per-CPU Scheduling [KERNEL]
-
-A multicore machine may conceptually look like:
-
-```text
-CPU 0                  CPU 1
- |                      |
-Run queue               Run queue
- |                      |
-A B C                    D E F
-```
-
-Tasks can migrate between CPUs.
-
-Why?
-
-```text
-Load balancing
-CPU affinity
-Cache locality
-Scheduling policy
-```
-
----
-
-# 38. CPU Affinity [KERNEL/LSP]
-
-CPU affinity specifies which CPUs a task is allowed to run on.
-
-Example:
-
-```text
-Task A
- |
- +-- allowed CPUs: {0,1}
-```
-
-It cannot run on:
-
-```text
-CPU 2
-CPU 3
-```
-
-if they are outside its allowed mask.
-
-Linux commands:
-
-```bash
-taskset -p <pid>
-```
-
-Set affinity:
-
-```bash
-taskset -cp 0 <pid>
-```
-
-This is useful for experiments and performance debugging.
-
----
-
-# 39. Linux Scheduling Classes [KERNEL]
-
-Linux supports different scheduling classes.
-
-Important conceptual classes include:
-
-```text
-Stop
-Deadline
-Real-time
-Fair
-Idle
-```
-
-The exact ordering and implementation details are kernel-version dependent.
-
-For general interview preparation, know:
-
-```text
-SCHED_DEADLINE
-SCHED_FIFO
-SCHED_RR
-SCHED_OTHER
-SCHED_IDLE
-```
-
-and understand that these policies have different semantics.
-
----
-
-# 40. Normal/Fair Scheduling [KERNEL]
-
-Normal tasks commonly use:
-
-```text
-SCHED_OTHER
-```
-
-Historically, Linux used the **Completely Fair Scheduler (CFS)** for normal scheduling.
-
-Important interview caveat:
-
-> Modern Linux kernels have evolved beyond a simple "Linux always uses CFS" description. Recent kernels use newer fair-scheduling implementations, including EEVDF-based scheduling in relevant mainline versions. Therefore, describe CFS as the historical/foundational model and understand the modern fair-scheduling direction as well.
-
----
-
-# 41. CFS — Historical/Fundamental Model [KERNEL]
-
-CFS was designed around the idea of approximating fair CPU sharing.
-
-A simplified model:
-
-```text
-Runnable tasks
-      |
-      v
-virtual runtime
-      |
-      v
-choose task with smallest vruntime
-      |
-      v
-CPU
-```
-
-The key idea:
-
-> A task that has received less fair CPU service should become more eligible to run.
-
-Do not treat the old implementation details as universal across modern kernels.
-
----
-
-# 42. `vruntime` [KERNEL]
-
-In the traditional CFS model, each runnable task has a virtual runtime.
-
-Conceptually:
-
-```text
-Task A -> vruntime = 10
-Task B -> vruntime = 20
-Task C -> vruntime = 15
-```
-
-The task with the smallest virtual runtime is favored.
-
-Priority/nice affects how quickly virtual runtime accumulates.
-
-This is a conceptual explanation of CFS.
-
----
-
-# 43. EEVDF — Modern Fair Scheduling Direction [KERNEL]
-
-Modern Linux scheduling has evolved toward **EEVDF**:
-
-```text
-Earliest Eligible Virtual Deadline First
-```
-
-The scheduler considers concepts such as:
-
-```text
-virtual deadline
-eligibility
-lag
-runtime
-```
-
-For interview purposes:
-
-```text
-Old/foundational:
-CFS + vruntime
-
-Modern:
-EEVDF-based fair scheduling
-```
-
-Do not answer:
-
-> "Current Linux scheduler is simply CFS"
-
-without qualification.
-
----
-
-# 44. Nice Value [LSP/OS]
-
-Nice value influences the scheduling weight of normal tasks.
-
-Typical range on Linux:
-
-```text
--20 ... +19
-```
-
-Lower nice:
-
-```text
-higher scheduling preference
-```
-
-Higher nice:
-
-```text
-lower scheduling preference
-```
-
-Example:
-
-```bash
-nice -n 10 ./program
-```
-
----
-
-# 45. `nice()` [LSP]
-
-C example:
+The mutex must actually be used:
 
 ```c
-#include <stdio.h>
-#include <unistd.h>
-#include <errno.h>
+pthread_mutex_lock(&lock);
 
-int main(void)
-{
-    errno = 0;
+counter++;
 
-    int old = nice(0);
-
-    if (old == -1 && errno != 0)
-    {
-        perror("nice");
-        return 1;
-    }
-
-    printf("Current nice value = %d\n", old);
-
-    return 0;
-}
+pthread_mutex_unlock(&lock);
 ```
 
-To change nice value:
-
-```c
-nice(5);
-```
-
-Increasing niceness generally reduces scheduling preference for normal tasks.
-
-Permissions may be required when moving toward higher priority/lower nice values.
+All code paths accessing the protected invariant must follow the synchronization protocol.
 
 ---
 
-# 46. `getpriority()` and `setpriority()` [LSP]
-
-Linux/POSIX interfaces include:
-
-```c
-getpriority()
-setpriority()
-```
-
-Example:
-
-```c
-#include <stdio.h>
-#include <sys/resource.h>
-
-int main(void)
-{
-    int p = getpriority(PRIO_PROCESS, 0);
-
-    printf("Priority = %d\n", p);
-
-    return 0;
-}
-```
-
-Note:
-
-`getpriority()` has special return/error semantics; robust code should check `errno` appropriately.
-
----
-
-# 47. `sched_yield()` [LSP]
-
-```c
-sched_yield();
-```
-
-It voluntarily gives up the processor.
-
-Conceptually:
-
-```text
-Thread running
-      |
-      | sched_yield()
-      v
-Scheduler
-      |
-      v
-another runnable task may run
-```
-
-Important:
-
-> `sched_yield()` does not guarantee that a specific other thread will run next.
-
-It should not be used as a general synchronization mechanism.
-
----
-
-# 48. `sched_getscheduler()` [LSP]
-
-You can inspect the scheduling policy:
-
-```c
-#include <stdio.h>
-#include <sched.h>
-#include <unistd.h>
-
-int main(void)
-{
-    int policy = sched_getscheduler(0);
-
-    printf("Policy = %d\n", policy);
-
-    return 0;
-}
-```
-
-Common policy constants:
-
-```text
-SCHED_OTHER
-SCHED_FIFO
-SCHED_RR
-SCHED_BATCH
-SCHED_IDLE
-SCHED_DEADLINE
-```
-
-Not every policy is available through every interface in the same way.
-
----
-
-# 49. Real-Time Scheduling [OS/KERNEL]
-
-Linux provides real-time scheduling policies such as:
-
-```text
-SCHED_FIFO
-SCHED_RR
-SCHED_DEADLINE
-```
-
-These are intended for workloads with stronger latency/timing requirements.
-
-They must be used carefully because a high-priority real-time task can starve ordinary tasks.
-
----
-
-# 50. `SCHED_FIFO` [OS/KERNEL]
-
-A simplified model:
-
-```text
-High-priority FIFO task
-        |
-        v
-runs until:
-    - blocks
-    - yields
-    - exits
-    - is preempted by higher-priority RT task
-```
-
-A running FIFO task is not normally time-sliced with another equal-priority FIFO task in the same way as Round Robin.
-
----
-
-# 51. `SCHED_RR` [OS/KERNEL]
-
-`SCHED_RR` provides round-robin behavior among equal-priority real-time tasks.
-
-```text
-RT Task A
-    |
-    | quantum
-    v
-RT Task B
-    |
-    | quantum
-    v
-RT Task C
-```
-
-Higher-priority real-time tasks can preempt lower-priority ones.
-
----
-
-# 52. `SCHED_DEADLINE` [KERNEL]
-
-`SCHED_DEADLINE` is designed for deadline-oriented real-time workloads.
-
-Conceptually:
-
-```text
-Task
- |
- +-- runtime
- +-- period
- +-- deadline
-```
-
-The scheduler tries to meet timing constraints under the admission/control rules.
-
-For interviews, know the concept and the existence of the policy rather than memorizing kernel implementation details.
-
----
-
-# 53. `chrt` Command [LSP]
-
-Inspect/change real-time scheduling policy:
-
-```bash
-chrt -p <pid>
-```
-
-Example:
-
-```bash
-chrt -r 10 ./program
-```
-
-This requests:
-
-```text
-SCHED_RR
-priority 10
-```
-
-Use real-time policies carefully.
-
----
-
-# 54. `ps` Scheduling Information [LSP]
-
-Useful:
-
-```bash
-ps -eo pid,tid,cls,rtprio,ni,pri,psr,stat,comm
-```
-
-This can help inspect:
-
-```text
-PID
-TID
-scheduling class
-real-time priority
-nice value
-priority
-processor
-state
-command
-```
-
-Field availability can vary by system.
-
----
-
-# 55. `top` Scheduling Information [LSP]
-
-Run:
-
-```bash
-top
-```
-
-Useful columns include:
-
-```text
-PR
-NI
-S
-%CPU
-P
-```
-
-Meanings can include:
-
-```text
-PR -> priority representation
-NI -> nice value
-S  -> process state
-%CPU -> CPU utilization
-P  -> last-used CPU
-```
-
-Exact display depends on `top` version/configuration.
-
----
-
-# 56. `htop`
-
-If installed:
-
-```bash
-htop
-```
-
-It provides an interactive view of:
-
-```text
-CPU usage
-Threads
-Priorities
-CPU assignment
-Process state
-```
-
-Useful for practical scheduler observation.
-
----
-
-# 57. CPU Migration [KERNEL]
-
-Suppose:
-
-```text
-CPU 0 -> overloaded
-CPU 1 -> lightly loaded
-```
-
-The scheduler may move a task:
-
-```text
-CPU 0 run queue
-      |
-      | migration/load balancing
-      v
-CPU 1 run queue
-```
-
-Migration has costs:
-
-```text
-Cache locality loss
-Migration overhead
-NUMA effects
-```
-
-Therefore schedulers balance load while trying to preserve locality.
-
----
-
-# 58. CPU Affinity vs Load Balancing [KERNEL]
-
-Affinity restricts where a task may execute.
-
-Load balancing tries to distribute work.
-
-Example:
-
-```text
-Task A affinity = CPU 0 only
-```
-
-Then:
-
-```text
-CPU 1 cannot take Task A
-```
-
-even if CPU 1 is idle.
-
-This can intentionally or accidentally create imbalance.
-
----
-
-# 59. NUMA and Scheduling [KERNEL]
-
-On NUMA systems:
-
-```text
-CPU 0 ---- Memory Node 0
-CPU 1 ---- Memory Node 0
-
-CPU 2 ---- Memory Node 1
-CPU 3 ---- Memory Node 1
-```
-
-Running a thread close to the memory it accesses can improve performance.
-
-Therefore advanced scheduling involves:
-
-```text
-CPU affinity
-Cache locality
-NUMA locality
-Memory placement
-```
-
----
-
-# 60. Preemption [KERNEL]
-
-A running task may be preempted when the scheduler determines another task should run.
-
-Simplified:
-
-```text
-Task A running
-     |
-     | preemption event
-     v
-scheduler
-     |
-     v
-Task B running
-```
-
-Possible triggers include:
-
-```text
-Timer/scheduling event
-Higher-priority task becomes runnable
-Blocking
-Wakeup
-Explicit yield
-Other kernel scheduling events
-```
-
-The exact path is architecture and kernel-version dependent.
-
----
-
-# 61. Wakeup Path [KERNEL]
-
-Suppose a task is blocked waiting for I/O:
-
-```text
-Task A
- |
- v
-sleep/wait
- |
- v
-I/O completes
- |
- v
-wake up Task A
- |
- v
-Task becomes runnable
- |
- v
-scheduler considers it
-```
-
-The scheduler may choose it immediately or another task depending on policy and state.
-
----
-
-# 62. Sleeping Does Not Mean CPU Consumption [OS]
-
-If a thread is waiting for I/O:
-
-```text
-Thread
-  |
-  v
-Blocked
-```
-
-it generally does not continuously consume CPU while sleeping.
-
-This is why I/O-bound workloads can have many waiting threads without every thread using a full CPU.
-
----
-
-# 63. Voluntary vs Involuntary Context Switch [LSP]
-
-Linux tools may report:
-
-```text
-voluntary context switches
-involuntary context switches
-```
-
-Conceptually:
-
-### Voluntary
-
-Task gives up CPU because it blocks or waits.
-
-```text
-read()
-   |
-   v
-wait for I/O
-```
-
-### Involuntary
-
-Task is preempted by the scheduler.
-
-```text
-Task A running
-   |
-   v
-preempted
-```
-
-Inspect:
-
-```bash
-cat /proc/<pid>/status
-```
-
-Look for context-switch counters where available.
-
----
-
-# 64. `/proc/<pid>/sched` [LSP/KERNEL]
-
-Linux exposes scheduler-related information through:
-
-```bash
-cat /proc/<pid>/sched
-```
-
-This is useful for studying:
-
-```text
-scheduler statistics
-runtime
-switch counts
-policy-related information
-```
-
-Exact fields vary by kernel version/configuration.
-
----
-
-# 65. `/proc/schedstat` [KERNEL]
-
-Linux may expose scheduler statistics through:
-
-```bash
-cat /proc/schedstat
-```
-
-Availability depends on kernel configuration/version.
-
-This is useful when studying scheduler behavior at system level.
-
----
-
-# 66. Measuring Context Switches with `pidstat`
-
-If `sysstat` is installed:
-
-```bash
-pidstat -w -p <pid> 1
-```
-
-Useful fields include:
-
-```text
-cswch/s
-nvcswch/s
-```
-
-Conceptually:
-
-```text
-cswch/s  -> voluntary context switches
-nvcswch/s -> involuntary context switches
-```
-
----
-
-# 67. Performance Tool: `perf`
-
-A useful command:
-
-```bash
-perf stat ./program
-```
-
-It can provide performance counters/statistics.
-
-For context-switch-related measurements, depending on permissions/kernel:
-
-```bash
-perf stat -e context-switches,cpu-migrations,task-clock ./program
-```
-
-This is an important senior Linux performance tool.
-
----
-
-# 68. Scheduling Experiment — CPU-Bound Threads
-
-Create several CPU-bound threads:
+# 13. POSIX Mutex Example [LSP]
 
 ```c
 #include <pthread.h>
 #include <stdio.h>
 
+int counter = 0;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
 void *worker(void *arg)
 {
-    volatile unsigned long long x = 0;
+    for (int i = 0; i < 100000; ++i)
+    {
+        pthread_mutex_lock(&lock);
 
-    for (;;)
-        x++;
+        counter++;
+
+        pthread_mutex_unlock(&lock);
+    }
 
     return NULL;
 }
 
 int main(void)
 {
-    pthread_t t[8];
+    pthread_t t1, t2;
 
-    for (int i = 0; i < 8; ++i)
-        pthread_create(&t[i], NULL, worker, NULL);
+    pthread_create(&t1, NULL, worker, NULL);
+    pthread_create(&t2, NULL, worker, NULL);
 
-    for (int i = 0; i < 8; ++i)
-        pthread_join(t[i], NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("counter = %d\n", counter);
+
+    pthread_mutex_destroy(&lock);
 
     return 0;
 }
 ```
 
-Run:
+Compile:
 
 ```bash
-gcc cpu_threads.c -pthread -O2 -o cpu_threads
-./cpu_threads
+gcc mutex.c -pthread -O2 -o mutex
 ```
 
-Observe:
+Expected:
 
-```bash
-top -H -p <pid>
+```text
+counter = 200000
 ```
-
-Then compare with:
-
-```bash
-nproc
-```
-
-You can study what happens when runnable threads exceed available CPUs.
 
 ---
 
-# 69. Scheduling Experiment — Affinity
+# 14. Why the Mutex Example Works
 
-Run:
+Without synchronization:
 
-```bash
-taskset -c 0 ./cpu_threads
+```text
+T1: read counter
+T2: read counter
+T1: write
+T2: write
 ```
 
-This restricts the process to CPU 0.
+With mutex:
 
-Observe:
+```text
+T1:
+ lock
+ read
+ modify
+ write
+ unlock
 
-```bash
-top
+T2:
+          waits
+          lock
+          read
+          modify
+          write
+          unlock
 ```
 
-or:
-
-```bash
-ps -o pid,psr,pcpu,comm -p <pid>
-```
-
-Then compare with:
-
-```bash
-taskset -c 0-3 ./cpu_threads
-```
-
-This demonstrates the impact of CPU affinity.
+The critical section is serialized.
 
 ---
 
-# 70. Scheduling Experiment — Nice
+# 15. Always Check Mutex Return Values [LSP]
 
-Run:
+For robust code:
 
-```bash
-nice -n 10 ./cpu_threads
+```c
+int rc = pthread_mutex_lock(&lock);
+
+if (rc != 0)
+{
+    /* handle error */
+}
 ```
 
-Compare against:
+Unlike many system calls, POSIX pthread functions commonly return an error number directly rather than setting `errno`.
 
-```bash
-./cpu_threads
+This distinction is important in interviews.
+
+---
+
+# 16. `pthread_mutex_trylock()` [LSP]
+
+```c
+if (pthread_mutex_trylock(&lock) == 0)
+{
+    /* acquired */
+
+    pthread_mutex_unlock(&lock);
+}
+else
+{
+    /* currently unavailable */
+}
+```
+
+`trylock()` does not normally block waiting for the mutex.
+
+Useful when:
+
+```text
+You have alternative work
+You don't want to block
+You are implementing specialized scheduling/work logic
+```
+
+Do not use it as a substitute for correct synchronization.
+
+---
+
+# 17. `pthread_mutex_timedlock()` [LSP]
+
+A timed mutex acquisition allows waiting up to a deadline.
+
+Conceptually:
+
+```c
+pthread_mutex_timedlock(&lock, &deadline);
+```
+
+Possible outcomes:
+
+```text
+acquired
+timeout
+error
+```
+
+Useful when indefinite blocking is undesirable.
+
+---
+
+# 18. Mutex Types [LSP]
+
+POSIX mutex attributes can provide different behavior.
+
+Important concepts include:
+
+```text
+Normal/default mutex
+Error-checking mutex
+Recursive mutex
+Robust mutex
+```
+
+### Recursive mutex
+
+Allows the same thread to lock the mutex recursively.
+
+But:
+
+> Recursive mutexes should not be used to hide poor lock design.
+
+---
+
+# 19. Robust Mutex [LSP]
+
+A robust mutex can help recover when its owner terminates unexpectedly while holding it.
+
+Conceptually:
+
+```text
+Thread A
+  |
+  | owns robust mutex
+  |
+  X terminates unexpectedly
+
+Thread B
+  |
+  | locks
+  v
+owner-dead condition
+```
+
+The new owner can detect the condition and repair shared state if possible.
+
+---
+
+# 20. Semaphore [OS]
+
+A semaphore maintains a counter.
+
+Conceptually:
+
+```text
+Semaphore count = N
+```
+
+Acquire:
+
+```text
+count--
+```
+
+Release:
+
+```text
+count++
+```
+
+If count is unavailable, a thread may block.
+
+---
+
+# 21. Binary Semaphore vs Mutex
+
+A binary semaphore can have values:
+
+```text
+0 or 1
+```
+
+It can sometimes look like a mutex.
+
+But conceptually they differ:
+
+```text
+Mutex:
+    ownership semantics
+
+Semaphore:
+    counting/resource signaling semantics
+```
+
+A mutex is generally the correct primitive for protecting a critical section.
+
+---
+
+# 22. POSIX Semaphore Example [LSP]
+
+```c
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+
+sem_t sem;
+
+void *worker(void *arg)
+{
+    sem_wait(&sem);
+
+    printf("Thread entered\n");
+
+    sem_post(&sem);
+
+    return NULL;
+}
+
+int main(void)
+{
+    pthread_t t1, t2;
+
+    sem_init(&sem, 0, 1);
+
+    pthread_create(&t1, NULL, worker, NULL);
+    pthread_create(&t2, NULL, worker, NULL);
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    sem_destroy(&sem);
+
+    return 0;
+}
+```
+
+---
+
+# 23. Counting Semaphore Example
+
+Suppose a server has:
+
+```text
+4 database connections
 ```
 
 Use:
 
-```bash
-ps -o pid,ni,pri,pcpu,comm -p <pid>
+```text
+semaphore count = 4
 ```
 
-Remember:
+Threads:
 
-> Nice affects normal scheduling preference; it is not equivalent to real-time priority.
+```text
+T1 -> acquire -> connection
+T2 -> acquire -> connection
+T3 -> acquire -> connection
+T4 -> acquire -> connection
+T5 -> waits
+```
+
+When T1 releases:
+
+```text
+T1 -> release
+T5 -> can acquire
+```
+
+This is a natural semaphore use case.
 
 ---
 
-# 71. Scheduling Experiment — Yield
+# 24. Condition Variable [OS]
+
+A condition variable allows a thread to wait until some condition becomes true.
+
+Typical pattern:
+
+```c
+pthread_mutex_lock(&mutex);
+
+while (!condition)
+{
+    pthread_cond_wait(&cond, &mutex);
+}
+
+/* condition is true */
+
+pthread_mutex_unlock(&mutex);
+```
+
+Another thread changes the condition:
+
+```c
+pthread_mutex_lock(&mutex);
+
+condition = true;
+
+pthread_cond_signal(&cond);
+
+pthread_mutex_unlock(&mutex);
+```
+
+---
+
+# 25. Why Condition Variables Need a Mutex
+
+The condition and the waiting protocol must be coordinated.
 
 Example:
 
+```text
+shared condition
+       +
+    mutex
+       +
+condition variable
+```
+
+The mutex protects the predicate/state.
+
+The condition variable provides the mechanism for sleeping and waking.
+
+---
+
+# 26. Why `pthread_cond_wait()` Uses a `while`, Not `if`
+
+Correct:
+
 ```c
+while (!ready)
+{
+    pthread_cond_wait(&cond, &mutex);
+}
+```
+
+Not generally:
+
+```c
+if (!ready)
+{
+    pthread_cond_wait(&cond, &mutex);
+}
+```
+
+Reasons include:
+
+```text
+Spurious wakeups
+Another thread may consume/change the condition first
+Multiple waiters may wake
+The condition must always be rechecked
+```
+
+This is one of the most important synchronization interview questions.
+
+---
+
+# 27. What `pthread_cond_wait()` Does
+
+Conceptually:
+
+```text
+Thread owns mutex
+       |
+       v
+pthread_cond_wait()
+       |
+       +-- releases mutex
+       |
+       +-- blocks
+       |
+       v
+another thread changes condition
+       |
+       v
+signal/broadcast
+       |
+       v
+waiting thread wakes
+       |
+       +-- reacquires mutex
+       |
+       v
+returns from cond_wait()
+       |
+       v
+while condition is checked again
+```
+
+The release-and-wait operation is designed to avoid a lost-wakeup race when used correctly.
+
+---
+
+# 28. Producer-Consumer Problem [OS/LSP]
+
+Classic example:
+
+```text
+Producer
+    |
+    v
++---------+
+| Buffer  |
++---------+
+    |
+    v
+Consumer
+```
+
+Shared state:
+
+```text
+buffer
+count
+head
+tail
+```
+
+Need synchronization.
+
+Typical primitives:
+
+```text
+mutex
+not_empty condition
+not_full condition
+```
+
+---
+
+# 29. Producer-Consumer Code [LSP]
+
+```c
+#include <pthread.h>
 #include <stdio.h>
-#include <sched.h>
+
+#define SIZE 5
+
+int buffer[SIZE];
+int in = 0;
+int out = 0;
+int count = 0;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t not_empty = PTHREAD_COND_INITIALIZER;
+pthread_cond_t not_full = PTHREAD_COND_INITIALIZER;
+
+void *producer(void *arg)
+{
+    for (int i = 1; i <= 20; ++i)
+    {
+        pthread_mutex_lock(&mutex);
+
+        while (count == SIZE)
+            pthread_cond_wait(&not_full, &mutex);
+
+        buffer[in] = i;
+        in = (in + 1) % SIZE;
+        count++;
+
+        pthread_cond_signal(&not_empty);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    return NULL;
+}
+
+void *consumer(void *arg)
+{
+    for (int i = 1; i <= 20; ++i)
+    {
+        pthread_mutex_lock(&mutex);
+
+        while (count == 0)
+            pthread_cond_wait(&not_empty, &mutex);
+
+        int value = buffer[out];
+        out = (out + 1) % SIZE;
+        count--;
+
+        printf("Consumed %d\n", value);
+
+        pthread_cond_signal(&not_full);
+
+        pthread_mutex_unlock(&mutex);
+    }
+
+    return NULL;
+}
 
 int main(void)
 {
-    for (int i = 0; i < 1000000; ++i)
-    {
-        /* Work */
+    pthread_t producer_thread;
+    pthread_t consumer_thread;
 
-        sched_yield();
-    }
+    pthread_create(&producer_thread, NULL, producer, NULL);
+    pthread_create(&consumer_thread, NULL, consumer, NULL);
+
+    pthread_join(producer_thread, NULL);
+    pthread_join(consumer_thread, NULL);
+
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&not_empty);
+    pthread_cond_destroy(&not_full);
 
     return 0;
 }
 ```
 
-Do not assume this improves performance.
+Compile:
 
-In many workloads, excessive yielding can increase scheduling overhead.
+```bash
+gcc producer_consumer.c -pthread -O2 -o producer_consumer
+```
 
 ---
 
-# 72. Why `sleep()` Is Not a Scheduling Primitive
+# 30. Producer-Consumer Working
 
-This is a common mistake:
+Producer:
 
-```c
-sleep(1);
+```text
+lock
+ |
+ | buffer full?
+ +---- yes ---> wait(not_full)
+ |
+ v
+insert item
+ |
+signal(not_empty)
+ |
+unlock
 ```
 
-does not mean:
+Consumer:
 
-> "Give exactly one second of CPU time to another thread."
-
-It means the calling thread requests to sleep for approximately that duration.
-
-The scheduler remains in control.
-
-Likewise:
-
-```c
-sched_yield();
+```text
+lock
+ |
+ | buffer empty?
+ +---- yes ---> wait(not_empty)
+ |
+ v
+remove item
+ |
+signal(not_full)
+ |
+unlock
 ```
-
-does not guarantee which thread runs next.
 
 ---
 
-# 73. Scheduler and Synchronization [OS/KERNEL]
+# 31. `pthread_cond_signal()` vs `pthread_cond_broadcast()` [LSP]
 
-Scheduling and synchronization are closely related.
+### signal
+
+Wake one waiting thread.
+
+```c
+pthread_cond_signal(&cond);
+```
+
+### broadcast
+
+Wake all waiting threads.
+
+```c
+pthread_cond_broadcast(&cond);
+```
+
+Use `broadcast()` when multiple waiters may need to reevaluate the predicate.
+
+After waking, each thread must recheck the condition.
+
+---
+
+# 32. Lost Wakeup [OS]
+
+A lost wakeup can happen with incorrect synchronization.
+
+Bad conceptual pattern:
+
+```text
+Thread A:
+check condition -> false
+
+Thread B:
+change condition
+signal
+
+Thread A:
+starts waiting
+```
+
+The signal happened before A properly entered the wait.
+
+Correct use of:
+
+```text
+mutex
++
+condition predicate
++
+pthread_cond_wait()
+```
+
+coordinates checking and waiting.
+
+---
+
+# 33. Spinlock [OS]
+
+A spinlock waits by repeatedly checking the lock instead of sleeping.
+
+Conceptually:
+
+```text
+while (lock is busy)
+{
+    spin;
+}
+```
+
+Example:
+
+```text
+CPU
+ |
+ +-- Thread A owns lock
+ |
+ +-- Thread B repeatedly checks lock
+```
+
+Thread B consumes CPU while waiting.
+
+---
+
+# 34. Why Use a Spinlock?
+
+Spinlocks can be useful when:
+
+```text
+Critical section is extremely short
+Expected wait is very short
+Sleeping is undesirable
+Kernel/low-level context requires non-sleeping synchronization
+```
+
+They are usually inappropriate for long critical sections.
+
+---
+
+# 35. Spinlock vs Mutex
+
+| Property | Mutex | Spinlock |
+|---|---|---|
+| Waiting | Can sleep/block | Busy-waits |
+| CPU while waiting | Usually not continuously consumed | Consumed |
+| Good for long wait | Yes | No |
+| Good for very short critical section | Yes | Sometimes |
+| Can sleep while held? | Depends on context/protocol; normal mutex holders can block/sleep | No |
+| Common kernel use | Yes | Yes |
+| User-space POSIX primitive | Yes | Yes, with caveats |
+
+Important:
+
+> A spinlock should not be held across operations that may sleep.
+
+---
+
+# 36. POSIX Spinlock [LSP]
+
+```c
+#include <pthread.h>
+#include <stdio.h>
+
+pthread_spinlock_t lock;
+int counter = 0;
+
+void *worker(void *arg)
+{
+    for (int i = 0; i < 100000; ++i)
+    {
+        pthread_spin_lock(&lock);
+        counter++;
+        pthread_spin_unlock(&lock);
+    }
+
+    return NULL;
+}
+
+int main(void)
+{
+    pthread_t t1, t2;
+
+    pthread_spin_init(&lock, PTHREAD_PROCESS_PRIVATE);
+
+    pthread_create(&t1, NULL, worker, NULL);
+    pthread_create(&t2, NULL, worker, NULL);
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("%d\n", counter);
+
+    pthread_spin_destroy(&lock);
+
+    return 0;
+}
+```
+
+---
+
+# 37. Reader-Writer Lock [OS]
+
+A reader-writer lock allows:
+
+```text
+Multiple readers
+OR
+One writer
+```
+
+Conceptually:
+
+```text
+Reader 1 ----\
+Reader 2 -----+--> shared data
+Reader 3 ----/
+
+Writer --------> exclusive
+```
+
+Readers can execute concurrently if no writer owns the lock.
+
+---
+
+# 38. POSIX RWLock [LSP]
+
+```c
+pthread_rwlock_t rwlock;
+
+pthread_rwlock_init(&rwlock, NULL);
+```
+
+Reader:
+
+```c
+pthread_rwlock_rdlock(&rwlock);
+
+/* read shared data */
+
+pthread_rwlock_unlock(&rwlock);
+```
+
+Writer:
+
+```c
+pthread_rwlock_wrlock(&rwlock);
+
+/* modify shared data */
+
+pthread_rwlock_unlock(&rwlock);
+```
+
+Destroy:
+
+```c
+pthread_rwlock_destroy(&rwlock);
+```
+
+---
+
+# 39. When RWLock Helps
+
+RWLock can help when:
+
+```text
+Reads >> Writes
+```
+
+Example:
+
+```text
+1000 readers
+10 writers
+```
+
+But RWLock is not automatically faster than a mutex.
+
+It can add:
+
+```text
+Bookkeeping
+Reader/writer coordination
+Cache traffic
+Writer waiting
+```
+
+Measure before choosing it.
+
+---
+
+# 40. Barrier [OS]
+
+A barrier synchronizes threads at a phase boundary.
+
+Suppose:
+
+```text
+T1 ---- phase 1 ----\
+T2 ---- phase 1 -----+--> barrier
+T3 ---- phase 1 ----/
+                         |
+                         v
+                    phase 2
+```
+
+All participating threads must reach the barrier before proceeding.
+
+---
+
+# 41. POSIX Barrier [LSP]
+
+```c
+pthread_barrier_t barrier;
+
+pthread_barrier_init(&barrier, NULL, 3);
+```
+
+Worker:
+
+```c
+/* phase 1 */
+
+pthread_barrier_wait(&barrier);
+
+/* phase 2 */
+```
+
+Destroy:
+
+```c
+pthread_barrier_destroy(&barrier);
+```
+
+---
+
+# 42. Atomic Operations [OS/LSP]
+
+C11 provides:
+
+```c
+#include <stdatomic.h>
+```
+
+Example:
+
+```c
+atomic_int counter = 0;
+
+atomic_fetch_add(&counter, 1);
+```
+
+Atomics are useful for simple shared-state operations.
+
+---
+
+# 43. Atomic vs Mutex
+
+Atomic is not automatically "better".
+
+Use atomic when the operation/invariant can be correctly represented using atomic operations.
+
+Example:
+
+```text
+Simple counter
+reference count
+flags
+state transitions
+```
+
+Mutex is usually more appropriate for complex invariants:
+
+```text
+update object A
+update object B
+maintain relationship between A and B
+```
+
+---
+
+# 44. C11 Atomic Example [LSP]
+
+```c
+#include <stdio.h>
+#include <pthread.h>
+#include <stdatomic.h>
+
+atomic_int counter = 0;
+
+void *worker(void *arg)
+{
+    for (int i = 0; i < 100000; ++i)
+        atomic_fetch_add(&counter, 1);
+
+    return NULL;
+}
+
+int main(void)
+{
+    pthread_t t1, t2;
+
+    pthread_create(&t1, NULL, worker, NULL);
+    pthread_create(&t2, NULL, worker, NULL);
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("counter = %d\n", atomic_load(&counter));
+
+    return 0;
+}
+```
+
+Compile:
+
+```bash
+gcc atomic.c -pthread -std=c11 -O2 -o atomic
+```
+
+---
+
+# 45. Atomic Memory Orders [LSP]
+
+C/C++ atomics support different memory-ordering strengths.
+
+Important concepts:
+
+```text
+relaxed
+acquire
+release
+acq_rel
+seq_cst
+```
+
+For interview preparation:
+
+```text
+relaxed
+    -> atomicity without strong synchronization ordering
+
+release
+    -> publish prior operations
+
+acquire
+    -> observe effects published by release
+
+seq_cst
+    -> strongest/simple global ordering model
+```
+
+Do not choose memory order only for performance; first establish correctness.
+
+---
+
+# 46. Acquire-Release Example
+
+Producer:
+
+```c
+data = 42;
+atomic_store_explicit(&ready, 1, memory_order_release);
+```
+
+Consumer:
+
+```c
+if (atomic_load_explicit(&ready, memory_order_acquire))
+{
+    printf("%d\n", data);
+}
+```
+
+The release/acquire pair establishes the required synchronization relationship when used correctly.
+
+---
+
+# 47. C++ `std::mutex`
+
+C++ provides:
+
+```cpp
+#include <mutex>
+```
+
+Example:
+
+```cpp
+std::mutex m;
+int counter = 0;
+
+void worker()
+{
+    for (int i = 0; i < 100000; ++i)
+    {
+        std::lock_guard<std::mutex> lock(m);
+        ++counter;
+    }
+}
+```
+
+RAII automatically unlocks the mutex when `lock` goes out of scope.
+
+---
+
+# 48. `std::unique_lock`
+
+Useful when you need more control:
+
+```cpp
+std::unique_lock<std::mutex> lock(m);
+
+lock.unlock();
+
+/* do work */
+
+lock.lock();
+```
+
+It is commonly used with:
+
+```cpp
+std::condition_variable
+```
+
+---
+
+# 49. C++ Condition Variable
+
+```cpp
+std::mutex m;
+std::condition_variable cv;
+bool ready = false;
+```
+
+Wait:
+
+```cpp
+std::unique_lock<std::mutex> lock(m);
+
+cv.wait(lock, [] {
+    return ready;
+});
+```
+
+Notify:
+
+```cpp
+{
+    std::lock_guard<std::mutex> lock(m);
+    ready = true;
+}
+
+cv.notify_one();
+```
+
+The predicate form is preferred because it handles spurious wakeups correctly.
+
+---
+
+# 50. Deadlock [OS]
+
+Deadlock occurs when tasks wait forever for resources held by one another.
+
+Example:
+
+```text
+Thread A:
+holds Lock 1
+waits for Lock 2
+
+Thread B:
+holds Lock 2
+waits for Lock 1
+```
+
+Diagram:
+
+```text
+A ---> Lock 2
+^       |
+|       v
+Lock 1 <--- B
+```
+
+Deadlocks are covered in detail in Chapter 6.
+
+---
+
+# 51. Lock Ordering [OS/LSP]
+
+One way to prevent many lock-order deadlocks:
+
+```text
+Always acquire:
+
+Lock A -> Lock B
+```
+
+Never:
+
+```text
+Thread 1: A -> B
+Thread 2: B -> A
+```
+
+Instead:
+
+```text
+Thread 1: A -> B
+Thread 2: A -> B
+```
+
+Global lock ordering is a powerful design rule.
+
+---
+
+# 52. `pthread_mutex_lock()` and Kernel Interaction [KERNEL]
+
+A common misconception is:
+
+> Every mutex lock immediately enters the kernel.
+
+That is not generally true.
+
+Modern Linux synchronization often uses a **fast user-space path** when the lock is uncontended.
+
+Conceptually:
+
+```text
+pthread_mutex_lock()
+        |
+        v
+   Try fast path
+        |
+   +----+----+
+   |         |
+success    contention
+   |         |
+   v         v
+continue   futex/kernel
+```
+
+This is a key Linux synchronization concept.
+
+---
+
+# 53. Futex [KERNEL/LSP]
+
+**futex = fast userspace mutex**
+
+The Linux futex mechanism supports efficient blocking/waking for user-space synchronization.
+
+Core idea:
+
+```text
+Uncontended:
+user space handles it
+
+Contended:
+kernel helps block/wake waiters
+```
+
+This avoids a system call for every uncontended mutex operation.
+
+---
+
+# 54. Futex Conceptual Flow
+
+```text
+Thread A
+   |
+   | atomic operation
+   v
+lock acquired
+   |
+   v
+continue
+```
+
+Contended case:
+
+```text
+Thread A owns lock
+
+Thread B
+   |
+   v
+cannot acquire
+   |
+   v
+futex wait
+   |
+   v
+kernel blocks B
+   |
+   |
+A unlocks
+   |
+   v
+futex wake
+   |
+   v
+B becomes runnable
+```
+
+The exact pthread mutex implementation is more complex and can vary.
+
+---
+
+# 55. Linux Kernel `mutex` [KERNEL]
+
+Kernel code has its own mutex primitive:
+
+```c
+struct mutex
+```
+
+Typical usage:
+
+```c
+mutex_lock(&my_mutex);
+
+/* critical section */
+
+mutex_unlock(&my_mutex);
+```
+
+A kernel mutex is a sleeping lock.
+
+---
+
+# 56. Kernel Spinlock [KERNEL]
+
+Linux kernel code uses:
+
+```c
+spinlock_t
+```
+
+Typical pattern:
+
+```c
+spin_lock(&lock);
+
+/* critical section */
+
+spin_unlock(&lock);
+```
+
+Important rule:
+
+> Code holding a spinlock must not perform operations that may sleep.
+
+---
+
+# 57. Why Kernel Spinlocks Cannot Sleep [KERNEL]
+
+Suppose:
+
+```text
+CPU 0:
+holds spinlock
+```
+
+If the owner sleeps:
+
+```text
+CPU 0:
+holds lock
+   |
+   v
+sleep
+```
+
+Another CPU:
+
+```text
+CPU 1:
+tries lock
+   |
+   v
+spins
+```
+
+The lock owner cannot run to release the lock.
+
+This can cause severe problems/deadlock.
+
+Therefore:
+
+```text
+spinlock held
+    |
+    +-- no sleeping
+```
+
+---
+
+# 58. Process Context vs Interrupt Context [KERNEL]
+
+This distinction is critical.
+
+## Process context
+
+Kernel is executing on behalf of a process/thread.
+
+Some operations can sleep if the context permits it.
+
+## Interrupt context
+
+Kernel is handling an interrupt.
+
+It cannot generally sleep like normal process context.
+
+Therefore interrupt-related synchronization often requires non-sleeping primitives such as spinlocks, depending on the exact context.
+
+---
+
+# 59. Spinlock with Interrupts [KERNEL]
+
+Kernel code may use variants such as:
+
+```c
+spin_lock_irqsave()
+spin_unlock_irqrestore()
+```
+
+when protecting data shared with interrupt handlers.
+
+Conceptually:
+
+```text
+save interrupt state
+        |
+disable local interrupts
+        |
+acquire spinlock
+        |
+critical section
+        |
+release spinlock
+        |
+restore interrupt state
+```
+
+The exact choice depends on the context and locking requirements.
+
+---
+
+# 60. Kernel Reader-Writer Locks [KERNEL]
+
+Linux provides reader-writer synchronization primitives, including:
+
+```text
+rwlock_t
+rw_semaphore
+```
+
+They have different semantics and are used in different contexts.
+
+The important distinction:
+
+```text
+rwlock_t
+    -> spin-based reader/writer locking
+
+rw_semaphore
+    -> sleeping reader/writer semaphore
+```
+
+Do not treat them as interchangeable.
+
+---
+
+# 61. Wait Queues [KERNEL]
+
+Linux wait queues allow tasks to sleep until an event/condition occurs.
+
+Conceptually:
+
+```text
+Condition false
+     |
+     v
+wait queue
+     |
+     v
+task sleeps
+
+event occurs
+     |
+     v
+wake_up()
+     |
+     v
+task becomes runnable
+```
+
+Typical APIs include:
+
+```c
+wait_event()
+wait_event_interruptible()
+wake_up()
+```
+
+Wait queues are fundamental to kernel blocking mechanisms.
+
+---
+
+# 62. Kernel Condition-Wait Pattern [KERNEL]
+
+Conceptually:
+
+```text
+while (!condition)
+{
+    sleep/wait
+}
+
+continue
+```
+
+This is the kernel equivalent of the important user-space rule:
+
+```text
+while (!predicate)
+    pthread_cond_wait(...)
+```
+
+The predicate must be checked again after waking.
+
+---
+
+# 63. Atomic Operations in Linux Kernel [KERNEL]
+
+Linux provides atomic types/APIs for architecture-supported atomic operations.
+
+Conceptually:
+
+```c
+atomic_t counter;
+atomic_inc(&counter);
+atomic_dec(&counter);
+atomic_read(&counter);
+```
+
+The exact APIs and semantics depend on the kernel API version.
+
+Atomics are useful for simple state/counter operations, but they are not a replacement for every lock.
+
+---
+
+# 64. Reference Counting [KERNEL]
+
+A common synchronization use case is reference counting.
+
+Conceptually:
+
+```text
+object
+  |
+  +-- refcount = 3
+```
+
+Users acquire/release references:
+
+```text
+get -> 4
+put -> 3
+put -> 2
+put -> 1
+put -> 0
+     |
+     v
+free object
+```
+
+Linux provides dedicated reference-counting mechanisms such as `refcount_t`.
+
+Reference counting prevents premature object destruction when multiple users hold references.
+
+---
+
+# 65. Memory Barriers [KERNEL]
+
+A memory barrier controls ordering/visibility of memory operations across CPUs and compiler/CPU reordering constraints.
+
+Conceptually:
+
+```text
+CPU 0                         CPU 1
+
+write data                    read flag
+    |                             |
+    v                             v
+write flag                    read data
+```
+
+Without appropriate ordering, concurrent code can observe states differently than a naive source-code reading suggests.
+
+Linux provides memory-ordering primitives/macros appropriate to different requirements.
+
+---
+
+# 66. Why Volatile Is Not a Thread Synchronization Mechanism
+
+This is a common interview trap.
+
+Incorrect:
+
+```c
+volatile int ready;
+```
+
+and assuming:
+
+```text
+volatile = thread safe
+```
+
+It is not.
+
+`volatile` does not provide the required atomicity, mutual exclusion, or inter-thread memory-ordering guarantees.
+
+Use:
+
+```text
+mutex
+atomic
+condition variable
+appropriate synchronization
+```
+
+depending on the problem.
+
+---
+
+# 67. Lock Contention [OS/KERNEL]
+
+Lock contention occurs when multiple threads frequently compete for the same lock.
+
+```text
+T1 ----\
+T2 -----\
+T3 ------> Lock
+T4 -----/
+```
+
+High contention can cause:
+
+```text
+Waiting
+Context switches
+Cache-line bouncing
+Lower scalability
+```
+
+---
+
+# 68. Critical Section Length
+
+Bad:
+
+```c
+lock();
+
+do_expensive_computation();
+read_file();
+network_operation();
+update_shared_data();
+
+unlock();
+```
+
+Better:
+
+```c
+do_expensive_computation();
+
+lock();
+
+update_shared_data();
+
+unlock();
+```
+
+General rule:
+
+> Keep critical sections as small as correctness allows.
+
+But do not split locking in a way that breaks the invariant.
+
+---
+
+# 69. Lock Granularity
+
+## Coarse-grained locking
+
+One large lock:
+
+```text
+          Lock
+           |
+   +-------+-------+
+   |       |       |
+ Data A  Data B  Data C
+```
+
+Pros:
+
+```text
+Simple
+Easy to reason about
+```
+
+Cons:
+
+```text
+High contention
+Poor scalability
+```
+
+## Fine-grained locking
+
+Separate locks:
+
+```text
+Lock A -> Data A
+Lock B -> Data B
+Lock C -> Data C
+```
+
+Pros:
+
+```text
+More concurrency
+```
+
+Cons:
+
+```text
+Complex
+Deadlock risk
+More synchronization overhead
+```
+
+---
+
+# 70. Lock-Free vs Wait-Free [OS/LSP]
+
+## Lock-free
+
+The system as a whole makes progress even if some individual operation is delayed.
+
+## Wait-free
+
+Every operation completes within a bounded number of steps.
+
+These are stronger guarantees than simply saying:
+
+```text
+"uses atomics"
+```
+
+A program using atomics is not automatically lock-free or wait-free.
+
+---
+
+# 71. ABA Problem [LSP/KERNEL]
+
+A common lock-free algorithm problem:
+
+```text
+Initial:
+A
+
+Thread 1 reads A
+
+Thread 2:
+A -> B
+B -> A
+
+Thread 1 sees A again
+```
+
+Thread 1 may incorrectly assume nothing changed.
+
+This is the **ABA problem**.
+
+Solutions can include:
+
+```text
+Tagged/versioned pointers
+Hazard pointers
+Epoch-based reclamation
+Other safe memory-reclamation techniques
+```
+
+---
+
+# 72. Synchronization and Cache Coherence
+
+Consider:
+
+```text
+CPU 0 -> counter
+CPU 1 -> counter
+```
+
+A shared cache line can bounce between CPUs.
+
+Synchronization may therefore involve costs beyond the lock instruction itself:
+
+```text
+atomic operation
+    +
+cache coherence
+    +
+memory ordering
+    +
+scheduler effects
+```
+
+This is why heavily contended shared state can scale poorly.
+
+---
+
+# 73. Priority Inversion [OS/KERNEL]
+
+Example:
+
+```text
+High-priority H
+Medium-priority M
+Low-priority L
+```
+
+L owns a mutex needed by H:
+
+```text
+L -> owns mutex
+H -> blocked on mutex
+M -> runnable
+```
+
+If M keeps running:
+
+```text
+H waits for L
+L waits for CPU
+M consumes CPU
+```
+
+H is indirectly delayed by M.
+
+---
+
+# 74. Priority Inheritance
+
+With priority inheritance:
+
+```text
+L owns mutex
+H waits for mutex
+       |
+       v
+L temporarily inherits H's priority
+       |
+       v
+L runs
+       |
+       v
+L releases mutex
+       |
+       v
+H runs
+```
+
+This is important in real-time systems.
+
+---
+
+# 75. Priority Ceiling [OS]
+
+Another real-time synchronization technique is priority ceiling.
+
+Conceptually:
+
+```text
+Each protected resource
+    |
+    v
+has a defined priority ceiling
+```
+
+This can help bound priority inversion and prevent certain deadlock scenarios.
+
+---
+
+# 76. Synchronization in User Space vs Kernel Space
+
+```text
+User space
+   |
+   +-- pthread_mutex
+   +-- pthread_cond
+   +-- semaphore
+   +-- C/C++ atomics
+   |
+   v
+Linux synchronization implementation
+   |
+   +-- fast atomic operations
+   +-- futex when blocking is required
+   |
+   v
+Kernel
+   |
+   +-- scheduler
+   +-- wait queues
+   +-- mutex
+   +-- spinlock
+   +-- atomic operations
+```
+
+This layered view is important for Linux interviews.
+
+---
+
+# 77. Why Mutexes Can Be Fast
+
+An uncontended mutex often follows a fast path:
+
+```text
+Thread
+  |
+  v
+atomic attempt
+  |
+  v
+success
+  |
+  v
+continue
+```
+
+No expensive blocking operation is required.
+
+Only when contention requires waiting does the implementation need more involved kernel-assisted behavior.
+
+---
+
+# 78. Why Sleeping Locks Are Useful
+
+If a thread expects to wait for a significant time:
+
+```text
+Thread
+  |
+  v
+cannot acquire lock
+  |
+  v
+sleep
+  |
+  v
+CPU executes another task
+```
+
+This avoids wasting CPU in a spin loop.
+
+---
+
+# 79. Why Spinlocks Can Be Faster
+
+For extremely short waits:
+
+```text
+lock held for 50 ns
+```
+
+Putting a thread to sleep and waking it may cost more than briefly spinning.
+
+Therefore:
+
+```text
+very short wait
+    -> spinning may be useful
+
+long/unpredictable wait
+    -> sleeping may be better
+```
+
+The correct choice depends on context and workload.
+
+---
+
+# 80. Never Assume "Spinlock Is Faster"
+
+This is a senior interview trap.
+
+A spinlock can be worse because:
+
+```text
+CPU is consumed while waiting
+```
+
+Example:
+
+```text
+Critical section = 10 ms
+```
+
+Spinning for 10 ms is usually wasteful.
+
+A mutex can let the waiter sleep and allow another task to use the CPU.
+
+---
+
+# 81. Synchronization and Scheduler Interaction
 
 Example:
 
 ```text
 Thread A
-   |
-   | lock(mutex)
-   v
-critical section
+  |
+  | lock
+  v
+owns mutex
 
 Thread B
-   |
-   | lock(mutex)
-   v
-blocked
+  |
+  | lock
+  v
+cannot acquire
+  |
+  v
+blocks
+  |
+  v
+scheduler
+  |
+  v
+another task runs
 ```
 
-The scheduler runs another runnable task while B waits.
-
-Chapter 5 will connect:
+When A unlocks:
 
 ```text
-Scheduler
-   +
-Mutex
-   +
-Condition variable
-   +
-Semaphore
+A -> unlock
+      |
+      v
+wake waiter
+      |
+      v
+B becomes runnable
+      |
+      v
+scheduler considers B
 ```
+
+This connects synchronization directly to Chapter 4.
 
 ---
 
-# 74. Priority Inversion [OS/KERNEL]
+# 82. Debugging Race Conditions [LSP]
 
-Suppose:
+Useful tools:
 
-```text
-High-priority Thread H
-Low-priority Thread L
-Medium-priority Thread M
+```bash
+gdb
+strace
+perf
 ```
 
-L holds a lock needed by H:
+For race/memory bugs, tools such as:
 
 ```text
-L -> holds mutex
-H -> waits for mutex
-M -> keeps running
+ThreadSanitizer
+Helgrind
+DRD
+```
+
+can be useful when supported by the build/toolchain.
+
+Example with GCC/Clang ThreadSanitizer:
+
+```bash
+gcc -fsanitize=thread -g race.c -pthread -o race
 ```
 
 Then:
 
-```text
-H cannot run
-because L cannot run
-because M keeps getting CPU
+```bash
+./race
 ```
-
-This is **priority inversion**.
-
-A common mitigation is **priority inheritance**.
-
-This topic becomes important in real-time systems.
 
 ---
 
-# 75. Priority Inheritance [OS/KERNEL]
+# 83. Deliberate Race Condition Example [LSP]
 
-Conceptually:
+```c
+#include <pthread.h>
+#include <stdio.h>
 
-```text
-Low-priority L owns lock
-High-priority H waits for lock
+int counter = 0;
 
-L temporarily inherits H's priority
-          |
-          v
-L runs and releases lock
-          |
-          v
-H acquires lock
+void *worker(void *arg)
+{
+    for (int i = 0; i < 100000; ++i)
+        counter++;
+
+    return NULL;
+}
+
+int main(void)
+{
+    pthread_t t1, t2;
+
+    pthread_create(&t1, NULL, worker, NULL);
+    pthread_create(&t2, NULL, worker, NULL);
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("counter = %d\n", counter);
+
+    return 0;
+}
 ```
 
-This reduces priority inversion.
+This has a data race.
+
+Do not rely on observing a wrong number every time; undefined behavior means the result is not something the program can safely depend on.
 
 ---
 
-# 76. Scheduler and Mutex Contention
+# 84. Fix the Race with Mutex
 
-Suppose 32 threads all fight for one mutex:
+```c
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-```text
-T1 \
-T2  \
-T3   \
-...   +--> Mutex
-T32  /
+void *worker(void *arg)
+{
+    for (int i = 0; i < 100000; ++i)
+    {
+        pthread_mutex_lock(&lock);
+        counter++;
+        pthread_mutex_unlock(&lock);
+    }
+
+    return NULL;
+}
 ```
 
-Only one can enter the critical section.
-
-More threads do not necessarily improve performance.
-
-You may get:
-
-```text
-Lock contention
-Context switches
-Cache-line bouncing
-Scheduler overhead
-```
-
-This is a common performance issue in multithreaded applications.
+Now access is serialized.
 
 ---
 
-# 77. Amdahl's Law and Threads [OS]
+# 85. Fix a Counter with Atomics
 
-Suppose:
+```c
+#include <stdatomic.h>
 
-```text
-90% parallel
-10% serial
+atomic_int counter = 0;
+
+void *worker(void *arg)
+{
+    for (int i = 0; i < 100000; ++i)
+        atomic_fetch_add(&counter, 1);
+
+    return NULL;
+}
 ```
 
-Even with many CPUs, the serial portion limits speedup.
-
-Amdahl's Law:
-
-```text
-Speedup = 1 / (S + P/N)
-```
-
-where:
-
-```text
-S = serial fraction
-P = parallel fraction
-N = processors
-```
-
-For:
-
-```text
-S = 0.1
-P = 0.9
-N -> infinity
-```
-
-maximum theoretical speedup:
-
-```text
-1 / 0.1 = 10
-```
-
-This explains why "more threads" does not imply unlimited performance.
+This is appropriate because the required operation is simply an atomic increment.
 
 ---
 
-# 78. Oversubscription [OS]
+# 86. Mutex vs Atomic Decision
 
-Oversubscription occurs when there are significantly more CPU-bound runnable threads than available logical CPUs.
+Ask:
+
+```text
+Is this just one atomic state/counter operation?
+       |
+       +-- yes --> atomic may be appropriate
+       |
+       +-- no --> mutex/other synchronization may be needed
+```
 
 Example:
 
 ```text
-CPU = 8
-Runnable CPU-bound threads = 100
+counter++               -> atomic can work
+
+update A and B together -> mutex may be required
 ```
-
-Potential effects:
-
-```text
-More context switches
-Cache disruption
-Scheduler overhead
-Lower throughput
-Higher latency
-```
-
-For I/O-bound workloads, having more threads can sometimes be useful because many threads may be blocked.
 
 ---
 
-# 79. False Sharing [OS/Performance]
+# 87. Semaphore vs Condition Variable
 
-Two threads may update different variables that happen to share the same CPU cache line.
+### Semaphore
+
+Represents:
+
+```text
+count/resource availability
+```
+
+Example:
+
+```text
+4 buffers available
+```
+
+### Condition variable
+
+Represents:
+
+```text
+wait until predicate becomes true
+```
+
+Example:
+
+```text
+queue is not empty
+```
+
+Condition variables are normally used together with a mutex and a predicate.
+
+---
+
+# 88. Mutex vs Semaphore
+
+| Feature | Mutex | Semaphore |
+|---|---|---|
+| Main purpose | Mutual exclusion | Counting/signaling |
+| Ownership | Yes | No mutex-style ownership |
+| Count | Binary ownership state | 0..N |
+| Typical use | Critical section | Resource pool |
+| Unlock/release semantics | Owner unlocks | `sem_post()` increments |
+
+---
+
+# 89. Mutex vs Condition Variable
+
+They solve different problems:
+
+```text
+Mutex
+    -> protects shared state
+
+Condition variable
+    -> allows waiting for a state/predicate
+```
+
+Typical combination:
+
+```text
+mutex + condition variable
+```
+
+not:
+
+```text
+condition variable alone
+```
+
+---
+
+# 90. Mutex vs Spinlock
+
+Use a mutex when:
+
+```text
+Waiting may be non-trivial
+Thread can sleep
+```
+
+Use a spinlock when:
+
+```text
+Critical section is extremely short
+Sleeping is forbidden/undesirable
+Context permits spinning
+```
+
+In kernel code, context rules are especially important.
+
+---
+
+# 91. Common Synchronization Mistakes
+
+## Mistake 1
+
+Assuming:
+
+```text
+volatile = thread safe
+```
+
+Wrong.
+
+## Mistake 2
+
+Using a mutex only around writes but not reads that participate in the same invariant.
+
+## Mistake 3
+
+Using `if` instead of `while` around condition-variable waits.
+
+## Mistake 4
+
+Holding a lock while doing slow I/O.
+
+## Mistake 5
+
+Acquiring locks in inconsistent order.
+
+## Mistake 6
+
+Using spinlocks for long critical sections.
+
+## Mistake 7
+
+Assuming atomics automatically solve complex invariants.
+
+## Mistake 8
+
+Creating too many locks without a clear ownership/ordering design.
+
+---
+
+# 92. Senior Interview: What Happens When Mutex Is Contended?
+
+Strong answer:
+
+> The implementation first attempts a fast user-space acquisition. If the mutex is uncontended, the operation can complete without blocking in the kernel. Under contention, the implementation can use the Linux futex mechanism to coordinate waiting and waking. The waiting thread may block, allowing the scheduler to run another task. When the mutex becomes available, a waiter can be woken and compete to acquire it.
+
+---
+
+# 93. Senior Interview: Why Is `pthread_cond_wait()` Called with a Mutex?
+
+Answer:
+
+> The mutex protects the predicate being waited on and coordinates checking that predicate with entering the wait. `pthread_cond_wait()` atomically releases the mutex as part of entering the wait and reacquires it before returning. The caller then rechecks the predicate in a loop.
+
+---
+
+# 94. Senior Interview: Why `while`, Not `if`?
+
+Answer:
+
+> Because a wakeup does not prove the predicate is true for the current thread. There can be spurious wakeups, multiple waiters, or another thread may consume/change the condition before this thread reacquires the mutex. Therefore the predicate must always be checked again.
+
+---
+
+# 95. Senior Interview: Why Not Use Spinlock Everywhere?
+
+Answer:
+
+> A spinlock consumes CPU while waiting. It is useful only when the expected wait is very short or when sleeping is not permitted. For potentially longer waits, a sleeping mutex is usually more efficient because the waiting thread can block and the CPU can execute useful work.
+
+---
+
+# 96. Senior Interview: What Is a Futex?
+
+Answer:
+
+> A futex is a Linux kernel mechanism used to implement efficient blocking/waking synchronization. The uncontended path can remain in user space using atomic operations. The kernel is involved when a thread actually needs to wait or wake another waiter.
+
+---
+
+# 97. Senior Interview: Is `counter++` Atomic?
+
+Generally:
+
+```c
+counter++;
+```
+
+should not be assumed atomic.
 
 Conceptually:
 
 ```text
-Cache line
-+-----------------------------+
-| counterA | counterB         |
-+-----------------------------+
-     ^           ^
-   CPU 0       CPU 1
+load
+modify
+store
 ```
 
-Even though variables are logically independent, cache coherence traffic can hurt performance.
-
-This is not primarily a scheduler algorithm problem, but it is important in multithreaded performance analysis.
-
----
-
-# 80. Scheduler Interview Question — What Happens When a Thread Blocks?
-
-Strong answer:
+For shared concurrent access, use:
 
 ```text
-Thread performs blocking operation
-        |
-        v
-Thread cannot continue
-        |
-        v
-Kernel puts task into appropriate wait state
-        |
-        v
-Scheduler selects another runnable task
-        |
-        v
-CPU executes another task
-        |
-        v
-Event/I/O completes
-        |
-        v
-blocked task becomes runnable
-        |
-        v
-scheduler can consider it again
+mutex
+or
+appropriate atomic operation
 ```
 
----
-
-# 81. Scheduler Interview Question — What Happens When a Higher-Priority Task Wakes Up?
-
-Conceptually:
-
-```text
-Task A running
-      |
-      | higher-priority Task B wakes
-      v
-Scheduler evaluates priorities/policy
-      |
-      v
-Task B may preempt Task A
-```
-
-The exact preemption behavior depends on the scheduling class and kernel state.
+depending on the required semantics.
 
 ---
 
-# 82. Scheduler Interview Question — Why Is Context Switching Expensive?
-
-Strong answer:
-
-> A context switch requires changing execution context and performing kernel bookkeeping. Depending on the switch, this can involve register state changes, scheduler work, cache disruption, and possibly address-space/TLB-related effects. Modern hardware and Linux optimize these operations, but excessive switching can still reduce useful application throughput.
-
----
-
-# 83. Scheduler Interview Question — Process vs Thread Scheduling
-
-A good senior answer:
-
-> Linux schedules tasks, and threads are represented as schedulable tasks. Threads in the same process can therefore be scheduled independently and can execute on different CPUs. They may share the same memory-management context, which can make a switch between sibling threads different from a switch between tasks using different address spaces.
-
----
-
-# 84. Scheduler Interview Question — CFS vs EEVDF
-
-A strong current answer:
-
-> CFS is the foundational Linux fair-scheduling model and introduced concepts such as virtual runtime. Modern Linux has evolved toward EEVDF, which uses eligibility and virtual deadlines to make fair-scheduling decisions. So for interviews I would know both: CFS for understanding the historical Linux scheduler model and EEVDF for current scheduler direction.
-
----
-
-# 85. Scheduler Interview Question — What Is `nice`?
-
-A good answer:
-
-> Nice is a user-visible parameter that influences the relative scheduling weight of normal tasks. On Linux, the usual range is -20 to +19, with lower values representing greater scheduling preference. It is not the same thing as real-time priority.
-
----
-
-# 86. Scheduler Interview Question — What Is CPU Affinity?
-
-A good answer:
-
-> CPU affinity restricts a task to a set of allowed CPUs. It can be used for performance tuning, cache locality, isolation, and real-time workloads, but overly restrictive affinity can also cause load imbalance.
-
----
-
-# 87. Scheduler Interview Question — What Is Starvation?
-
-> Starvation occurs when a runnable task receives insufficient CPU service for an unacceptably long time because other tasks continually receive preference. Priority scheduling can cause starvation; techniques such as aging can reduce it.
-
----
-
-# 88. Scheduler Interview Question — What Is Priority Inversion?
-
-> Priority inversion occurs when a high-priority task is blocked by a lower-priority task holding a resource, while medium-priority work prevents the lower-priority task from running and releasing the resource. Priority inheritance is one common mitigation.
-
----
-
-# 89. Scheduler Interview Question — Does 100 Threads Mean 100-Way Parallelism?
+# 98. Senior Interview: Does Atomic Mean Lock-Free?
 
 No.
 
-If:
+An atomic API provides atomicity according to its defined semantics.
+
+It does not automatically mean:
 
 ```text
-logical CPUs = 8
-runnable CPU-bound threads = 100
+lock-free
+wait-free
+scalable
+contention-free
 ```
 
-only a limited number can execute simultaneously.
+Always distinguish these concepts.
 
-The remaining threads compete for CPU time.
+---
 
-Therefore:
+# 99. Senior Interview: What Is Priority Inversion?
+
+Answer:
+
+> A high-priority task waits for a lock held by a low-priority task, while a medium-priority task prevents the low-priority task from running. Priority inheritance can temporarily raise the low-priority lock holder's priority so it can finish and release the resource.
+
+---
+
+# 100. Senior Interview: How Do You Avoid Deadlocks?
+
+Important techniques:
 
 ```text
-Threads != CPUs
-Threads != parallelism
+Consistent lock ordering
+Avoid circular dependencies
+Keep lock scope small
+Avoid unnecessary nested locks
+Use trylock carefully where appropriate
+Establish ownership rules
+Use timeouts where appropriate
+Use deadlock-detection/debugging tools
+```
+
+Chapter 6 covers deadlocks in detail.
+
+---
+
+# 101. Senior Interview: How Would You Debug a Production Lock Contention Problem?
+
+A practical approach:
+
+```text
+1. Identify the process/thread
+2. Observe CPU and context switches
+3. Check thread states
+4. Inspect application lock metrics
+5. Use perf where appropriate
+6. Capture stack traces
+7. Identify lock ownership/waiters
+8. Measure critical-section duration
+9. Look for excessive contention
+10. Check CPU affinity/NUMA effects
+11. Reduce lock scope or redesign shared state
+```
+
+Useful tools:
+
+```bash
+top -H -p <pid>
+pidstat -w -p <pid> 1
+perf stat ...
+perf record ...
+gdb
 ```
 
 ---
 
-# 90. Scheduler Interview Question — Why Can More Threads Make a Program Slower?
+# 102. Practical Exercise 1 — Race Condition
 
-Because of:
+Create:
 
 ```text
-Context switching
-Lock contention
-Cache misses
-False sharing
-Scheduler overhead
-Memory overhead
-CPU migration
-NUMA effects
-Oversubscription
+race.c
 ```
 
-A well-designed system chooses concurrency based on workload and hardware.
+Implement:
+
+```text
+2 threads
+shared counter
+100000 increments each
+```
+
+Run repeatedly.
+
+Then fix it using:
+
+```text
+mutex
+```
+
+Then compare against:
+
+```text
+atomic
+```
+
+Questions:
+
+```text
+Which is faster?
+Why?
+What happens as thread count increases?
+```
 
 ---
 
-# 91. Three-Layer Summary
+# 103. Practical Exercise 2 — Producer Consumer
+
+Implement:
+
+```text
+bounded queue
+1 producer
+4 consumers
+```
+
+Use:
+
+```text
+mutex
+not_empty
+not_full
+```
+
+Observe:
+
+```text
+buffer empty
+buffer full
+threads waiting
+threads waking
+```
+
+---
+
+# 104. Practical Exercise 3 — Reader Writer
+
+Implement:
+
+```text
+10 readers
+2 writers
+```
+
+Compare:
+
+```text
+mutex
+vs
+rwlock
+```
+
+Measure throughput.
+
+Question:
+
+> Does RWLock always perform better?
+
+Answer:
+
+> No. It depends on read/write ratio, contention, critical-section size, scheduling, and implementation overhead.
+
+---
+
+# 105. Practical Exercise 4 — Spinlock vs Mutex
+
+Implement the same short critical section using:
+
+```text
+pthread_mutex
+pthread_spinlock
+```
+
+Measure:
+
+```bash
+time ./program
+```
+
+Then increase critical-section duration.
+
+Observe how the relative behavior changes.
+
+---
+
+# 106. Practical Exercise 5 — Condition Variable
+
+Implement:
+
+```text
+worker threads
++
+task queue
++
+condition variable
+```
+
+Workers:
+
+```text
+while (running)
+{
+    lock
+
+    while (queue_empty)
+        wait
+
+    get task
+
+    unlock
+
+    process task
+}
+```
+
+This is the foundation of a thread pool.
+
+---
+
+# 107. Thread Pool Mental Model
+
+```text
+                Task producers
+                      |
+                      v
+               +-------------+
+               | Task Queue  |
+               +-------------+
+                 ^    ^    ^
+                 |    |    |
+                W1   W2   W3
+                 |    |    |
+                 +----+----+
+                      |
+                   Workers
+```
+
+Synchronization:
+
+```text
+mutex
++
+condition variable
++
+queue
+```
+
+This pattern is extremely common in real systems.
+
+---
+
+# 108. Synchronization Decision Tree
+
+```text
+Need to protect shared data?
+          |
+         yes
+          |
+          v
+Is operation simple and atomic?
+          |
+     +----+----+
+    yes        no
+     |          |
+     v          v
+ atomic       mutex
+                |
+                v
+Need to wait for a condition?
+                |
+               yes
+                |
+                v
+       mutex + condition variable
+
+Need counting/resource control?
+                |
+               yes
+                |
+                v
+             semaphore
+
+Need multiple readers?
+                |
+               yes
+                |
+                v
+             RWLock
+
+Need extremely short non-sleeping lock?
+                |
+               yes
+                |
+                v
+            spinlock
+```
+
+This is a conceptual guide, not a substitute for workload/context analysis.
+
+---
+
+# 109. Three-Layer Summary
 
 ## [OS]
 
 Know:
 
 ```text
-CPU scheduling
-Ready/running/blocked
-CPU burst
-I/O burst
-Preemption
-Dispatcher
-Context switch
-FCFS
-SJF
-SRTF
-Priority
-Round Robin
-MLFQ
+Race condition
+Critical section
+Mutual exclusion
+Atomicity
+Visibility
+Memory ordering
+Mutex
+Semaphore
+Condition variable
+Spinlock
+RWLock
+Barrier
 Starvation
-Aging
-Throughput
-Waiting time
-Turnaround time
-Response time
+Priority inversion
+Priority inheritance
+Lock ordering
+Deadlock relationship
+Lock contention
+Lock granularity
+Lock-free
+Wait-free
 ```
 
 ## [LSP]
@@ -2367,25 +3072,24 @@ Response time
 Know:
 
 ```text
-nice()
-getpriority()
-setpriority()
-sched_yield()
-sched_getscheduler()
-sched_getparam()
-sched_setparam()
-sched_setscheduler()
-sched_getaffinity()
-sched_setaffinity()
+pthread_mutex_*
+pthread_cond_*
+sem_*
+pthread_rwlock_*
+pthread_spin_*
+pthread_barrier_*
+C11 atomics
+C++ std::mutex
+C++ condition_variable
+std::atomic
+std::lock_guard
+std::unique_lock
 
-taskset
-chrt
-ps
-top
-htop
-pidstat
+futex concept
+ThreadSanitizer
+Helgrind
+gdb
 perf
-/proc/<pid>/sched
 ```
 
 ## [KERNEL]
@@ -2393,340 +3097,219 @@ perf
 Know:
 
 ```text
-task_struct
-runnable task
-scheduler
-run queue
-per-CPU scheduling
-scheduling classes
-SCHED_OTHER
-SCHED_FIFO
-SCHED_RR
-SCHED_DEADLINE
-nice/weight
-CFS
-vruntime
-EEVDF
-preemption
-wakeup
-task migration
-CPU affinity
-NUMA
-priority inversion
+struct mutex
+spinlock_t
+rwlock_t
+rw_semaphore
+atomic_t
+refcount_t
+wait queues
+futex
+scheduler interaction
+process context
+interrupt context
+spinlock + interrupt rules
+memory barriers
 priority inheritance
-context switch
+lock contention
+per-CPU/cache effects
 ```
 
 ---
 
-# 92. Important Commands Cheat Sheet
+# 110. Important Commands Cheat Sheet
 
 ```bash
-# CPU count
-nproc
+# Compile pthread program
+gcc program.c -pthread -o program
 
-# Show process scheduling information
-ps -eo pid,tid,cls,rtprio,ni,pri,psr,stat,comm
+# Compile with debug symbols
+gcc program.c -pthread -g -O0 -o program
+
+# ThreadSanitizer
+gcc program.c -pthread -fsanitize=thread -g -o program
 
 # Show threads
 ps -T -p <pid>
 
-# Show all threads
-ps -eLf
-
-# Interactive process view
-top
-
-# Thread view
+# Interactive thread view
 top -H -p <pid>
 
-# Interactive view
-htop
-
-# Inspect scheduling information
-cat /proc/<pid>/sched
-
-# Inspect thread directories
-ls /proc/<pid>/task
-
-# Set process affinity
-taskset -cp 0 <pid>
-
-# Start process on selected CPU
-taskset -c 0 ./program
-
-# Inspect scheduling policy
-chrt -p <pid>
-
-# Run with Round Robin
-chrt -r 10 ./program
-
-# Run with a nice value
-nice -n 10 ./program
-
-# Change priority of an existing process
-renice 10 -p <pid>
-
-# Scheduler statistics
+# Context switches
 pidstat -w -p <pid> 1
 
 # Performance statistics
 perf stat ./program
 
-# Context switch/migration counters
-perf stat -e context-switches,cpu-migrations,task-clock ./program
+# Record performance profile
+perf record ./program
+
+# Debug with gdb
+gdb ./program
+
+# Attach gdb
+gdb -p <pid>
 ```
 
 ---
 
-# 93. Practice Problems
+# 111. Final Mental Model
 
-## OS Theory
-
-1. Calculate waiting time for FCFS.
-2. Calculate turnaround time for SJF.
-3. Compare SJF and SRTF.
-4. Calculate Round Robin waiting time for different quanta.
-5. Explain convoy effect.
-6. Explain starvation.
-7. Explain aging.
-8. Compare preemptive and non-preemptive scheduling.
-9. Explain response vs turnaround time.
-10. Explain priority inversion.
-
-## Linux Programming
-
-11. Print current scheduling policy.
-12. Change nice value.
-13. Print current nice value.
-14. Call `sched_yield()`.
-15. Inspect process CPU affinity.
-16. Set CPU affinity from C.
-17. Create CPU-bound threads.
-18. Measure context switches using `pidstat`.
-19. Compare affinity settings.
-20. Compare normal and nice-adjusted workloads.
-
-## Kernel Internals
-
-21. Explain `task_struct`.
-22. Explain runnable task.
-23. Explain run queue.
-24. Explain per-CPU scheduling.
-25. Explain task migration.
-26. Explain preemption.
-27. Explain wakeup.
-28. Explain CFS/vruntime.
-29. Explain EEVDF at a high level.
-30. Explain real-time scheduling classes.
-
----
-
-# 94. Practical Senior-Level Exercise
-
-Build a program that:
+Synchronization is not simply:
 
 ```text
-1. Creates 4 CPU-bound threads
-2. Prints PID/TID
-3. Prints CPU number using sched_getcpu()
-4. Measures execution time
-5. Runs once normally
-6. Runs once with CPU affinity
-7. Runs once with a changed nice value
-8. Observes it using top -H
-9. Measures context switches using pidstat
-10. Measures performance using perf
+"Put a mutex around the variable."
 ```
 
-Then answer:
+The correct mental model is:
 
 ```text
-Why did CPU utilization change?
-Why did context switches change?
-Why did affinity change performance?
-Why can restricting CPUs hurt?
-Why doesn't increasing thread count always help?
+                Shared State
+                     |
+                     v
+             What invariant?
+                     |
+                     v
+              Who accesses it?
+                     |
+                     v
+             What concurrency?
+                     |
+          +----------+----------+
+          |                     |
+          v                     v
+       Atomic?               Complex?
+          |                     |
+          v                     v
+       Atomic              Mutex/RWLock
+                                |
+                                v
+                       Need to wait?
+                                |
+                                v
+                       Condition variable
+                                |
+                                v
+                       Blocking/wakeup
+                                |
+                                v
+                             Futex
+                                |
+                                v
+                            Scheduler
+                                |
+                                v
+                              CPU
 ```
 
-This is much more valuable for a senior Linux interview than memorizing scheduling algorithms alone.
-
----
-
-# 95. Final Mental Model
+Kernel-level view:
 
 ```text
-                         RUNNABLE TASKS
-                              |
-                +-------------+-------------+
-                |             |             |
-              Task A        Task B        Task C
-                |             |             |
-                +-------------+-------------+
-                              |
-                              v
-                         SCHEDULER
-                              |
-          +-------------------+-------------------+
-          |                   |                   |
-          v                   v                   v
-       CPU 0                CPU 1               CPU 2
-          |                   |                   |
-       Task A               Task B               Task C
-          |
-          v
-    Context switch /
-    preemption /
-    wakeup /
-    migration
-          |
-          v
-       scheduler
-```
-
-Linux mental model:
-
-```text
-                  task_struct
-                       |
-                       v
-                 schedulable task
-                       |
-              +--------+--------+
-              |                 |
-              v                 v
-         Runnable            Blocked
-              |                 |
-              v                 |
-        Scheduling class        |
-              |                 |
-              v                 |
-        Run queue / CPU         |
-              |                 |
-              +--------+--------+
-                       |
-                       v
-                    CPU
-                       |
-                       v
-                  execution
+User Thread
+    |
+    v
+pthread synchronization
+    |
+    +---- fast uncontended path
+    |
+    +---- contention
+             |
+             v
+           futex
+             |
+             v
+          Kernel
+             |
+      +------+------+
+      |             |
+      v             v
+ wait queue      scheduler
+      |             |
+      +------+------+
+             |
+             v
+          wakeup
+             |
+             v
+        runnable task
 ```
 
 ---
 
-# Chapter 4 — Key Takeaways
+# Chapter 5 — Key Takeaways
 
-1. CPU scheduling chooses which runnable task executes.
-2. Linux schedules individual tasks/threads.
-3. Ready means runnable but waiting for CPU.
-4. Running means currently executing.
-5. Blocked means waiting for an event/resource.
-6. CPU-bound and I/O-bound workloads behave differently.
-7. Important metrics are utilization, throughput, waiting time, turnaround time, and response time.
-8. Preemptive scheduling allows the OS to interrupt a running task.
-9. Context switching has overhead.
-10. FCFS is simple but can suffer from convoy effect.
-11. SJF minimizes average waiting time under ideal known burst lengths.
-12. SRTF is the preemptive shortest-job strategy.
-13. Priority scheduling can cause starvation.
-14. Aging can reduce starvation.
-15. Round Robin uses a time quantum.
-16. A very small quantum increases switching overhead.
-17. A very large quantum makes RR approach FCFS.
-18. Linux uses scheduling classes.
-19. `SCHED_OTHER` is the common normal scheduling policy.
-20. `SCHED_FIFO` and `SCHED_RR` are real-time policies.
-21. `SCHED_DEADLINE` is designed for deadline-oriented workloads.
-22. Nice values influence normal scheduling preference.
-23. CPU affinity controls where a task may execute.
-24. Run queues track runnable work in scheduler structures.
-25. Tasks can migrate between CPUs.
-26. NUMA and cache locality influence scheduling performance.
-27. CFS is the foundational Linux fair-scheduling model.
-28. Modern Linux has evolved toward EEVDF-based fair scheduling.
-29. Priority inversion can be mitigated with priority inheritance.
-30. More threads do not automatically mean better performance.
-31. Oversubscription can increase scheduling overhead.
-32. `ps`, `top`, `pidstat`, `perf`, `taskset`, `chrt`, and `/proc` are important practical tools.
-33. For senior interviews, connect:
-
-```text
-Application
-    ↓
-pthread / process execution
-    ↓
-Linux task
-    ↓
-task_struct
-    ↓
-Runnable / blocked state
-    ↓
-Scheduling class
-    ↓
-Run queue / CPU
-    ↓
-Scheduler
-    ↓
-Context switch / preemption / wakeup
-    ↓
-CPU
-```
+1. Synchronization protects shared state and establishes correct concurrency semantics.
+2. A race condition occurs when correctness depends on unsafe timing/interleaving.
+3. A critical section accesses shared state that must be protected.
+4. Mutexes provide mutual exclusion.
+5. Semaphores are useful for counting resources/signaling.
+6. Condition variables allow threads to wait for predicates.
+7. Always use a predicate and normally a `while` loop with a condition variable.
+8. `pthread_cond_wait()` releases the mutex while waiting and reacquires it before returning.
+9. Spinlocks busy-wait and therefore consume CPU while waiting.
+10. Spinlocks are useful only in appropriate short/non-sleeping contexts.
+11. RWLocks permit concurrent readers but serialize writers.
+12. Barriers synchronize execution phases.
+13. Atomics are excellent for simple atomic state transitions/counters.
+14. Atomics do not automatically replace mutexes for complex invariants.
+15. `volatile` is not a thread-synchronization mechanism.
+16. Lock contention can hurt scalability.
+17. Keep critical sections as short as correctness permits.
+18. Coarse locks simplify design but may reduce scalability.
+19. Fine-grained locks improve concurrency but increase complexity.
+20. Consistent lock ordering helps prevent deadlocks.
+21. Priority inversion can be mitigated by priority inheritance.
+22. User-space mutexes commonly use a fast path and kernel-assisted waiting when contended.
+23. Linux futexes are fundamental to efficient user-space blocking synchronization.
+24. Kernel mutexes can sleep.
+25. Kernel spinlocks cannot be held across sleeping operations.
+26. Process context and interrupt context have different synchronization rules.
+27. Linux wait queues implement many blocking/wakeup patterns.
+28. Memory barriers matter when reasoning about ordering on multicore systems.
+29. Lock-free and wait-free are different concepts.
+30. ABA is an important lock-free algorithm problem.
+31. Synchronization interacts directly with the scheduler.
+32. For senior Linux interviews, know both the API and the kernel mechanism underneath.
 
 ---
 
-# Next Chapter
+# Chapter 6 Preview — Deadlocks
 
-## Chapter 5 — Synchronization
-
-Planned three-layer coverage:
+The next chapter will connect directly to synchronization:
 
 ```text
-[OS]
-- Race conditions
-- Critical sections
-- Mutual exclusion
-- Atomicity
-- Mutex
-- Semaphore
-- Condition variables
-- Spinlocks
-- Reader-writer synchronization
-- Barriers
-- Deadlock relationship
-- Memory ordering
-- Lock contention
+Chapter 5
+Synchronization
+      |
+      v
+Multiple locks/resources
+      |
+      v
+Incorrect acquisition order
+      |
+      v
+Deadlock
+```
 
-[LSP]
-- pthread_mutex_*
-- pthread_cond_*
-- sem_*
-- pthread_rwlock_*
-- pthread_spin_*
-- C/C++ atomics
-- Producer-consumer code
-- Reader-writer code
-- Race-condition demonstrations
-- Practical debugging
+Chapter 6 will cover:
 
-[KERNEL]
-- Kernel locking concepts
-- spinlock
-- mutex
-- rwlock
-- atomic operations
-- wait queues
-- scheduler interaction
-- interrupt context
-- process context
-- softirq considerations
-- memory barriers
-- lock contention/debugging
-- priority inheritance
-
-[INTERVIEW]
-- Senior synchronization questions
-- Race-condition debugging
-- Deadlock scenarios
-- Lock ordering
-- Performance trade-offs
-- User-space vs kernel-space synchronization
+```text
+Deadlock conditions
+Resource allocation graph
+Wait-for graph
+Lock-order deadlocks
+Self-deadlock
+Livelock
+Starvation
+Deadlock prevention
+Deadlock avoidance
+Deadlock detection
+Deadlock recovery
+pthread deadlock examples
+trylock()
+Lock ordering
+Linux kernel deadlocks
+Lockdep
+Circular dependencies
+Senior interview problems
+```
