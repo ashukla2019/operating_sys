@@ -1,15 +1,5 @@
 # Linux System Programming & Kernel Internals
 
-## Senior C/C++ / Embedded Linux Interview Notes
-
-> Based primarily on **Robert Love --- Linux System Programming**
->
-> **Goal:** Senior Software Engineer / Embedded Linux / C/C++ / Systems
-> interview preparation.
->
-> This is a **revision guide**, not a replacement for the complete Linux
-> kernel source or a full kernel-internals textbook.
-
 ------------------------------------------------------------------------
 
 # 1. Linux Architecture
