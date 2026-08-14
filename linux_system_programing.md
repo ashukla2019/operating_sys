@@ -1,5 +1,15 @@
 # Linux System Programming & Kernel Internals
 
+## Senior C/C++ / Embedded Linux Interview Notes
+
+> Based primarily on **Robert Love --- Linux System Programming**
+>
+> **Goal:** Senior Software Engineer / Embedded Linux / C/C++ / Systems
+> interview preparation.
+>
+> This is a **revision guide**, not a replacement for the complete Linux
+> kernel source or a full kernel-internals textbook.
+
 ------------------------------------------------------------------------
 
 # 1. Linux Architecture
@@ -47,11 +57,11 @@ Deals mainly with:
 
 ``` text
 Application
-    ↓
+    â†“
 POSIX / libc
-    ↓
+    â†“
 System calls
-    ↓
+    â†“
 Kernel services
 ```
 
@@ -166,9 +176,9 @@ A system call usually causes a transition from:
 
 ``` text
 User Mode
-   ↓
+   â†“
 Kernel Mode
-   ↓
+   â†“
 User Mode
 ```
 
@@ -184,9 +194,9 @@ an open file/resource.
 Standard descriptors:
 
 ``` text
-0 → stdin
-1 → stdout
-2 → stderr
+0 â†’ stdin
+1 â†’ stdout
+2 â†’ stderr
 ```
 
 Example:
@@ -204,7 +214,7 @@ int main()
 Here:
 
 ``` text
-1 → stdout
+1 â†’ stdout
 ```
 
 ------------------------------------------------------------------------
@@ -238,11 +248,11 @@ int main()
 
 ``` text
 open()
-  ↓
+  â†“
 returns file descriptor
-  ↓
+  â†“
 fd
-  ↓
+  â†“
 read/write/close
 ```
 
@@ -289,13 +299,13 @@ Conceptually:
 
 ``` text
 fd
- ↓
+ â†“
 struct file
- ↓
+ â†“
 dentry
- ↓
+ â†“
 inode
- ↓
+ â†“
 filesystem
 ```
 
@@ -345,9 +355,9 @@ int main()
 ## Return value
 
 ``` text
-> 0  → number of bytes read
-0    → EOF
-< 0  → error
+> 0  â†’ number of bytes read
+0    â†’ EOF
+< 0  â†’ error
 ```
 
 ------------------------------------------------------------------------
@@ -361,8 +371,8 @@ ssize_t n = write(fd, buffer, size);
 Return:
 
 ``` text
-> 0 → bytes written
-< 0 → error
+> 0 â†’ bytes written
+< 0 â†’ error
 ```
 
 Important:
@@ -374,17 +384,17 @@ Data may go through:
 
 ``` text
 Application
-    ↓
+    â†“
 Kernel
-    ↓
+    â†“
 Page Cache
-    ↓
+    â†“
 Filesystem
-    ↓
+    â†“
 Block Layer
-    ↓
+    â†“
 Driver
-    ↓
+    â†“
 Storage
 ```
 
@@ -401,9 +411,9 @@ off_t pos = lseek(fd, 0, SEEK_SET);
 Common:
 
 ``` text
-SEEK_SET → beginning
-SEEK_CUR → current position
-SEEK_END → end
+SEEK_SET â†’ beginning
+SEEK_CUR â†’ current position
+SEEK_END â†’ end
 ```
 
 Example:
@@ -428,11 +438,11 @@ Typical use:
 
 ``` text
 stdout
-  ↓
+  â†“
 dup2(file_fd, STDOUT_FILENO)
-  ↓
+  â†“
 printf()
-  ↓
+  â†“
 file
 ```
 
@@ -498,11 +508,11 @@ int main()
 ## Return value
 
 ``` text
-pid < 0 → failure
+pid < 0 â†’ failure
 
-pid == 0 → child
+pid == 0 â†’ child
 
-pid > 0 → parent receives child PID
+pid > 0 â†’ parent receives child PID
 ```
 
 ------------------------------------------------------------------------
@@ -564,11 +574,11 @@ Very common Linux process model:
 
 ``` text
 fork()
-   ↓
+   â†“
 new process
-   ↓
+   â†“
 exec()
-   ↓
+   â†“
 new program
 ```
 
@@ -614,14 +624,14 @@ Typical process:
 High Address
 +------------------+
 | Stack            |
-| ↓                |
+| â†“                |
 +------------------+
 |                  |
 | mmap/shared libs |
 |                  |
 +------------------+
 | Heap             |
-| ↑                |
+| â†‘                |
 +------------------+
 | BSS              |
 +------------------+
@@ -800,15 +810,15 @@ Provides mutual exclusion:
 
 ``` text
 Thread 1
-   ↓
+   â†“
  lock
-   ↓
+   â†“
 critical section
-   ↓
+   â†“
 unlock
 
 Thread 2
-   ↓
+   â†“
 wait
 ```
 
@@ -822,11 +832,11 @@ Typical producer/consumer:
 
 ``` text
 Producer
-   ↓
+   â†“
 produce data
-   ↓
+   â†“
 signal
-   ↓
+   â†“
 Consumer wakes
 ```
 
@@ -904,13 +914,13 @@ to generate `SIGINT`.
 
 ``` text
 SIGTERM
-    ↓
+    â†“
 Can be handled
 Can be ignored
 Can be used for graceful shutdown
 
 SIGKILL
-    ↓
+    â†“
 Cannot be caught
 Cannot be ignored
 Cannot be blocked
@@ -966,8 +976,8 @@ int main()
 ```
 
 ``` text
-fd[0] → read
-fd[1] → write
+fd[0] â†’ read
+fd[1] â†’ write
 ```
 
 ------------------------------------------------------------------------
@@ -1169,19 +1179,19 @@ Typical flow:
 
 ``` text
 CPU accesses virtual address
-          ↓
+          â†“
        MMU
-          ↓
+          â†“
    Page table lookup
-          ↓
+          â†“
       Page fault
-          ↓
+          â†“
        Kernel
-          ↓
+          â†“
 Find/create required page
-          ↓
+          â†“
 Update page table
-          ↓
+          â†“
 Return to process
 ```
 
@@ -1200,17 +1210,17 @@ File I/O often interacts with the page cache.
 
 ``` text
 read()
-  ↓
+  â†“
 VFS
-  ↓
+  â†“
 Page Cache
-  ↓
+  â†“
 Filesystem
-  ↓
+  â†“
 Block Layer
-  ↓
+  â†“
 Driver
-  ↓
+  â†“
 Disk
 ```
 
@@ -1218,9 +1228,9 @@ If data is already cached:
 
 ``` text
 read()
-  ↓
+  â†“
 Page Cache HIT
-  ↓
+  â†“
 Return data
 ```
 
@@ -1228,15 +1238,15 @@ Otherwise:
 
 ``` text
 read()
-  ↓
+  â†“
 Page Cache MISS
-  ↓
+  â†“
 Filesystem
-  ↓
+  â†“
 Storage
-  ↓
+  â†“
 Page Cache populated
-  ↓
+  â†“
 Application
 ```
 
@@ -1286,13 +1296,13 @@ Conceptually:
 
 ``` text
 "/home/user/file.txt"
-          ↓
+          â†“
        Path lookup
-          ↓
+          â†“
        dentry
-          ↓
+          â†“
        inode
-          ↓
+          â†“
     filesystem
 ```
 
@@ -1329,27 +1339,27 @@ struct file
 
 ``` text
 f_op
-    ↓
+    â†“
 file operations
 
 f_inode
-    ↓
+    â†“
 inode associated with file
 
 f_pos
-    ↓
+    â†“
 current file offset
 
 f_flags
-    ↓
+    â†“
 open/status flags
 
 f_path
-    ↓
+    â†“
 path information
 
 private_data
-    ↓
+    â†“
 filesystem/device-specific data
 ```
 
@@ -1453,17 +1463,17 @@ TCP server flow:
 
 ``` text
 socket()
-   ↓
+   â†“
 bind()
-   ↓
+   â†“
 listen()
-   ↓
+   â†“
 accept()
-   ↓
+   â†“
 recv()/read()
-   ↓
+   â†“
 send()/write()
-   ↓
+   â†“
 close()
 ```
 
@@ -1518,13 +1528,13 @@ int main()
 
 ``` text
 read()
-  ↓
+  â†“
 No data
-  ↓
+  â†“
 Thread sleeps
-  ↓
+  â†“
 Data arrives
-  ↓
+  â†“
 Thread wakes
 ```
 
@@ -1532,9 +1542,9 @@ Thread wakes
 
 ``` text
 read()
-  ↓
+  â†“
 No data
-  ↓
+  â†“
 Returns immediately
 ```
 
@@ -1593,11 +1603,11 @@ Typical flow:
 
 ``` text
 epoll_create1()
-       ↓
+       â†“
 epoll_ctl()
-       ↓
+       â†“
 epoll_wait()
-       ↓
+       â†“
 events
 ```
 
@@ -1687,9 +1697,9 @@ A child becomes a zombie when:
 
 ``` text
 Child terminates
-      ↓
+      â†“
 Exit status retained
-      ↓
+      â†“
 Parent has not called wait()
 ```
 
@@ -1719,7 +1729,7 @@ An orphan occurs when:
 
 ``` text
 Parent terminates
-      ↓
+      â†“
 Child still running
 ```
 
@@ -1728,9 +1738,9 @@ The child is adopted/re-parented by an appropriate system process.
 Do not confuse:
 
 ``` text
-Zombie → child terminated, parent hasn't collected status
+Zombie â†’ child terminated, parent hasn't collected status
 
-Orphan → parent terminated, child still running
+Orphan â†’ parent terminated, child still running
 ```
 
 ------------------------------------------------------------------------
@@ -1765,19 +1775,19 @@ Typical shell execution:
 
 ``` text
 User enters command
-       ↓
+       â†“
 Shell
-       ↓
+       â†“
 fork()
-       ↓
+       â†“
 Child
-       ↓
+       â†“
 exec()
-       ↓
+       â†“
 Program starts
-       ↓
+       â†“
 Parent
-       ↓
+       â†“
 wait()
 ```
 
@@ -1811,11 +1821,11 @@ Conceptually:
 
 ``` text
 malloc()
-   ↓
+   â†“
 libc allocator
-   ↓
+   â†“
 brk()/mmap()
-   ↓
+   â†“
 Kernel
 ```
 
@@ -1839,7 +1849,7 @@ Historically:
 
 ``` text
 brk()/sbrk()
-    ↓
+    â†“
 heap expansion
 ```
 
@@ -1898,9 +1908,9 @@ Useful areas:
 Difference:
 
 ``` text
-/proc → mainly processes/system/kernel information
+/proc â†’ mainly processes/system/kernel information
 
-/sys  → mainly devices/kernel object model
+/sys  â†’ mainly devices/kernel object model
 ```
 
 ------------------------------------------------------------------------
@@ -1917,17 +1927,17 @@ For a device:
 
 ``` text
 Application
-     ↓
+     â†“
 read()
-     ↓
+     â†“
 VFS
-     ↓
+     â†“
 struct file
-     ↓
+     â†“
 file_operations
-     ↓
+     â†“
 Driver read operation
-     ↓
+     â†“
 Hardware
 ```
 
@@ -1957,13 +1967,13 @@ Typical use:
 
 ``` text
 Application
-    ↓
+    â†“
 ioctl()
-    ↓
+    â†“
 Kernel
-    ↓
+    â†“
 Driver
-    ↓
+    â†“
 Hardware
 ```
 
@@ -2004,23 +2014,23 @@ Linux/POSIX provides several mechanisms:
 
 ``` text
 Mutex
-   ↓
+   â†“
 Protect critical section
 
 Condition Variable
-   ↓
+   â†“
 Wait for condition
 
 Semaphore
-   ↓
+   â†“
 Control access/count resources
 
 Read-Write Lock
-   ↓
+   â†“
 Multiple readers / single writer
 
 Atomic Operations
-   ↓
+   â†“
 Lock-free/small shared state operations
 ```
 
@@ -2047,10 +2057,10 @@ Example:
 ``` text
 Semaphore = 3
 
-Thread A → acquire → 2
-Thread B → acquire → 1
-Thread C → acquire → 0
-Thread D → waits
+Thread A â†’ acquire â†’ 2
+Thread B â†’ acquire â†’ 1
+Thread C â†’ acquire â†’ 0
+Thread D â†’ waits
 ```
 
 ------------------------------------------------------------------------
@@ -2081,9 +2091,9 @@ lock(A)
 Possible deadlock:
 
 ``` text
-Thread 1 holds A → waits B
+Thread 1 holds A â†’ waits B
 
-Thread 2 holds B → waits A
+Thread 2 holds B â†’ waits A
 ```
 
 Solution:
@@ -2130,11 +2140,11 @@ Basic concept:
 
 ``` text
 Release
-   ↓
+   â†“
 publish data
 
 Acquire
-   ↓
+   â†“
 observe published data
 ```
 
@@ -2183,8 +2193,8 @@ Lower overhead
 Typical examples:
 
 ``` text
-TCP → HTTP/HTTPS, SSH
-UDP → DNS, streaming/real-time applications
+TCP â†’ HTTP/HTTPS, SSH
+UDP â†’ DNS, streaming/real-time applications
 ```
 
 ------------------------------------------------------------------------
@@ -2195,15 +2205,15 @@ Server:
 
 ``` text
 socket()
-   ↓
+   â†“
 bind()
-   ↓
+   â†“
 listen()
-   ↓
+   â†“
 accept()
-   ↓
+   â†“
 recv/send
-   ↓
+   â†“
 close()
 ```
 
@@ -2211,11 +2221,11 @@ Client:
 
 ``` text
 socket()
-   ↓
+   â†“
 connect()
-   ↓
+   â†“
 send/recv
-   ↓
+   â†“
 close()
 ```
 
@@ -2364,7 +2374,7 @@ to obtain memory from the kernel.
 Important interview distinction:
 
 ``` text
-Library function ≠ necessarily system call
+Library function â‰  necessarily system call
 ```
 
 ------------------------------------------------------------------------
@@ -2378,13 +2388,13 @@ Example:
 
 ``` text
 Thread A running
-      ↓
+      â†“
 interrupt/scheduler
-      ↓
+      â†“
 save A context
-      ↓
+      â†“
 load B context
-      ↓
+      â†“
 Thread B running
 ```
 
@@ -2412,9 +2422,9 @@ Conceptually:
 
 ``` text
 Runnable Tasks
-      ↓
+      â†“
  Scheduler
-      ↓
+      â†“
  CPU
 ```
 
@@ -2521,15 +2531,15 @@ If data isn't available and FD is blocking:
 
 ``` text
 Process
-   ↓
+   â†“
 read()
-   ↓
+   â†“
 sleep/block
-   ↓
+   â†“
 data becomes available
-   ↓
+   â†“
 wake
-   ↓
+   â†“
 read returns
 ```
 
@@ -2554,13 +2564,13 @@ Blocking:
 
 ``` text
 wait
- ↓
+ â†“
 sleep
- ↓
+ â†“
 CPU runs another task
- ↓
+ â†“
 event
- ↓
+ â†“
 wake
 ```
 
@@ -2589,13 +2599,13 @@ Typical architecture:
 
 ``` text
 Event Loop
-    ↓
+    â†“
 epoll_wait()
-    ↓
+    â†“
 Events
-    ↓
+    â†“
 Read/Write
-    ↓
+    â†“
 Application processing
 ```
 
@@ -2609,23 +2619,23 @@ Short answer:
 
 ``` text
 Application
-    ↓
+    â†“
 read(fd,...)
-    ↓
+    â†“
 system call
-    ↓
+    â†“
 VFS
-    ↓
+    â†“
 struct file
-    ↓
+    â†“
 filesystem
-    ↓
+    â†“
 page cache
-    ↓
+    â†“
 possibly block I/O
-    ↓
+    â†“
 driver
-    ↓
+    â†“
 device
 ```
 
@@ -2633,9 +2643,9 @@ If data is already in page cache:
 
 ``` text
 read()
-  ↓
+  â†“
 page cache hit
-  ↓
+  â†“
 copy data to user buffer
 ```
 
@@ -2649,19 +2659,19 @@ Conceptually:
 
 ``` text
 open(path)
-   ↓
+   â†“
 system call
-   ↓
+   â†“
 path lookup
-   ↓
+   â†“
 dentry/inode
-   ↓
+   â†“
 filesystem
-   ↓
+   â†“
 struct file created
-   ↓
+   â†“
 FD allocated
-   ↓
+   â†“
 FD returned to application
 ```
 
@@ -2673,15 +2683,15 @@ FD returned to application
 
 ``` text
 fork()
-   ↓
+   â†“
 Kernel creates child task
-   ↓
+   â†“
 Address-space information duplicated
-   ↓
+   â†“
 Pages initially shared using COW
-   ↓
+   â†“
 FDs inherited
-   ↓
+   â†“
 Parent and child continue execution
 ```
 
@@ -2697,11 +2707,11 @@ Conceptually:
 
 ``` text
 fork()
-    ↓
+    â†“
 new process with largely separate resources
 
 clone()
-    ↓
+    â†“
 selectively share resources
 ```
 
@@ -2722,15 +2732,15 @@ Signal handlers
 
 ``` text
 fork()
-  ↓
+  â†“
 new process
-  ↓
+  â†“
 separate address space
 
 pthread_create()
-  ↓
+  â†“
 new thread
-  ↓
+  â†“
 same process address space
 ```
 
@@ -2768,13 +2778,13 @@ Important after `fork()`.
 
 ``` text
 exit()
-    ↓
+    â†“
 libc cleanup
 stdio flushing
 atexit handlers
 
 _exit()
-    ↓
+    â†“
 direct process termination
 ```
 
@@ -2799,9 +2809,9 @@ Example driver concept:
 
 ``` text
 User buffer
-    ↓
+    â†“
 copy_from_user()
-    ↓
+    â†“
 Kernel buffer
 ```
 
@@ -2809,9 +2819,9 @@ and:
 
 ``` text
 Kernel buffer
-    ↓
+    â†“
 copy_to_user()
-    ↓
+    â†“
 User buffer
 ```
 
@@ -2825,11 +2835,11 @@ Each thread has:
 
 ``` text
 User stack
-    ↓
+    â†“
 Application function calls
 
 Kernel stack
-    ↓
+    â†“
 Used while executing kernel code for that task
 ```
 
@@ -2837,15 +2847,15 @@ System-call transition:
 
 ``` text
 User execution
-     ↓
+     â†“
 system call
-     ↓
+     â†“
 Kernel execution
-     ↓
+     â†“
 kernel stack
-     ↓
+     â†“
 return
-     ↓
+     â†“
 User execution
 ```
 
@@ -2859,9 +2869,9 @@ Explicitly requested by application.
 
 ``` text
 Application
-   ↓
+   â†“
 syscall
-   ↓
+   â†“
 Kernel
 ```
 
@@ -2871,11 +2881,11 @@ Usually generated asynchronously by hardware.
 
 ``` text
 Hardware
-   ↓
+   â†“
 Interrupt
-   ↓
+   â†“
 CPU
-   ↓
+   â†“
 Kernel interrupt handler
 ```
 
@@ -2918,13 +2928,13 @@ Conceptually:
 
 ``` text
 Hardware interrupt
-       ↓
+       â†“
 Top half
-       ↓
+       â†“
 Schedule/defer work
-       ↓
+       â†“
 Bottom-half mechanism
-       ↓
+       â†“
 More processing
 ```
 
@@ -2968,11 +2978,11 @@ Concept:
 Spinlock:
 
 CPU
- ↓
+ â†“
 lock unavailable
- ↓
+ â†“
 spin
- ↓
+ â†“
 retry
 ```
 
@@ -3008,9 +3018,9 @@ Like `kmalloc()` but memory is zeroed.
 
 ``` text
 malloc()
-    ↓
+    â†“
 User-space allocator
-    ↓
+    â†“
 Kernel mechanisms such as mmap/brk
 ```
 
@@ -3018,7 +3028,7 @@ Whereas:
 
 ``` text
 kmalloc()
-    ↓
+    â†“
 Kernel memory allocator
 ```
 
@@ -3070,9 +3080,9 @@ User program:
 
 ``` text
 main()
-  ↓
+  â†“
 libc
-  ↓
+  â†“
 system calls
 ```
 
@@ -3080,7 +3090,7 @@ Kernel module:
 
 ``` text
 module_init()
-  ↓
+  â†“
 kernel
 ```
 
@@ -3179,7 +3189,7 @@ close(...)
 Excellent tool for understanding:
 
 ``` text
-Application → System Calls → Kernel
+Application â†’ System Calls â†’ Kernel
 ```
 
 ------------------------------------------------------------------------
@@ -3192,11 +3202,11 @@ Conceptually:
 
 ``` text
 ltrace
-   ↓
+   â†“
 library calls
 
 strace
-   ↓
+   â†“
 system calls
 ```
 
@@ -3247,11 +3257,11 @@ Typical workflow:
 
 ``` text
 Crash
- ↓
+ â†“
 core file
- ↓
+ â†“
 gdb executable core
- ↓
+ â†“
 bt
 ```
 
@@ -3440,7 +3450,7 @@ Practice writing these without looking at notes:
 
 ``` text
 1. fork()
-2. fork() twice → calculate number of processes
+2. fork() twice â†’ calculate number of processes
 3. fork + exec
 4. Parent waits for child
 5. Zombie process
@@ -3494,15 +3504,15 @@ You should be able to explain these flows from memory.
 
 ``` text
 fork()
- ↓
+ â†“
 task creation
- ↓
+ â†“
 task_struct
- ↓
+ â†“
 address-space relationship
- ↓
+ â†“
 COW
- ↓
+ â†“
 scheduler
 ```
 
@@ -3510,15 +3520,15 @@ scheduler
 
 ``` text
 open()
- ↓
+ â†“
 FD
- ↓
+ â†“
 struct file
- ↓
+ â†“
 dentry
- ↓
+ â†“
 inode
- ↓
+ â†“
 filesystem
 ```
 
@@ -3526,19 +3536,19 @@ filesystem
 
 ``` text
 read()
- ↓
+ â†“
 syscall
- ↓
+ â†“
 VFS
- ↓
+ â†“
 page cache
- ↓
+ â†“
 filesystem
- ↓
+ â†“
 block layer
- ↓
+ â†“
 driver
- ↓
+ â†“
 device
 ```
 
@@ -3546,21 +3556,21 @@ device
 
 ``` text
 write()
- ↓
+ â†“
 VFS
- ↓
+ â†“
 page cache
- ↓
+ â†“
 dirty pages
- ↓
+ â†“
 writeback
- ↓
+ â†“
 filesystem
- ↓
+ â†“
 block layer
- ↓
+ â†“
 driver
- ↓
+ â†“
 device
 ```
 
@@ -3568,15 +3578,15 @@ device
 
 ``` text
 socket()
- ↓
+ â†“
 socket layer
- ↓
+ â†“
 TCP/IP stack
- ↓
+ â†“
 network device
- ↓
+ â†“
 driver
- ↓
+ â†“
 NIC
 ```
 
@@ -3584,13 +3594,13 @@ NIC
 
 ``` text
 pthread_create()
- ↓
+ â†“
 clone mechanism
- ↓
+ â†“
 task_struct
- ↓
+ â†“
 shared process resources
- ↓
+ â†“
 scheduler
 ```
 
@@ -3668,10 +3678,10 @@ Strong Senior Linux Systems Preparation
 ## Processes
 
 ``` text
-fork()  → create process
-exec()  → replace process image
-wait()  → collect child
-_exit() → terminate immediately
+fork()  â†’ create process
+exec()  â†’ replace process image
+wait()  â†’ collect child
+_exit() â†’ terminate immediately
 ```
 
 ## Threads
@@ -3862,19 +3872,19 @@ Whenever an interviewer gives you a Linux API, ask yourself:
 
 ``` text
 What happens in user space?
-        ↓
+        â†“
 Which system call?
-        ↓
+        â†“
 Which kernel subsystem?
-        ↓
+        â†“
 Which important kernel structure?
-        ↓
+        â†“
 Does it block?
-        ↓
+        â†“
 Does it involve memory?
-        ↓
+        â†“
 Does it involve locking?
-        ↓
+        â†“
 What happens at the hardware level?
 ```
 
@@ -3919,8 +3929,8 @@ fork()
        |
       exec()
        |
-       +-- CLOEXEC FD → closed
-       +-- normal FD  → remains open
+       +-- CLOEXEC FD â†’ closed
+       +-- normal FD  â†’ remains open
 ```
 
 Prefer `O_CLOEXEC` when creating descriptors when the API supports it,
@@ -3933,8 +3943,8 @@ creation and setting `FD_CLOEXEC`.
 
 ``` text
 dup(fd)
-    ↓
-new FD → same open file description
+    â†“
+new FD â†’ same open file description
 ```
 
 `dup2(oldfd, newfd)` makes `newfd` refer to the same open file
@@ -3952,7 +3962,7 @@ dup2(fd, STDOUT_FILENO)
 exec()
       |
       v
-program stdout → out.txt
+program stdout â†’ out.txt
 ```
 
 Important distinction:
@@ -3999,7 +4009,7 @@ st_ctime
 ## `stat()` vs `lstat()`
 
 ``` text
-symlink → target
+symlink â†’ target
 ```
 
 `stat()` follows the symbolic link.
@@ -4145,10 +4155,10 @@ means the current working directory is used.
 A process has:
 
 ``` text
-PID  → process ID
-PPID → parent process ID
-PGID → process group ID
-SID  → session ID
+PID  â†’ process ID
+PPID â†’ parent process ID
+PGID â†’ process group ID
+SID  â†’ session ID
 ```
 
 Hierarchy:
@@ -4684,11 +4694,11 @@ Concept:
 ``` text
 Process
  |
- +-- Thread 1 → TLS-A
+ +-- Thread 1 â†’ TLS-A
  |
- +-- Thread 2 → TLS-B
+ +-- Thread 2 â†’ TLS-B
  |
- +-- Thread 3 → TLS-C
+ +-- Thread 3 â†’ TLS-C
 ```
 
 Useful APIs:
@@ -4828,8 +4838,8 @@ fork()
            |
          exec()
            |
-           +-- normal FD → remains
-           +-- CLOEXEC FD → closed
+           +-- normal FD â†’ remains
+           +-- CLOEXEC FD â†’ closed
 ```
 
 ------------------------------------------------------------------------
@@ -5006,9 +5016,9 @@ system call
     v
 seccomp policy
     |
-    +---- allowed → kernel service
+    +---- allowed â†’ kernel service
     |
-    +---- denied  → blocked
+    +---- denied  â†’ blocked
 ```
 
 Common container security architecture:
@@ -5035,8 +5045,8 @@ Core concepts:
 Submission Queue (SQ)
 Completion Queue (CQ)
 
-SQE → Submission Queue Entry
-CQE → Completion Queue Entry
+SQE â†’ Submission Queue Entry
+CQE â†’ Completion Queue Entry
 ```
 
 Architecture:
@@ -5220,35 +5230,35 @@ Before considering System Programming complete, be able to explain:
 
 ``` text
                     USER SPACE
-┌─────────────────────────────────────────────┐
-│ Application                                 │
-│                                             │
-│ C/C++                                       │
-│ libc / pthreads                             │
-│                                             │
-│ Files ─ Processes ─ Threads ─ IPC           │
-│ Memory ─ Sockets ─ epoll ─ io_uring         │
-└──────────────────────┬──────────────────────┘
-                       │
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Application                                 â”‚
+â”‚                                             â”‚
+â”‚ C/C++                                       â”‚
+â”‚ libc / pthreads                             â”‚
+â”‚                                             â”‚
+â”‚ Files â”€ Processes â”€ Threads â”€ IPC           â”‚
+â”‚ Memory â”€ Sockets â”€ epoll â”€ io_uring         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                       â”‚
                   System Calls
-                       │
-                       ▼
+                       â”‚
+                       â–¼
                     KERNEL
-┌─────────────────────────────────────────────┐
-│ Process Management                          │
-│ Scheduler                                   │
-│ Virtual Memory / Page Tables                │
-│ VFS / Filesystems / Page Cache              │
-│ Networking                                  │
-│ IPC                                         │
-│ Block Layer                                 │
-│ Device Drivers                              │
-│ Interrupts                                  │
-│ Synchronization                             │
-│ Security / Namespaces / cgroups             │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Process Management                          â”‚
+â”‚ Scheduler                                   â”‚
+â”‚ Virtual Memory / Page Tables                â”‚
+â”‚ VFS / Filesystems / Page Cache              â”‚
+â”‚ Networking                                  â”‚
+â”‚ IPC                                         â”‚
+â”‚ Block Layer                                 â”‚
+â”‚ Device Drivers                              â”‚
+â”‚ Interrupts                                  â”‚
+â”‚ Synchronization                             â”‚
+â”‚ Security / Namespaces / cgroups             â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                       â”‚
+                       â–¼
                     HARDWARE
 ```
 
@@ -5258,3 +5268,1230 @@ The key interview principle is:
 > the application API, through the system call boundary, into the
 > relevant kernel subsystem, and finally to the hardware when
 > applicable.
+
+
+# PART 0 â€” OPERATING SYSTEM FUNDAMENTALS COMPLETENESS ADDENDUM
+
+> This section closes the remaining OS-theory gaps that are important for Senior Software Engineer interviews. It intentionally connects OS concepts to Linux implementation.
+
+---
+
+# 136. Operating System Types
+
+An operating system manages hardware resources and provides services to applications.
+
+## Major OS classifications
+
+```text
+Operating Systems
+â”‚
+â”œâ”€â”€ Batch OS
+â”œâ”€â”€ Multiprogramming OS
+â”œâ”€â”€ Multitasking OS
+â”œâ”€â”€ Time-Sharing OS
+â”œâ”€â”€ Multiprocessing OS
+â”œâ”€â”€ Multithreading OS
+â”œâ”€â”€ Distributed OS
+â”œâ”€â”€ Network OS
+â”œâ”€â”€ Embedded OS
+â””â”€â”€ Real-Time OS
+    â”œâ”€â”€ Hard Real-Time
+    â””â”€â”€ Soft Real-Time
+```
+
+### Batch OS
+
+Jobs are collected and executed with little or no interactive user involvement.
+
+### Multiprogramming
+
+Multiple programs are kept in memory at the same time.
+
+```text
+RAM
+â”œâ”€â”€ Program A
+â”œâ”€â”€ Program B
+â””â”€â”€ Program C
+
+CPU
+ â†“
+A runs
+ â†“
+A waits for I/O
+ â†“
+B runs
+ â†“
+B waits for I/O
+ â†“
+C runs
+```
+
+**Goal:** maximize CPU utilization by running another program when one is waiting.
+
+### Multitasking
+
+Multiple tasks appear to execute concurrently because the CPU switches between runnable tasks.
+
+```text
+CPU
+â”‚
+â”œâ”€â”€ Task A
+â”œâ”€â”€ Task B
+â”œâ”€â”€ Task C
+â””â”€â”€ Task D
+```
+
+On a single CPU this is concurrency, not true simultaneous execution.
+
+### Multiprocessing
+
+Multiple CPUs/cores can execute tasks simultaneously.
+
+```text
+CPU Core 0 â†’ Task A
+CPU Core 1 â†’ Task B
+CPU Core 2 â†’ Task C
+CPU Core 3 â†’ Task D
+```
+
+### Multithreading
+
+A process contains multiple execution threads.
+
+```text
+Process
+â”œâ”€â”€ Thread 1
+â”œâ”€â”€ Thread 2
+â””â”€â”€ Thread 3
+```
+
+Threads share process resources such as the address space, while each thread has its own execution context and stack.
+
+### Time-sharing
+
+CPU time is divided among tasks/users to provide interactive response.
+
+### Real-Time OS
+
+Correctness includes meeting timing requirements.
+
+**Hard real-time:** missing a deadline can be catastrophic.
+
+**Soft real-time:** missing deadlines degrades quality/performance.
+
+### Interview distinction
+
+| Concept | Core idea |
+|---|---|
+| Multiprogramming | Keep multiple programs in memory; switch when one waits |
+| Multitasking | Run multiple tasks through scheduling/preemption |
+| Multithreading | Multiple execution flows inside one process |
+| Multiprocessing | Multiple CPUs/cores execute simultaneously |
+| Time-sharing | Divide CPU time for interactive fairness |
+| Real-time | Timing/deadline requirements matter |
+
+---
+
+# 137. Process, Program and Thread
+
+### Program
+
+A passive executable image stored on storage.
+
+### Process
+
+A running instance of a program with resources and execution state.
+
+```text
+Program
+   â†“ execute
+Process
+   â”œâ”€â”€ Address space
+   â”œâ”€â”€ Registers
+   â”œâ”€â”€ Stack
+   â”œâ”€â”€ Heap
+   â”œâ”€â”€ Open files
+   â”œâ”€â”€ Signals
+   â””â”€â”€ Scheduling state
+```
+
+### Thread
+
+The smallest schedulable execution unit in the usual process/thread model.
+
+```text
+Process
+â”‚
+â”œâ”€â”€ Thread A â†’ registers + stack
+â”œâ”€â”€ Thread B â†’ registers + stack
+â””â”€â”€ Thread C â†’ registers + stack
+
+Shared:
+- address space
+- code
+- heap
+- open-file resources
+```
+
+### Linux connection
+
+Linux internally represents schedulable execution entities using `task_struct`; a Linux process and its threads are therefore connected to the same task/scheduler infrastructure.
+
+---
+
+# 138. Process Lifecycle and States
+
+Classic OS model:
+
+```text
+             â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+             â”‚   NEW    â”‚
+             â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜
+                  â†“
+             â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+             â”‚  READY   â”‚â—„â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+             â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”˜              â”‚
+                  â†“                    â”‚
+             â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”              â”‚
+             â”‚ RUNNING  â”‚              â”‚
+             â””â”€â”€â”¬â”€â”€â”€â”€â”¬â”€â”€â”˜              â”‚
+                â”‚    â”‚                 â”‚
+             I/Oâ”‚    â”‚exit             â”‚
+                â†“    â†“                 â”‚
+          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â” TERMINATED       â”‚
+          â”‚ WAITING â”‚                  â”‚
+          â””â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”˜                  â”‚
+               â”‚ I/O complete          â”‚
+               â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+```
+
+Important transitions:
+
+```text
+READY â†’ RUNNING
+RUNNING â†’ READY       (preemption)
+RUNNING â†’ WAITING     (blocking I/O / sleep)
+WAITING â†’ READY       (event completed)
+RUNNING â†’ TERMINATED
+```
+
+### Linux task states
+
+Conceptually know:
+
+- runnable
+- interruptible sleep
+- uninterruptible sleep
+- stopped
+- traced
+- zombie
+
+Do not assume the classic textbook state diagram maps one-to-one onto Linux's internal task-state flags.
+
+---
+
+# 139. CPU Scheduling Fundamentals
+
+The scheduler decides which runnable task gets CPU time.
+
+```text
+Runnable tasks
+      â†“
+Scheduler
+      â†“
+select next task
+      â†“
+CPU
+```
+
+## Scheduling goals
+
+- CPU utilization
+- throughput
+- fairness
+- low response time
+- low waiting time
+- low turnaround time
+- predictable latency
+- deadline satisfaction for real-time workloads
+
+## Important metrics
+
+### Turnaround time
+
+```text
+completion time - arrival time
+```
+
+### Waiting time
+
+Time spent waiting in the ready/runnable queue.
+
+### Response time
+
+```text
+first CPU service - arrival time
+```
+
+### Throughput
+
+Number of completed jobs per unit time.
+
+---
+
+# 140. Classical Scheduling Algorithms
+
+Know these conceptually and be able to compare them.
+
+## FCFS
+
+First Come First Served.
+
+- simple
+- non-preemptive
+- can cause convoy effect
+
+## SJF
+
+Shortest Job First.
+
+- minimizes average waiting time when burst lengths are known/estimated
+- usually non-preemptive
+
+## SRTF
+
+Shortest Remaining Time First.
+
+Preemptive version of SJF.
+
+## Priority Scheduling
+
+Highest-priority task is selected.
+
+Problem:
+
+```text
+Low priority task
+       â†“
+never gets CPU
+       â†“
+starvation
+```
+
+Aging can gradually increase waiting task priority.
+
+## Round Robin
+
+Each runnable task receives a time quantum.
+
+```text
+A â†’ B â†’ C â†’ A â†’ B â†’ C
+```
+
+Small quantum:
+
+- better responsiveness
+- more context-switch overhead
+
+Large quantum:
+
+- less overhead
+- behaves more like FCFS
+
+## Multilevel Queue
+
+Separate queues for different classes of tasks.
+
+## Multilevel Feedback Queue
+
+Tasks can move between queues based on behavior/priority.
+
+---
+
+# 141. Linux Scheduler and Runqueues
+
+Linux does not simply implement one textbook scheduling algorithm.
+
+Conceptually:
+
+```text
+                    Scheduler
+                        â”‚
+              Scheduling classes
+                 â”Œâ”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”
+                 â†“      â†“      â†“
+             Fair/    RT    Deadline
+             normal
+                 â”‚
+                 â†“
+             Runqueue
+                 â”‚
+        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”
+        â†“        â†“        â†“
+      Task A   Task B   Task C
+                 â”‚
+                 â†“
+             CPU core
+```
+
+Modern Linux uses the fair scheduling infrastructure with **EEVDF** concepts for normal tasks, while real-time and deadline scheduling have separate policies/classes.
+
+### Per-CPU runqueues
+
+Conceptually:
+
+```text
+CPU 0
+â””â”€â”€ runqueue
+    â”œâ”€â”€ Task A
+    â”œâ”€â”€ Task B
+    â””â”€â”€ Task C
+
+CPU 1
+â””â”€â”€ runqueue
+    â”œâ”€â”€ Task D
+    â””â”€â”€ Task E
+```
+
+Important concepts:
+
+- runnable task
+- enqueue/dequeue
+- wakeup
+- preemption
+- CPU affinity
+- task migration
+- load balancing
+- per-CPU scheduling
+- scheduling class
+
+---
+
+# 142. Preemption
+
+Preemption means the currently running task can be replaced by another task.
+
+### Voluntary blocking
+
+```text
+Task
+ â†“
+read() blocks
+ â†“
+sleep
+ â†“
+scheduler chooses another task
+```
+
+### Involuntary preemption
+
+```text
+Task A running
+      â†“
+scheduler/preemption point
+      â†“
+Task B becomes runnable / higher priority
+      â†“
+Task A preempted
+      â†“
+Task B runs
+```
+
+### Why preemption matters
+
+It improves responsiveness and allows multiple runnable tasks to make progress.
+
+---
+
+# 143. Context Switching
+
+A context switch changes CPU execution from one execution context to another.
+
+```text
+Task A running
+      â†“
+interrupt / preemption / blocking
+      â†“
+scheduler
+      â†“
+save A execution context
+      â†“
+select B
+      â†“
+restore B context
+      â†“
+Task B running
+```
+
+A context includes CPU execution state such as:
+
+- registers
+- instruction pointer
+- stack pointer
+- processor state
+
+For process/address-space changes, additional memory-management state can change.
+
+### Thread vs process switch
+
+Threads in one process share the address space, so switching between them may avoid changing to a completely different address space.
+
+A process switch can involve changing memory-management context/page-table state.
+
+### Context-switch cost
+
+Costs can include:
+
+- saving/restoring registers
+- scheduler work
+- cache disruption
+- TLB effects
+- branch-prediction disruption
+- address-space changes
+
+**Interview point:** a context switch is not just "saving registers"; it can have significant microarchitectural/cache consequences.
+
+---
+
+# 144. Scheduler Queue, Wakeup and Sleep Flow
+
+Understand this end-to-end flow:
+
+```text
+                 RUNNING
+                    â”‚
+          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+          â”‚                   â”‚
+       blocks              preempted
+          â”‚                   â”‚
+          â†“                   â†“
+       WAITING              READY
+          â”‚                   â”‚
+      event occurs            â”‚
+          â”‚                   â”‚
+          â†“                   â”‚
+        READY â—„â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+          â”‚
+          â†“
+       RUNQUEUE
+          â”‚
+          â†“
+       SCHEDULER
+          â”‚
+          â†“
+        RUNNING
+```
+
+This connects process states, blocking, wakeups and scheduling.
+
+---
+
+# 145. Deadlock
+
+Deadlock occurs when tasks wait indefinitely for resources held by each other.
+
+## Coffman conditions
+
+All four are required:
+
+```text
+1. Mutual exclusion
+2. Hold and wait
+3. No preemption
+4. Circular wait
+```
+
+Example:
+
+```text
+Thread A                  Thread B
+
+lock(A)                   lock(B)
+  â†“                         â†“
+wait for B                wait for A
+  â†“                         â†“
+          DEADLOCK
+```
+
+## Deadlock prevention
+
+Break at least one Coffman condition.
+
+Practical techniques:
+
+- fixed global lock ordering
+- avoid unnecessary nested locking
+- minimize lock hold time
+- avoid holding locks while blocking
+- use try-lock/timeouts where appropriate
+- use lock hierarchy
+- use lockdep for kernel lock validation
+
+## Deadlock vs race vs livelock vs starvation
+
+| Problem | Meaning |
+|---|---|
+| Race condition | Result depends on timing/interleaving |
+| Deadlock | Tasks wait forever |
+| Livelock | Tasks keep running/changing state but make no useful progress |
+| Starvation | A task waits indefinitely because others continually get resources |
+
+---
+
+# 146. Synchronization Problems
+
+## Race condition
+
+```text
+Thread A          Thread B
+
+read x            read x
+add 1             add 1
+write x           write x
+```
+
+Both can read the same old value.
+
+Solution depends on the operation:
+
+- mutex
+- atomic operation
+- semaphore
+- rwlock
+- condition variable
+- lock-free algorithm
+
+## Critical section
+
+Code accessing shared state that must be synchronized.
+
+```text
+lock
+  â†“
+critical section
+  â†“
+unlock
+```
+
+### Important distinction
+
+```text
+Mutex      â†’ ownership-based mutual exclusion
+Semaphore  â†’ counting/signaling primitive
+RWLock     â†’ multiple readers / exclusive writer
+Condition  â†’ wait for a condition/state change
+Atomic     â†’ indivisible atomic operation
+```
+
+---
+
+# 147. Starvation, Fairness and Priority Inversion
+
+## Starvation
+
+A runnable task repeatedly fails to receive sufficient CPU/resources.
+
+## Aging
+
+Gradually increase the priority of a waiting task to reduce starvation.
+
+## Priority inversion
+
+```text
+High priority H
+      â†“ waits for lock
+Low priority L holds lock
+
+Medium priority M
+      â†“
+keeps running
+
+H cannot progress because L cannot run
+```
+
+Potential solution:
+
+**Priority inheritance** temporarily boosts the lock holder.
+
+---
+
+# 148. Concurrency vs Parallelism
+
+These terms are frequently confused.
+
+### Concurrency
+
+Multiple tasks make progress over overlapping time periods.
+
+```text
+A â†’ B â†’ A â†’ C â†’ B
+```
+
+Can happen on one CPU.
+
+### Parallelism
+
+Multiple tasks execute simultaneously on multiple CPU cores.
+
+```text
+Core 0 â†’ A
+Core 1 â†’ B
+Core 2 â†’ C
+```
+
+### Relationship
+
+```text
+Concurrency â‰  necessarily parallelism
+Parallelism requires simultaneous execution resources
+```
+
+Multithreading can provide concurrency on one CPU and parallelism on multiple cores.
+
+---
+
+# 149. CPU, Core, Hardware Thread and Process
+
+Clarify the hierarchy:
+
+```text
+Physical CPU/package
+    â†“
+CPU cores
+    â†“
+Hardware threads / logical CPUs
+    â†“
+Software threads/tasks scheduled by OS
+```
+
+A software thread is not the same thing as a hardware thread.
+
+Linux schedules runnable software tasks onto logical CPUs.
+
+---
+
+# 150. I/O Blocking and Scheduler Interaction
+
+A blocking system call often causes this flow:
+
+```text
+Application thread
+       â†“
+read()
+       â†“
+data unavailable
+       â†“
+thread sleeps/waits
+       â†“
+scheduler runs another task
+       â†“
+device performs I/O
+       â†“
+interrupt / deferred completion
+       â†“
+waiting task wakes
+       â†“
+task becomes runnable
+       â†“
+scheduler eventually runs it
+       â†“
+read() returns
+```
+
+This is one of the most important connections between OS theory and Linux internals.
+
+---
+
+# 151. Synchronization and IPC Relationship
+
+Processes may communicate using:
+
+```text
+IPC
+â”œâ”€â”€ Pipe
+â”œâ”€â”€ FIFO
+â”œâ”€â”€ Message Queue
+â”œâ”€â”€ Shared Memory
+â”œâ”€â”€ Unix Domain Socket
+â”œâ”€â”€ Network Socket
+â”œâ”€â”€ Signal
+â”œâ”€â”€ eventfd
+â””â”€â”€ mmap/shared file
+```
+
+Shared-memory communication usually requires synchronization.
+
+```text
+Process A â”€â”
+           â”œâ”€â”€ shared memory
+Process B â”€â”˜
+       â”‚
+       â†“
+ mutex/semaphore/atomic/etc.
+```
+
+---
+
+# 152. Resource Management
+
+An OS manages multiple resource classes:
+
+```text
+CPU
+Memory
+Storage
+Network
+Devices
+File descriptors
+Processes/threads
+```
+
+For each resource, understand:
+
+- allocation
+- ownership
+- contention
+- blocking
+- scheduling
+- reclamation
+- limits
+- isolation
+
+Linux examples:
+
+```text
+CPU      â†’ scheduler / cgroups
+Memory   â†’ VM / allocator / cgroups
+Storage  â†’ VFS / filesystem / block layer
+Network  â†’ socket / network stack / cgroups
+Devices  â†’ drivers / permissions / namespaces
+FDs      â†’ per-process limits
+```
+
+---
+
+# 153. Protection, Isolation and Privilege
+
+OS protection mechanisms operate at multiple levels:
+
+```text
+User/Kernel mode
+        â†“
+Process address spaces
+        â†“
+File permissions
+        â†“
+Capabilities
+        â†“
+Namespaces
+        â†“
+cgroups
+        â†“
+seccomp
+        â†“
+LSM
+```
+
+Understand the distinction:
+
+- **Isolation** â†’ separate resources/views
+- **Protection** â†’ prevent unauthorized access
+- **Privilege** â†’ what an execution context is allowed to do
+- **Resource control** â†’ how much CPU/memory/etc. can be consumed
+
+---
+
+# 154. Interrupt, Exception and Trap
+
+These should be clearly distinguished.
+
+### Interrupt
+
+Asynchronous event, commonly from hardware.
+
+```text
+NIC/device
+    â†“
+interrupt
+    â†“
+CPU
+```
+
+### Exception
+
+Synchronous event caused by current instruction.
+
+Examples:
+
+- page fault
+- divide-by-zero
+- invalid instruction
+
+### Trap
+
+A synchronous transfer intentionally used to enter privileged handling; system-call mechanisms historically use trap-like mechanisms, although modern architectures provide dedicated syscall instructions.
+
+---
+
+# 155. Kernel Mode vs User Mode
+
+```text
+USER MODE
+  â†“
+system call / exception / interrupt
+  â†“
+KERNEL MODE
+  â†“
+kernel service
+  â†“
+return to user mode
+```
+
+Important distinction:
+
+- **mode switch** is not necessarily a **context switch**
+- a system call can enter kernel mode and return to the same thread without switching to another task
+- a context switch changes which task executes
+
+This distinction is a common interview trap.
+
+---
+
+# 156. Virtual Memory vs Physical Memory
+
+### Virtual memory
+
+Each process gets an address-space abstraction.
+
+```text
+Process A virtual address
+        â†“
+       MMU
+        â†“
+physical page
+
+Process B virtual address
+        â†“
+       MMU
+        â†“
+different physical page
+```
+
+Benefits:
+
+- isolation
+- larger logical address space
+- demand paging
+- memory mapping
+- shared libraries
+- copy-on-write
+
+---
+
+# 157. Page Fault Types
+
+A page fault does not automatically mean an error.
+
+### Minor fault
+
+Page can be satisfied without disk I/O.
+
+Examples can include mapping an already resident page.
+
+### Major fault
+
+Requires relatively expensive I/O such as reading from storage.
+
+### Invalid fault
+
+Access violates the process's valid memory permissions/address space and may result in `SIGSEGV` or another fault outcome.
+
+---
+
+# 158. Thrashing
+
+Thrashing occurs when the system spends excessive time moving/reclaiming memory instead of doing useful work.
+
+Conceptually:
+
+```text
+Too much memory pressure
+        â†“
+page faults/reclaim increase
+        â†“
+I/O increases
+        â†“
+CPU makes less useful progress
+        â†“
+system becomes slow
+```
+
+Related concepts:
+
+- working set
+- page reclaim
+- swap pressure
+- memory overcommit
+
+---
+
+# 159. OS Boot Sequence
+
+```text
+Power On
+   â†“
+Firmware (BIOS/UEFI)
+   â†“
+Bootloader
+   â†“
+Kernel image
+   â†“
+Early kernel initialization
+   â†“
+initramfs
+   â†“
+Root filesystem
+   â†“
+PID 1
+   â†“
+Services
+   â†“
+Applications
+```
+
+Know conceptually:
+
+- firmware initializes hardware
+- bootloader loads/configures the kernel
+- kernel initializes core subsystems
+- initramfs provides early userspace
+- PID 1 starts userspace services
+
+---
+
+# 160. OS Interview Must-Know Comparison Table
+
+| Topic | Must explain |
+|---|---|
+| Program vs process | Passive code vs running instance |
+| Process vs thread | Resource container vs execution flow |
+| Multiprogramming | Multiple programs in memory |
+| Multitasking | Multiple tasks scheduled |
+| Multiprocessing | Multiple CPUs/cores |
+| Multithreading | Multiple threads per process |
+| Concurrency vs parallelism | Interleaving vs simultaneous execution |
+| Ready vs waiting | Runnable vs blocked |
+| Preemption | Scheduler interrupts/replaces running task |
+| Context switch | Save/restore execution context |
+| Mode switch | User â†” kernel privilege transition |
+| Deadlock | Circular indefinite waiting |
+| Starvation | One task fails to get resources |
+| Livelock | Activity without useful progress |
+| Race | Timing-dependent incorrect behavior |
+| Mutex vs semaphore | Ownership vs counting/signaling |
+| Interrupt vs exception | Asynchronous vs synchronous |
+| Virtual vs physical memory | Address abstraction vs actual RAM |
+| Minor vs major page fault | No storage I/O vs storage I/O |
+| Scheduling vs dispatch | Policy vs selecting/running next task |
+
+---
+
+# 161. OS Fundamentals â€” Final Completeness Checklist
+
+Before calling the OS portion interview-ready, be able to explain:
+
+### OS Basics
+- [ ] What is an operating system?
+- [ ] Kernel vs operating system
+- [ ] User mode vs kernel mode
+- [ ] System call
+- [ ] Interrupt
+- [ ] Exception
+- [ ] Trap
+- [ ] OS types
+- [ ] Multiprogramming
+- [ ] Multitasking
+- [ ] Multiprocessing
+- [ ] Multithreading
+- [ ] Time-sharing
+- [ ] Real-time OS
+- [ ] Embedded OS
+
+### Processes
+- [ ] Program vs process
+- [ ] Process creation
+- [ ] Process states
+- [ ] PCB/process metadata
+- [ ] `fork()`
+- [ ] `exec()`
+- [ ] `wait()`
+- [ ] zombie
+- [ ] orphan
+- [ ] process groups
+- [ ] sessions
+- [ ] PID 1
+
+### Threads
+- [ ] Process vs thread
+- [ ] Thread lifecycle
+- [ ] User vs kernel threads
+- [ ] Thread-local storage
+- [ ] Thread stack
+- [ ] Thread cancellation
+- [ ] Thread synchronization
+
+### Scheduling
+- [ ] Scheduling goals
+- [ ] FCFS
+- [ ] SJF
+- [ ] SRTF
+- [ ] Priority
+- [ ] Round Robin
+- [ ] Multilevel queue
+- [ ] MLFQ
+- [ ] Preemptive vs non-preemptive
+- [ ] Runqueue
+- [ ] Runnable task
+- [ ] Wakeup
+- [ ] CPU affinity
+- [ ] Load balancing
+- [ ] Task migration
+- [ ] Linux scheduling classes
+- [ ] CFS/EEVDF
+- [ ] Real-time scheduling
+- [ ] Deadline scheduling
+
+### Context Switching
+- [ ] What is a context switch?
+- [ ] What gets saved/restored?
+- [ ] Process vs thread switch
+- [ ] Context-switch overhead
+- [ ] Cache/TLB effects
+- [ ] Mode switch vs context switch
+
+### Synchronization
+- [ ] Critical section
+- [ ] Race condition
+- [ ] Mutex
+- [ ] Semaphore
+- [ ] Condition variable
+- [ ] RW lock
+- [ ] Spinlock
+- [ ] Atomic operation
+- [ ] Memory ordering
+- [ ] Futex
+- [ ] Priority inversion
+- [ ] Priority inheritance
+
+### Deadlocks
+- [ ] Four Coffman conditions
+- [ ] Deadlock example
+- [ ] Prevention
+- [ ] Avoidance
+- [ ] Detection
+- [ ] Recovery
+- [ ] Lock ordering
+- [ ] Lockdep
+- [ ] Deadlock vs starvation
+- [ ] Deadlock vs livelock
+
+### Memory
+- [ ] Physical vs virtual memory
+- [ ] Address translation
+- [ ] MMU
+- [ ] Page tables
+- [ ] TLB
+- [ ] Page fault
+- [ ] Minor/major fault
+- [ ] Demand paging
+- [ ] COW
+- [ ] mmap
+- [ ] Page cache
+- [ ] Swap
+- [ ] Reclaim
+- [ ] OOM
+- [ ] Buddy allocator
+- [ ] SLAB/SLUB
+- [ ] Huge pages
+- [ ] NUMA
+- [ ] Thrashing
+
+### I/O
+- [ ] Blocking I/O
+- [ ] Non-blocking I/O
+- [ ] Synchronous vs asynchronous I/O
+- [ ] Polling
+- [ ] Interrupt-driven I/O
+- [ ] DMA
+- [ ] I/O completion
+- [ ] Device drivers
+- [ ] VFS
+- [ ] Block layer
+
+### IPC
+- [ ] Pipe
+- [ ] FIFO
+- [ ] Shared memory
+- [ ] Message queue
+- [ ] Signal
+- [ ] Unix socket
+- [ ] Network socket
+- [ ] `eventfd`
+- [ ] `signalfd`
+- [ ] `timerfd`
+- [ ] FD passing
+
+### Core Interview Flows
+- [ ] fork â†’ COW â†’ scheduler
+- [ ] pthread_create â†’ task â†’ scheduler
+- [ ] context switch
+- [ ] blocking read â†’ sleep â†’ wakeup
+- [ ] mutex â†’ futex â†’ sleep/wakeup
+- [ ] malloc â†’ mmap/brk â†’ page fault
+- [ ] page fault â†’ page allocation/mapping
+- [ ] read â†’ VFS â†’ page cache â†’ filesystem
+- [ ] write â†’ dirty page â†’ writeback â†’ block layer
+- [ ] NIC â†’ DMA â†’ interrupt/NAPI â†’ network stack â†’ socket
+- [ ] container â†’ namespaces + cgroups + capabilities + seccomp
+
+---
+
+# 162. Senior OS Mental Model
+
+The complete OS mental model should be:
+
+```text
+                    APPLICATION
+                         â”‚
+                         â–¼
+                  C / C++ / POSIX
+                         â”‚
+                         â–¼
+                   SYSTEM CALL
+                         â”‚
+          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+          â–¼              â–¼              â–¼
+       PROCESS          MEMORY           I/O
+          â”‚              â”‚              â”‚
+       THREADS       VM / MMU          VFS
+          â”‚              â”‚              â”‚
+      SCHEDULER      PAGE TABLES     FILESYSTEM
+          â”‚              â”‚              â”‚
+      RUNQUEUE           â”‚          BLOCK LAYER
+          â”‚              â”‚              â”‚
+      CPU/CORE           â”‚           DRIVER
+          â”‚              â”‚              â”‚
+          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                         â–¼
+                      HARDWARE
+```
+
+The senior-level question is not merely:
+
+> "What does `read()` do?"
+
+It is:
+
+> "What happens from the application call through libc and the syscall boundary, how does the kernel identify the resource, what subsystem handles it, can the task block, how is it woken, what synchronization is involved, how does the scheduler participate, and how does the request finally reach hardware?"
+
+That is the level of understanding these notes should target.
