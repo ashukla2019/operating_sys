@@ -1,1 +1,13 @@
 
+Chapter 1  → OS fundamentals
+Chapter 2  → Processes
+Chapter 3  → Threads
+Chapter 4  → CPU Scheduling
+Chapter 5  → Synchronization
+Chapter 6  → Deadlocks
+Chapter 7  → Virtual Memory
+Chapter 8  → Page Tables + TLB + Page Faults
+Chapter 9  → Memory Allocation
+Chapter 10 → IPC
+Chapter 11 → Files + I/O
+Chapter 12 → Networking
