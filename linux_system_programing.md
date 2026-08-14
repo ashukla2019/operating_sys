@@ -1,5 +1,4 @@
 # Linux System Programming & Kernel Internals
-
 ------------------------------------------------------------------------
 
 # 1. Linux Architecture
@@ -2435,8 +2434,73 @@ CFS
 Completely Fair Scheduler
 ```
 
-and be aware that newer Linux kernels also contain newer scheduling
-infrastructure such as EEVDF.
+## CFS internals (interviewers expect this, not just the name)
+
+CFS does not use fixed timeslices/priority arrays. It tracks, per task:
+
+``` text
+vruntime (virtual runtime)
+```
+
+Rule of thumb:
+
+``` text
+vruntime advances while a task runs
+    ↓
+rate of advance is scaled by the task's weight (nice value)
+    ↓
+scheduler always picks the runnable task with the SMALLEST vruntime
+```
+
+Data structure:
+
+``` text
+Per-CPU runqueue (struct rq)
+      ↓
+  Red-Black Tree (time-ordered by vruntime)
+      ↓
+ leftmost node = next task to run
+```
+
+-   Insertion/removal/leftmost-lookup are all O(log n).
+-   A task that sleeps a lot builds up a *relatively* smaller vruntime,
+    so it gets scheduled sooner when it wakes up (this is why
+    I/O-bound tasks feel "responsive").
+-   `nice` value maps to a weight table; higher weight → vruntime
+    grows more slowly → task gets more CPU share.
+-   `sched_latency` / `min_granularity` (and their successors) bound
+    how long a task runs before it can be preempted by a task with a
+    smaller vruntime.
+
+## EEVDF (Earliest Eligible Virtual Deadline First) — the CFS replacement
+
+EEVDF (default since kernel 6.6) fixes CFS's latency-vs-fairness
+trade-off by giving every task a **virtual deadline**, not just a
+vruntime:
+
+``` text
+eligible time = when the task has "caught up" on its fair share
+virtual deadline = eligible time + requested slice / weight
+```
+
+Scheduling rule:
+
+``` text
+Among tasks that are ELIGIBLE (not owed CPU time),
+pick the one with the EARLIEST virtual deadline.
+```
+
+Why interviewers care:
+
+-   CFS could let a low-latency task wait behind a "fair but slow"
+    high-vruntime task; EEVDF explicitly reasons about deadlines,
+    giving better tail latency for interactive/RT-adjacent workloads.
+-   EEVDF still uses weights derived from nice values, so the
+    fairness model is compatible with CFS's.
+-   Both still coexist conceptually with `sched_rt` (FIFO/RR) and
+    `sched_deadline` (EDF-based) classes, which always preempt
+    CFS/EEVDF tasks — scheduling classes are tried in priority order:
+    `stop_sched_class → deadline → rt → fair (CFS/EEVDF) → idle`.
 
 For interviews, focus on:
 
@@ -2978,6 +3042,60 @@ retry
 
 Therefore holding a spinlock for a long time is bad.
 
+## RCU (Read-Copy-Update) — a very common senior/staff question
+
+RCU lets **readers run completely lock-free and wait-free**, while
+writers pay the synchronization cost. It is used all over the kernel
+(routing tables, dcache, module lists) because reads vastly outnumber
+writes.
+
+Core idea:
+
+``` text
+Reader side:
+    rcu_read_lock()
+    p = rcu_dereference(ptr)     // read pointer, no lock, no blocking
+    ... use *p ...
+    rcu_read_unlock()
+
+Writer side:
+    new = allocate_and_copy(old)
+    modify(new)
+    rcu_assign_pointer(ptr, new)  // publish new version atomically
+    synchronize_rcu()             // wait for a "grace period"
+    free(old)                     // now safe: no reader can see old
+```
+
+Why it works — the **grace period**:
+
+``` text
+A grace period ends only after every CPU has passed through
+at least one "quiescent state" (e.g. a context switch, or
+explicitly leaving a read-side critical section).
+
+Once every CPU has had a quiescent state after the writer's
+update, no reader can still hold a reference to the OLD
+version → it is safe to free it.
+```
+
+Key interview points:
+
+-   Readers never block writers, and writers never block readers —
+    they run concurrently. The trade-off is **delayed reclamation**:
+    old data isn't freed immediately, only after the grace period.
+-   `rcu_read_lock()`/`unlock()` do **not** spin or sleep — on most
+    configs they're just preemption-disable/enable, essentially free.
+-   RCU is a **reader-writer synchronization mechanism**, not a
+    general mutex replacement: it only helps when readers can
+    tolerate seeing a slightly stale (but always internally
+    consistent) version of the data.
+-   Compare with `rwsem`: `rwsem` still puts a real lock on the read
+    path (cheap, but not free, and can block on a writer); RCU's read
+    path has no lock at all.
+-   `synchronize_rcu()` can sleep (blocking grace period wait);
+    `call_rcu()` is the non-blocking, callback-based alternative used
+    in atomic/interrupt context.
+
 ------------------------------------------------------------------------
 
 # 86. Kernel Memory Allocation
@@ -3001,6 +3119,80 @@ Virtually contiguous memory, but physical pages need not be contiguous.
 ### kzalloc()
 
 Like `kmalloc()` but memory is zeroed.
+
+## Buddy allocator (page-level allocator, underneath everything else)
+
+The buddy allocator manages physical memory in **power-of-two blocks
+of pages** (orders 0..MAX_ORDER).
+
+``` text
+order 0 → 1 page
+order 1 → 2 pages
+order 2 → 4 pages
+order 3 → 8 pages
+...
+```
+
+Allocation:
+
+``` text
+request order-k block
+    ↓
+free list for order k has a block? → return it
+    ↓ no
+split an order (k+1) block into two order-k "buddies"
+    ↓
+give one buddy to caller, keep the other on the free list
+```
+
+Freeing — the key trick that gives it its name:
+
+``` text
+free a block
+    ↓
+is its "buddy" (the other half of the block it was split from) also free?
+    ↓ yes
+merge them back into one order (k+1) block
+    ↓
+repeat merging upward as far as possible
+```
+
+This keeps physical memory from fragmenting into unusable slivers.
+`kmalloc()`/page allocation ultimately calls into this (`alloc_pages()`).
+Interviewers may ask: *why power-of-two blocks?* → O(1) buddy address
+computation via XOR of the block address with its size, and it bounds
+external fragmentation predictably.
+
+## SLAB / SLUB allocator (object-level allocator on top of buddy)
+
+The buddy allocator only hands out whole pages — wasteful for small,
+frequently-allocated kernel objects (e.g. `task_struct`, `dentry`,
+`inode`). SLAB/SLUB solve that:
+
+``` text
+Buddy allocator
+      ↓
+ grabs whole pages ("slabs")
+      ↓
+ slab is carved into many fixed-size OBJECTS of one kind
+      ↓
+kmalloc()/kmem_cache_alloc() hand out individual objects
+```
+
+-   Each object type gets its own **cache** (`kmem_cache`), e.g.
+    `task_struct` objects come from their own dedicated cache, visible
+    under `/proc/slabinfo`.
+-   Benefits: avoids re-initializing objects from scratch every time
+    (constructor can be cached), reduces internal fragmentation for
+    small objects, improves cache-line locality, and keeps
+    **per-CPU free lists** to avoid lock contention on the hot
+    allocate/free path.
+-   **SLUB** is the default modern allocator in mainline Linux — it
+    simplified SLAB's design (fewer queues/metadata, better scaling
+    on many-core systems) while keeping the same `kmem_cache` API.
+-   `vmalloc()` deliberately bypasses this: it's for large,
+    infrequent allocations where physical contiguity isn't needed and
+    TLB/page-table overhead is an acceptable trade-off.
 
 ------------------------------------------------------------------------
 
@@ -6485,3 +6677,577 @@ It is:
 > "What happens from the application call through libc and the syscall boundary, how does the kernel identify the resource, what subsystem handles it, can the task block, how is it woken, what synchronization is involved, how does the scheduler participate, and how does the request finally reach hardware?"
 
 That is the level of understanding these notes should target.
+
+------------------------------------------------------------------------
+
+# PART D — SILICON / EMBEDDED COMPANY ADDENDUM
+### (Qualcomm, ARM, AMD, Broadcom, Intel-style interviews)
+
+> Semiconductor/embedded companies interview closer to the
+> hardware-kernel boundary than a typical "backend systems" interview.
+> Expect questions on interrupts, drivers, DMA, cache coherency,
+> memory barriers, power management, and low-level architecture —
+> not just POSIX APIs. This part fills those gaps.
+
+------------------------------------------------------------------------
+
+# 163. Interrupt Handling Internals (Top Half / Bottom Half)
+
+An ISR must be **fast** — it runs with interrupts (often) disabled and
+can't sleep. Linux splits interrupt work into two halves:
+
+``` text
+Hardware interrupt
+        ↓
+Top half (hardirq context)
+    - runs immediately
+    - minimal work: ack device, copy minimal data, schedule bottom half
+    - CANNOT sleep, CANNOT block, runs with interrupts often disabled
+        ↓
+Bottom half (deferred work)
+    - does the heavy lifting, run later, more permissive context
+```
+
+Three bottom-half mechanisms, from "fastest/most restrictive" to
+"slowest/most flexible":
+
+``` text
+Softirq
+    - static, compile-time set (e.g. NET_RX, TIMER, TASKLET)
+    - runs in interrupt context, cannot sleep
+    - can run concurrently on multiple CPUs (per-CPU)
+    - highest performance, used by networking (NAPI) and timers
+
+Tasklet
+    - built on top of softirq
+    - dynamically created, but SAME tasklet never runs concurrently
+      on two CPUs (serialized against itself)
+    - still cannot sleep
+    - being phased out in favor of workqueues in newer kernels
+
+Workqueue
+    - runs in PROCESS context (kernel thread)
+    - CAN sleep, CAN take mutexes, CAN block on I/O
+    - use when the deferred work needs blocking APIs
+```
+
+Threaded IRQs (`request_threaded_irq()`):
+
+``` text
+hard IRQ handler (must be fast, non-blocking)
+        ↓
+      wakes
+        ↓
+IRQ thread (real kernel thread, schedulable, can sleep)
+        ↓
+does the actual (possibly slow) device servicing
+```
+
+This is the standard model for modern device drivers — especially
+important for embedded/SoC interviews (e.g. touchscreen, sensor, or
+GPIO-expander drivers over I2C, which must sleep during the I2C
+transaction).
+
+Interview trap: **"can a softirq preempt a tasklet?"** → No — tasklets
+run *as* a type of softirq (`TASKLET_SOFTIRQ`), so they're on the same
+level, but the tasklet mechanism guarantees the same tasklet instance
+isn't reentered on another CPU, unlike raw softirqs.
+
+------------------------------------------------------------------------
+
+# 164. Linux Device Driver Model
+
+``` text
+Bus (platform, I2C, SPI, PCI, USB...)
+      ↓
+  Device            Driver
+      \              /
+       \            /
+     match (probe) call
+              ↓
+        driver->probe(dev)
+```
+
+Core abstractions:
+
+``` text
+struct device        → generic device representation
+struct device_driver  → generic driver representation
+struct bus_type        → glue that matches devices to drivers
+```
+
+Driver types by interface:
+
+``` text
+Character driver → byte-stream access via /dev node (read/write/ioctl)
+Block driver      → fixed-size block access, goes through block layer + I/O scheduler
+Network driver    → doesn't use /dev at all, registers a net_device, packet-based
+Platform driver    → for SoC-integrated devices with no discoverable bus (UART, GPIO, I2C controllers)
+```
+
+**Device Tree** (used on most non-x86/embedded/ARM SoCs instead of
+ACPI/PCI enumeration):
+
+``` text
+.dts (device tree source)
+     ↓ compiled by dtc
+.dtb (device tree blob)
+     ↓ passed to kernel by bootloader
+kernel parses it → creates platform_device nodes
+     ↓
+matching platform_driver's probe() is called
+```
+
+Typical driver lifecycle:
+
+``` text
+module_init → register driver with subsystem (e.g. platform_driver_register)
+     ↓
+bus matches a compatible device → probe() called
+     ↓
+probe(): ioremap registers, request IRQ, allocate device state,
+         register with subsystem (input/char/net/etc.)
+     ↓
+     ... device operates ...
+     ↓
+remove() → undo everything probe() did
+     ↓
+module_exit → unregister driver
+```
+
+`sysfs` (`/sys`) exposes the device model to userspace as a tree of
+kobjects; `udev` listens to kernel uevents to create `/dev` nodes
+dynamically.
+
+------------------------------------------------------------------------
+
+# 165. DMA (Direct Memory Access)
+
+DMA lets a device transfer data to/from RAM **without CPU copying each
+byte** — critical for network/storage/sensor throughput.
+
+``` text
+CPU sets up DMA descriptor (src, dst, length)
+      ↓
+CPU tells device to start DMA
+      ↓
+Device/DMA controller moves data directly to/from RAM
+      ↓
+Device raises interrupt on completion
+      ↓
+CPU processes completed data
+```
+
+Two DMA mapping types, an extremely common embedded interview
+question:
+
+``` text
+Coherent (consistent) DMA mapping
+    - dma_alloc_coherent()
+    - CPU and device always see the same data automatically
+      (either genuinely cache-coherent hardware, or kernel
+      marks the memory uncached)
+    - simple, but every access pays uncached-memory cost
+    - good for small, frequently-touched descriptor rings
+
+Streaming DMA mapping
+    - dma_map_single()/dma_unmap_single() (or _sg for scatter-gather)
+    - normal cacheable memory is used
+    - driver MUST explicitly synchronize:
+          dma_map_*   → before device access (flush CPU caches to RAM)
+          dma_unmap_* → after device access (invalidate CPU caches
+                        so CPU sees device-written data, not stale
+                        cache lines)
+    - higher performance for bulk one-shot transfers (network
+      packets, disk buffers)
+```
+
+**IOMMU**: on systems with an IOMMU (common on ARM SoCs, x86 VT-d,
+AMD-Vi), devices don't see physical addresses directly — the IOMMU
+remaps device-visible "IOVA" addresses to physical RAM, providing:
+
+``` text
+- device memory isolation (a buggy/malicious device can't DMA anywhere)
+- ability to present a contiguous IOVA range even if physical
+  pages are scattered
+- required building block for PCIe passthrough to VMs (VFIO)
+```
+
+------------------------------------------------------------------------
+
+# 166. Cache Coherency (MESI / MOESI) — asked heavily at AMD/ARM/Broadcom
+
+On multi-core systems, each core has its own cache — coherency
+protocols keep them consistent.
+
+**MESI** states for each cache line:
+
+``` text
+Modified  → only this cache has it, and it's dirty (differs from RAM)
+Exclusive → only this cache has it, and it's clean (matches RAM)
+Shared    → multiple caches may have it, all clean
+Invalid   → this cache's copy is not usable
+```
+
+Typical transitions:
+
+``` text
+Core A reads X (not cached anywhere) → Exclusive
+Core B also reads X                  → both go to Shared
+Core A writes X                      → A becomes Modified,
+                                        B's copy is invalidated (→ Invalid)
+Core B reads X again                 → triggers a coherence transaction;
+                                        A writes back / forwards data, both → Shared
+```
+
+**MOESI** (used by AMD, some ARM implementations) adds an **Owned**
+state, allowing a dirty line to be shared directly cache-to-cache
+without writing back to RAM first — reduces memory-bus traffic versus
+MESI, at the cost of extra protocol complexity.
+
+Why this matters for interviews:
+
+-   Explains **false sharing**: two unrelated variables on the same
+    cache line, written by different cores, cause the line to bounce
+    Modified↔Invalid repeatedly even though the cores don't logically
+    share data — a classic multithreaded-performance-bug question.
+    Fix: pad/align hot per-thread counters to separate cache lines.
+-   Explains why **atomics and locks aren't free even when
+    uncontended** — they still involve cache-line coherency traffic
+    (a CAS on a line another core recently wrote is expensive).
+-   Relevant to **DMA coherency** above: on non-coherent
+    interconnects, a device writing to RAM doesn't automatically
+    invalidate the CPU's cached copy — hence the explicit
+    map/unmap/sync calls.
+
+------------------------------------------------------------------------
+
+# 167. Memory Barriers (Hardware-Level)
+
+CPUs and compilers may reorder memory operations for performance.
+Barriers restore the ordering guarantees software needs.
+
+``` text
+Compiler barrier   → prevents the COMPILER from reordering
+                      instructions across the barrier (no hardware effect)
+Hardware barrier    → prevents the CPU from reordering at runtime
+```
+
+Common categories:
+
+``` text
+LoadLoad  (rmb)  → loads before the barrier complete before loads after
+StoreStore (wmb) → stores before the barrier are visible before stores after
+LoadStore / StoreLoad → cross combinations
+Full barrier (mb) → orders everything
+```
+
+Architecture notes (common in ARM/Intel/AMD interviews):
+
+``` text
+x86 (Intel/AMD)  → strong memory model (TSO): most reorderings are
+                    already forbidden by hardware; explicit barriers
+                    mainly needed for StoreLoad ordering (mfence) and
+                    for non-temporal/streaming stores
+ARM               → weak memory model: reordering is common by
+                    default; explicit barriers (dmb, dsb, isb) are
+                    required far more often
+```
+
+Relationship to C++/Linux atomics (ties back into earlier notes on
+`memory_order_acquire/release`): those language-level primitives
+compile down to exactly these hardware barrier instructions (or
+nothing at all, on x86, for many cases) — this is why the same C++
+code can be "correct but slow" on ARM and "correct and free" on x86.
+
+`smp_mb()`, `smp_rmb()`, `smp_wmb()` in kernel code are the portable
+wrappers around these architecture-specific instructions.
+
+------------------------------------------------------------------------
+
+# 168. TLB, ASID and TLB Shootdown
+
+``` text
+Virtual address
+      ↓
+   TLB (cache of recent virtual→physical translations)
+      ↓ hit                              ↓ miss
+ physical address              page table walk (slow) → fill TLB
+```
+
+-   TLB miss is expensive relative to a cache hit — page-table walks
+    can be multiple memory accesses deep (4-level tables on modern
+    x86-64/ARM64).
+-   **ASID (Address Space ID)** lets TLB entries from different
+    processes coexist without a full flush on every context switch —
+    without ASID, every context switch would require flushing the
+    entire TLB (expensive).
+-   **TLB shootdown**: when one CPU unmaps/changes a page mapping
+    (e.g. `munmap`, COW break, page reclaim) that other CPUs may have
+    cached in *their* TLBs, the kernel must send an IPI
+    (inter-processor interrupt) to force those CPUs to invalidate the
+    stale entry — a classic scalability bottleneck on many-core
+    systems, and a common "why does this not scale past N cores"
+    interview question.
+-   **Huge pages** (2MB/1GB) reduce the number of TLB entries needed
+    to cover a given amount of memory, cutting TLB miss rate for
+    large working sets — common optimization question.
+
+------------------------------------------------------------------------
+
+# 169. Power Management (heavily asked at Qualcomm/ARM/mobile SoC teams)
+
+``` text
+cpufreq  → DVFS (Dynamic Voltage & Frequency Scaling): change CPU
+           frequency/voltage based on load
+             governors: performance, powersave, ondemand, schedutil
+
+cpuidle  → choose CPU idle (C-state) depth when no runnable tasks
+             deeper C-states save more power but cost more latency
+             to wake back up
+
+Runtime PM → per-device framework: suspend/resume individual devices
+             independently while the system stays fully awake
+             (pm_runtime_get/put in drivers)
+
+System suspend → whole-system sleep
+             S2idle (suspend-to-idle, software-only, fast resume)
+             Suspend-to-RAM (deeper, most devices powered off)
+             Hibernate (suspend-to-disk)
+```
+
+Interview angle: **schedutil** governor is scheduler-driven — it uses
+the CFS/EEVDF utilization signal directly to pick a frequency, tying
+scheduling and power management together (a favorite "connect two
+subsystems" senior question).
+
+------------------------------------------------------------------------
+
+# 170. ARM Architecture Specifics (Exception Levels, MMU, Caches)
+
+``` text
+EL0 → user space (unprivileged)
+EL1 → OS kernel
+EL2 → hypervisor
+EL3 → secure monitor / firmware (TrustZone secure world)
+```
+
+-   Analogous to x86 rings (ring 3 = user, ring 0 = kernel), but ARM
+    additionally has a **Secure/Non-secure split** (TrustZone) that
+    x86 rings don't natively have — relevant if asked about Qualcomm
+    TEE/TrustZone-based secure boot or DRM.
+-   ARM MMU uses multi-level page tables (translation tables) very
+    similar in concept to x86-64's 4-level paging; ARM additionally
+    has **cache maintenance instructions** software must issue
+    explicitly in some cases (e.g. after DMA, or when
+    self-modifying/JIT code needs an instruction-cache invalidate —
+    ARM's I-cache and D-cache are not automatically kept coherent
+    with each other the way x86's are).
+-   **big.LITTLE / DynamIQ**: heterogeneous cores (high-performance +
+    high-efficiency) on the same SoC; the scheduler must be
+    **capacity-aware** (Energy Aware Scheduling, EAS) to place tasks
+    on the right core type — a common Qualcomm/ARM systems question.
+-   **PSCI** (Power State Coordination Interface) is the standard
+    firmware interface ARM Linux uses to bring secondary cores
+    online/offline and enter deep power states.
+
+------------------------------------------------------------------------
+
+# 171. Bus / Interconnect Basics
+
+``` text
+I2C   → 2-wire, multi-master, low speed, addressing-based — sensors,
+         EEPROMs, PMICs. Transactions can block → drivers commonly
+         need threaded IRQs / workqueues.
+SPI   → 4-wire, full duplex, faster than I2C, no addressing (uses
+         chip-select lines) — flash, displays, high-rate sensors.
+UART  → simple async serial, point-to-point — debug console, modems.
+PCIe  → packet-switched, point-to-point, high bandwidth — NICs, NVMe,
+         GPUs. Config space + BARs (Base Address Registers) map device
+         registers into CPU physical address space.
+AMBA/AXI → ARM's on-chip interconnect family (AXI for
+         high-performance blocks, APB for low-speed peripherals) —
+         relevant background for ARM/Qualcomm SoC-level questions.
+```
+
+------------------------------------------------------------------------
+
+# 172. Lock-Free Programming Fundamentals
+
+``` text
+Compare-And-Swap (CAS):
+    CAS(ptr, expected, new):
+        atomically: if *ptr == expected: *ptr = new; return true
+                    else: return false
+```
+
+Typical lock-free push (Treiber stack):
+
+``` c
+do {
+    old_head = head;
+    new_node->next = old_head;
+} while (!CAS(&head, old_head, new_node));
+```
+
+Key issues interviewers probe:
+
+``` text
+ABA problem
+    - value goes A → B → A; a CAS sees "A" and assumes nothing
+      changed, but the underlying node may have been freed/reused
+    - mitigations: tagged pointers (version counter alongside
+      pointer), hazard pointers, or RCU-style deferred reclamation
+
+Memory reclamation
+    - in a lock-free structure, WHEN is it safe to free a removed
+      node if another thread might still be dereferencing it?
+    - answered by hazard pointers, epoch-based reclamation, or RCU
+      (ties directly back into section 85's RCU discussion)
+
+Lock-free vs wait-free vs obstruction-free
+    - lock-free: SOME thread makes progress system-wide, but an
+      individual thread could theoretically retry forever
+    - wait-free: EVERY thread makes progress in a bounded number of
+      steps (stronger, harder to achieve)
+    - obstruction-free: a thread makes progress if it runs alone
+      without contention (weakest)
+```
+
+------------------------------------------------------------------------
+
+# 173. Modern Kernel Tracing/Observability: eBPF, ftrace, kprobes
+
+``` text
+strace/ltrace/gdb/perf  → covered earlier, still baseline tools
+```
+
+Beyond those, expect at least conceptual familiarity with:
+
+``` text
+ftrace   → built-in kernel tracer (function tracing, scheduling
+           events, IRQ events) via /sys/kernel/tracing
+kprobes/uprobes → dynamically instrument (almost) any kernel/user
+           function at runtime without recompiling
+eBPF     → sandboxed, verified programs loaded INTO the kernel,
+           attached to hooks (kprobes, tracepoints, XDP, syscalls,
+           cgroups) — used for tracing (bpftrace, bcc tools),
+           high-performance networking (XDP, used heavily at
+           Broadcom/Meta/Cloudflare-style network teams), and
+           security/observability (Cilium, Falco)
+bpftrace → high-level scripting front-end over eBPF, similar
+           ergonomics to DTrace
+```
+
+Why it matters: eBPF programs are **verified** before being loaded
+(bounded loops, no arbitrary memory access) so they can't crash or
+hang the kernel — a common "how is this safe" interview question.
+
+------------------------------------------------------------------------
+
+# 174. cgroup v2 (Resource Control, in more depth)
+
+``` text
+Unified hierarchy (single tree, unlike cgroup v1's per-controller trees)
+      ↓
+Controllers: cpu, memory, io, pids, cpuset, ...
+      ↓
+Each cgroup gets weight/limit/max knobs, e.g.:
+   cpu.max        → hard CPU bandwidth cap
+   cpu.weight     → proportional share under contention
+   memory.max     → hard memory limit
+   memory.high    → soft limit (throttle before OOM)
+   io.max         → per-device I/O bandwidth/IOPS limit
+```
+
+-   Memory controller integrates with the page reclaim path — a
+    cgroup hitting `memory.high` gets its allocating tasks throttled
+    and reclaimed *before* the global OOM killer would ever trigger.
+-   This is the underlying mechanism for containers (Docker/Kubernetes
+    "resource requests/limits" map directly onto these controllers) —
+    good to be able to say explicitly if asked "how does a container
+    get CPU-limited."
+
+------------------------------------------------------------------------
+
+# 175. Company-Flavor Cheat Sheet
+
+Not a strict rule, but a useful lens for where each company's
+interviews tend to lean:
+
+``` text
+Qualcomm   → Android/embedded Linux, power management (cpufreq/
+             cpuidle/EAS), device drivers (I2C/SPI/GPIO), TrustZone/
+             TEE, DMA, IPC across DSPs (SMEM/QMI-style concepts),
+             boot flow (bootloader → kernel → init)
+
+ARM        → architecture fundamentals: exception levels, MMU/cache
+             behavior, memory ordering (weak model), big.LITTLE/EAS,
+             PSCI, coherent interconnects (AMBA/CHI), virtualization
+             extensions
+
+AMD        → x86-64 specifics, cache coherency (MOESI — AMD's own
+             heritage here), memory ordering (TSO), virtualization
+             (AMD-V/SEV), NUMA (multi-socket/multi-die), performance
+             counters
+
+Broadcom   → networking-heavy: NIC drivers, DMA descriptor rings,
+             interrupt coalescing/NAPI, packet processing performance,
+             sometimes storage/SoC driver work, eBPF/XDP familiarity
+             is a plus
+
+Intel      → x86 architecture depth, virtualization (VT-x/VT-d/IOMMU),
+             performance analysis (perf, PMU counters, cache/TLB
+             behavior), sometimes storage (NVMe/io_uring) or
+             networking (DPDK) depending on team
+```
+
+Across all of them, the constants are: **process/thread fundamentals,
+synchronization correctness, memory management, and being able to
+trace a request from user space through the kernel to hardware and
+back** — which is why Parts 1–3 of this document remain the
+foundation; this addendum fills in the hardware-adjacent layer they
+specifically probe for.
+
+------------------------------------------------------------------------
+
+# 176. Updated Coding Problems (Silicon/Embedded Track)
+
+``` text
+24. Implement a simple spinlock using atomic CAS (test-and-set / test-and-test-and-set)
+25. Implement a lock-free single-producer/single-consumer ring buffer
+26. Implement a Treiber stack (lock-free stack via CAS) and explain its ABA exposure
+27. Simulate a buddy allocator (allocate/free/coalesce over an array) for a fixed pool
+28. Write a minimal character device driver skeleton (open/read/write/ioctl + file_operations)
+29. Write a platform driver skeleton with probe()/remove() and a devicetree "compatible" match
+30. Implement a producer-consumer using a lock-free queue instead of a condition variable, and explain the trade-offs
+31. Given two threads incrementing adjacent counters in an array, demonstrate/fix false sharing (padding to cache-line size)
+32. Simulate a simplified MESI protocol state machine for a 2-core, 1-cache-line scenario
+```
+
+------------------------------------------------------------------------
+
+# 177. Final Completeness Checklist — Silicon/Embedded Addendum
+
+- [ ] Top half vs bottom half (softirq vs tasklet vs workqueue)
+- [ ] Threaded IRQs and why drivers need them
+- [ ] Device model: bus/device/driver, probe/remove
+- [ ] Device tree vs ACPI-style enumeration
+- [ ] Char vs block vs network vs platform drivers
+- [ ] Coherent vs streaming DMA mapping
+- [ ] IOMMU purpose
+- [ ] MESI vs MOESI cache coherency
+- [ ] False sharing (cause, symptom, fix)
+- [ ] Hardware memory barriers vs compiler barriers
+- [ ] x86 (TSO) vs ARM (weak) memory model difference
+- [ ] TLB, ASID, TLB shootdown, huge pages
+- [ ] cpufreq governors and cpuidle C-states
+- [ ] Runtime PM vs system suspend (S2idle/STR/hibernate)
+- [ ] ARM exception levels EL0–EL3 and TrustZone
+- [ ] big.LITTLE / EAS (capacity-aware scheduling)
+- [ ] I2C vs SPI vs UART vs PCIe, at a conceptual level
+- [ ] CAS, ABA problem, lock-free vs wait-free vs obstruction-free
+- [ ] Hazard pointers / RCU as memory-reclamation strategies for lock-free structures
+- [ ] eBPF safety model (verifier) and what it's used for
+- [ ] cgroup v2 controllers and how they back container limits
+- [ ] Company-specific emphasis areas (Qualcomm/ARM/AMD/Broadcom/Intel)
