@@ -426,6 +426,27 @@ int newfd = dup(fd);
 Typical use:
 
 ``` text
+ ./program > output.txt
+        │
+        │ shell interprets >
+        ↓
+open("output.txt")
+        │
+        ↓
+fd = 3
+        │
+        ↓
+dup2(3, 1)
+        │
+        ↓
+FD 1 → output.txt
+        │
+        ↓
+exec("./program")
+        │
+        ↓
+program's stdout → output.txt
+ 
 stdout
   ↓
 dup2(file_fd, STDOUT_FILENO)
