@@ -99,20 +99,38 @@ read(fd, buffer, size);
 Conceptually:
 
 ``` text
-User program
-     |
-     | read()
-     v
-libc
-     |
-     v
-system call
-     |
-     v
-Kernel
-     |
-     v
-VFS / filesystem
+User Program
+    |
+    | 1. calls library/API
+    v
+C Library (glibc)
+    |
+    | 2. prepares syscall number + arguments
+    v
+CPU executes syscall instruction
+    |
+    | 3. CPU switches User Mode → Kernel Mode
+    v
+Kernel syscall entry
+    |
+    | 4. identifies syscall
+    v
+System Call Handler
+    |
+    | 5. validates arguments / permissions
+    v
+Kernel subsystem
+    |
+    | 6. performs requested operation
+    v
+Return value prepared
+    |
+    | 7. Kernel → User Mode
+    v
+C Library
+    |
+    v
+User Program
 ```
 
 ## Why system calls are required?
