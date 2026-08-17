@@ -183,3 +183,18 @@ Process A                Process B
          ─────────────────
 ```
 IPC provides a safe way for processes to exchange data and coordinate with each other.
+
+--------------------------------------------------------------------------------  
+```
+IPC	Use when	Persistence
+Unnamed Pipe	Simple communication between related processes (e.g., parent-child)	Temporary — exists while pipe FDs are open
+Named Pipe (FIFO)	Communication between unrelated processes on the same machine	FIFO object persists until unlink()/rm; data does not persist
+POSIX Message Queue	Need to send structured messages between processes	Kernel-persistent until mq_unlink() or reboot
+System V Message Queue	Legacy/System V applications needing message-based IPC	Kernel-persistent until IPC_RMID or reboot
+POSIX Shared Memory	Fastest data sharing; processes need to share large amounts of data	Persistent object until shm_unlink() or reboot
+System V Shared Memory	Same purpose as shared memory in legacy System V applications	Kernel-persistent until IPC_RMID or reboot
+POSIX Named Semaphore	Synchronization between processes	Persistent object until sem_unlink() or reboot
+System V Semaphore	Process synchronization in legacy System V applications	Kernel-persistent until IPC_RMID or reboot
+Socket	Communication between processes, especially over a network	Temporary — endpoint exists while socket is open
+UNIX Domain Socket	Fast communication between processes on the same machine	Pathname persists until removed; endpoint disappears when closed/terminated
+```
