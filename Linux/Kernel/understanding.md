@@ -1,4 +1,4 @@
-**System call working flow:**
+Application → System Call → Physical Device
 APPLICATION
    │
    │ calls
@@ -52,3 +52,50 @@ DEVICE CONTROLLER
    │ controls
    ↓
 PHYSICAL DEVICE
+
+Example: read()
+Application
+   │
+   │ calls read(fd, buffer, 100)
+   ↓
+Library Function: read()
+   │
+   │ calls/prepares
+   ↓
+System-Call Wrapper
+   │
+   │ puts system-call number + arguments
+   │ into CPU registers
+   ↓
+System-Call Instruction: syscall
+   │
+   │ CPU switches User Mode → Kernel Mode
+   ↓
+System-Call Handler
+   │
+   │ uses system-call number
+   ↓
+System-Call Table
+   │
+   │ identifies
+   ↓
+Kernel System-Call Routine: sys_read()
+   │
+   │ calls
+   ↓
+Kernel Subsystem / File System
+   │
+   │ if hardware access is required
+   ↓
+Device Driver
+   │
+   │ communicates with
+   ↓
+Device Controller
+   │
+   │ controls
+   ↓
+Physical Device (SSD/HDD)
+
+
+Important: Not every system call reaches a device driver. Some system calls can be handled entirely inside the kernel. For example, getpid() does not need to access a physical device.
