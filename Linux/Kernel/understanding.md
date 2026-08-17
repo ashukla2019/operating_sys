@@ -168,3 +168,17 @@ ping
 
 **What is a kernel module?** A piece of kernel code that can be loaded or unloaded at runtime to add functionality (such as a device driver) without rebuilding or rebooting the kernel.
 
+--------------------------------------------------------------------------------------
+# IPC:
+Why is IPC Required?
+IPC (Inter-Process Communication) is required because processes usually have separate memory spaces, so one process cannot directly access another process's data.
+
+Process A                Process B
+┌──────────┐             ┌──────────┐
+│ Memory A │      ❌     │ Memory B │
+└──────────┘             └──────────┘
+       \                    /
+        \      IPC         /
+         ─────────────────
+
+IPC provides a safe way for processes to exchange data and coordinate with each other.
