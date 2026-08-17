@@ -76,10 +76,32 @@ The device controller controls the physical device.
 **Why monolithic is faster than micorservice but microservice is more reiable?**
 Monolithic is faster: Components usually communicate through direct function calls within the same process, avoiding network/serialization overhead.
 Microservices can be more reliable: Services are isolated. If one service fails, other services can often continue working instead of the entire application going down.
+
 ----------------------------------------------------------------------
-**Loadable Kernel Modules (LKM)**
-Linux can load/unload drivers without rebooting.
-Example: USB Driver → Load Module → Kernel uses Driver
-Commands: lsmod, insmod, rmmod, modprobe
-Advantages: No reboot, smaller kernel, easier driver updates.
-Flow: Driver.ko → insmod → Kernel → Driver Initialized → Device Ready
+## Why is Monolithic Faster but Microservices More Reliable?
+- **Monolithic is faster:** Components usually communicate through direct function calls within the same process, avoiding network and serialization overhead.
+
+- **Microservices can be more reliable:** Services are isolated, so if one service fails, other services can often continue working instead of the entire application going down.
+--------------------------------------------------------------------------------
+**Linux Boot Process (High Level)**
+
+```
+Power ON
+   ↓
+BIOS/UEFI
+   ↓  Initializes hardware & finds boot device
+GRUB (Bootloader)
+   ↓  Loads Linux kernel
+Linux Kernel
+   ↓  Initializes OS & hardware
+Initramfs
+   ↓  Loads required drivers & mounts root filesystem
+systemd (PID 1)
+   ↓  Starts system services
+Services
+   ↓  Network, logging, display, etc.
+Login
+   ↓
+Applications
+```
+--------------------------------------------------------------------------------
