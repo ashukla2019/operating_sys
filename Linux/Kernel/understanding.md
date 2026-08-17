@@ -207,3 +207,8 @@ IPC provides a safe way for processes to exchange data and coordinate with each 
 
 - **UNIX Domain Socket (pathname):** Socket file remains in the filesystem until `unlink()`. The communication endpoint ends when the socket is closed or the process terminates.
 
+------------------------------------------------------------------------------------   
+**Shared Memory:** Data is placed in a shared memory region → less copying, less kernel involvement.
+**Message Queue:** Data is sent as messages through the kernel → more copying and kernel overhead.
+**Shared Memory =** faster for large/frequent data sharing.
+**Message Queue =** simpler when you need structured messages and synchronization-like communication.
