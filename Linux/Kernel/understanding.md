@@ -212,3 +212,65 @@ IPC provides a safe way for processes to exchange data and coordinate with each 
 **Message Queue:** Data is sent as messages through the kernel → more copying and kernel overhead.
 **Shared Memory =** faster for large/frequent data sharing.
 **Message Queue =** simpler when you need structured messages and synchronization-like communication.
+
+-----------------------------------------------------------------------------------------
+# Process:
+Sections in process:
+```
+High Address
+-----------------------
+Stack
+Local Variables
+Return Address
+-----------------------
+Free Memory
+-----------------------
+Heap
+Dynamic Allocation
+-----------------------
+Data
+Global Variables
+-----------------------
+Text
+Machine Instructions
+-----------------------
+Low Address
+```
+-----------------------------------------------------------------------------
+**PCB**:
+```
++-------------------------+
+| Process ID
+|
++-------------------------+
+| Process State
+|
++-------------------------+
+| Program Counter
+|
++-------------------------+
+| CPU Registers
+|
++-------------------------+
+| Scheduling Info
+|
++-------------------------+
+| Memory Info
+|
++-------------------------+
+| Open Files
+|
++-------------------------+
+| I/O Information
+|
++-------------------------+
+```
+--------------------------------------------------------
+**Process states:**
+**New:** Process is being created.
+**Ready:** Loaded into memory.Waiting for CPU.
+**Running**: CPU executing instructions.
+**Waiting (Blocked)**: Disk I/O, Keyboard, Network Event
+**Terminated** Execution completed. 
+
+-------------------------------------------------------
