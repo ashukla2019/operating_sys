@@ -16,11 +16,13 @@ int main()
 
     // Map into process memory
     char* ptr = (char*)mmap(
-        nullptr, SIZE,
-        PROT_READ | PROT_WRITE,
-        MAP_SHARED,
-        fd, 0
-    );
+    nullptr,       // Let OS choose address
+    SIZE,           // Size to map
+    PROT_READ | PROT_WRITE, // Permissions
+    MAP_SHARED,    // Changes visible to other processes
+    fd,            // Shared memory file descriptor
+    0              // Offset
+);
 
     // Write data
     strcpy(ptr, "Hello from shared memory!");
