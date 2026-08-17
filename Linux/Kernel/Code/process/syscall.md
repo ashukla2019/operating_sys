@@ -1,83 +1,83 @@
 # Linux Process Management — C++ Interview Notes
 
-Simple, small, working Linux C++ examples for:
-
-1. `fork()`
-2. `getpid()` / `getppid()`
-3. `wait()`
-4. `waitpid()`
-5. `exit()` / `_exit()`
-6. `exec()`
-7. `execl()`
-8. `execlp()`
-9. `execv()`
-10. `execvp()`
-11. `fork() + exec()`
-12. `fork() + exec() + wait()`
-13. Orphan process
-14. Zombie process
-15. Copy-on-write
-16. Multiple `fork()`
-17. `fork() + pipe()`
-18. `fork() + exec() + pipe()`
-19. `system()` vs `exec()`
-20. `vfork()`
-21. Process groups
-22. Signals
-23. `kill()`
-24. `signal()`
-25. `sigaction()`
-26. Signal + `wait()`
-27. Process states
-28. Common interview questions
-29. One-page revision
+Concise Linux process-management notes with practical C++/POSIX examples for senior Linux/system-programming interviews.
 
 ---
 
 # 1. Process Basics
 
-A process is a running program.
-
-For example:
-
-```text
-program
-   |
-   | execute
-   v
-process
-```
+A **process** is a program in execution.
 
 A process has:
 
 ```text
 PID
 PPID
-Address space
-Code
-Data
-Stack
-Heap
-File descriptors
+Virtual address space
+Code / Data / Heap / Stack
 Registers
+File descriptors
+Process state
+Scheduling information
 ```
 
-Important functions:
+Important process APIs:
 
-```cpp
-fork()
-exec()
-wait()
-exit()
-getpid()
-getppid()
+```text
+fork()       -> create process
+exec*()      -> replace process image
+wait()       -> wait for child
+waitpid()    -> wait for specific child
+exit()       -> terminate normally
+_exit()      -> terminate immediately
+getpid()     -> current PID
+getppid()    -> parent PID
+kill()       -> send signal
 ```
 
 ---
 
-# 2. `getpid()`
+# 2. `getpid()` and `getppid()`
 
-`getpid()` returns the PID of the current process.
+```cpp
+#include <iostream>
+#include <unistd.h>
+
+int main()
+{
+    std::cout << "PID  = " << getpid() << '\n';
+    std::cout << "PPID = " << getppid() << '\n';
+
+    return 0;
+}
+```
+
+Remember:
+
+```text
+getpid()  -> current process PID
+getppid() -> parent process PID
+```
+
+---
+
+# 3. `fork()`
+
+`fork()` creates a new child process.
+
+```text
+Before:
+
+        Parent
+          |
+        fork()
+          |
+After:
+
+       +--------+
+       |        |
+    Parent    Child
+```
 
 Example:
 
@@ -85,120 +85,11 @@ Example:
 #include <iostream>
 #include <unistd.h>
 
-using namespace std;
-
-int main()
-{
-    cout << "My PID = "
-         << getpid()
-         << endl;
-
-    return 0;
-}
-```
-
-Compile:
-
-```bash
-g++ pid.cpp -o pid
-```
-
-Run:
-
-```bash
-./pid
-```
-
-Example output:
-
-```text
-My PID = 12345
-```
-
----
-
-# 3. `getppid()`
-
-`getppid()` returns the PID of the parent process.
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-
-using namespace std;
-
-int main()
-{
-    cout << "My PID = "
-         << getpid()
-         << endl;
-
-    cout << "Parent PID = "
-         << getppid()
-         << endl;
-
-    return 0;
-}
-```
-
-Output:
-
-```text
-My PID = 12345
-Parent PID = 1000
-```
-
-Remember:
-
-```text
-getpid()
-    -> current process
-
-getppid()
-    -> parent process
-```
-
----
-
-# 4. `fork()`
-
-`fork()` creates a new process.
-
-Before:
-
-```text
-Parent
-```
-
-After:
-
-```text
-        Parent
-           |
-        fork()
-           |
-      +----+----+
-      |         |
-   Parent      Child
-```
-
-The child is initially a copy of the parent's process image.
-
----
-
-# 5. Simplest `fork()` Example
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-
-using namespace std;
-
 int main()
 {
     fork();
 
-    cout << "Hello\n";
+    std::cout << "Hello\n";
 
     return 0;
 }
@@ -211,87 +102,50 @@ Hello
 Hello
 ```
 
-Why?
-
-Before `fork()`:
-
-```text
-1 process
-```
-
-After:
-
-```text
-2 processes
-```
-
-Both execute:
-
-```cpp
-cout << "Hello\n";
-```
-
-Therefore:
-
-```text
-Hello
-Hello
-```
+After `fork()`, both processes continue execution from approximately the point where `fork()` returned.
 
 ---
 
-# 6. `fork()` Return Value
+# 4. `fork()` Return Value
 
-This is extremely important.
-
-```cpp
-pid_t pid = fork();
-```
-
-There are three possibilities:
-
-```text
-pid < 0
-    -> fork failed
-
-pid == 0
-    -> child process
-
-pid > 0
-    -> parent process
-    -> value is child's PID
-```
-
-Typical pattern:
+This is one of the most important interview facts.
 
 ```cpp
 pid_t pid = fork();
 
 if (pid < 0)
 {
-    // Error
+    // fork failed
 }
 else if (pid == 0)
 {
-    // Child
+    // child
 }
 else
 {
-    // Parent
+    // parent
+    // pid = child's PID
 }
 ```
 
-Memorize this.
+Meaning:
+
+```text
+pid < 0  -> failure
+
+pid == 0 -> child process
+
+pid > 0  -> parent process
+            return value = child's PID
+```
 
 ---
 
-# 7. Parent and Child Example
+# 5. Parent and Child PIDs
 
 ```cpp
 #include <iostream>
 #include <unistd.h>
-
-using namespace std;
 
 int main()
 {
@@ -299,75 +153,49 @@ int main()
 
     if (pid == 0)
     {
-        cout << "Child\n";
-        cout << "Child PID = "
-             << getpid()
-             << endl;
+        std::cout << "Child PID = " << getpid() << '\n';
+        std::cout << "Parent PID = " << getppid() << '\n';
     }
-    else
+    else if (pid > 0)
     {
-        cout << "Parent\n";
-        cout << "Parent PID = "
-             << getpid()
-             << endl;
-        cout << "Child PID = "
-             << pid
-             << endl;
+        std::cout << "Parent PID = " << getpid() << '\n';
+        std::cout << "Child PID  = " << pid << '\n';
     }
 
     return 0;
 }
 ```
 
-Possible output:
-
-```text
-Parent
-Parent PID = 1000
-Child PID = 1001
-
-Child
-Child PID = 1001
-```
-
-The order is not guaranteed.
+The output order is not guaranteed because scheduling is independent.
 
 ---
 
-# 8. Important `fork()` Point
+# 6. What Does `fork()` Copy?
 
-After:
+The child gets a new process with a logically copied process state.
 
-```cpp
-pid_t pid = fork();
-```
-
-there are two processes executing from approximately the same point.
+Important points:
 
 ```text
-Before fork:
+Parent and child have separate virtual address spaces.
 
-A
-|
-fork()
-|
-+----------------+
-|                |
-v                v
-Parent           Child
+Child gets its own PID.
+
+Memory pages are initially shared physically where possible
+using Copy-on-Write.
+
+File descriptors are inherited.
+
+Parent and child execute independently.
 ```
-
-Both continue execution after `fork()`.
 
 ---
 
-# 9. Variables After `fork()`
+# 7. Variables After `fork()`
 
 ```cpp
 #include <iostream>
 #include <unistd.h>
-
-using namespace std;
 
 int main()
 {
@@ -378,226 +206,84 @@ int main()
     if (pid == 0)
     {
         x = 20;
-
-        cout << "Child x = "
-             << x
-             << endl;
+        std::cout << "Child  x = " << x << '\n';
     }
     else
     {
-        cout << "Parent x = "
-             << x
-             << endl;
+        std::cout << "Parent x = " << x << '\n';
     }
 
     return 0;
 }
 ```
-
-Output:
-
-```text
-Child x = 20
-Parent x = 10
-```
-
-Why?
-
-Each process gets its own virtual address space.
 
 Conceptually:
 
 ```text
 Parent:
-x = 10
+    x = 10
 
 Child:
-x = 20
+    x = 20
 ```
 
-Changing child's `x` does not change parent's `x`.
+Changing the child's `x` does not modify the parent's `x`.
 
 ---
 
-# 10. Copy-on-Write
+# 8. Copy-on-Write (CoW)
 
-After `fork()`, parent and child initially share physical memory pages where possible.
-
-The OS uses:
-
-```text
-Copy-on-Write
-```
+`fork()` does not normally copy every physical memory page immediately.
 
 Initially:
 
 ```text
-Parent ----+
-           |
-           v
-       Physical Page
-           ^
-           |
-Child -----+
+Parent virtual memory
+          |
+          v
+      Physical Page
+          ^
+          |
+Child virtual memory
 ```
 
-If child modifies a page:
+The pages can be shared read-only.
+
+If one process writes:
 
 ```text
-Parent ----> Page A
+Parent -----> Page A
 
-Child -----> Copy of Page A
-```
-
-So `fork()` does not necessarily copy the entire memory immediately.
-
----
-
-# 11. `wait()`
-
-`wait()` allows the parent to wait for a child process.
-
-Include:
-
-```cpp
-#include <sys/wait.h>
-```
-
-Simple example:
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-#include <sys/wait.h>
-
-using namespace std;
-
-int main()
-{
-    pid_t pid = fork();
-
-    if (pid == 0)
-    {
-        cout << "Child running\n";
-        sleep(2);
-        cout << "Child finished\n";
-    }
-    else
-    {
-        cout << "Parent waiting...\n";
-
-        wait(nullptr);
-
-        cout << "Parent continues\n";
-    }
-
-    return 0;
-}
-```
-
-Output:
-
-```text
-Parent waiting...
-Child running
-Child finished
-Parent continues
-```
-
----
-
-# 12. Why Use `wait()`?
-
-Without `wait()`:
-
-```text
-Parent
-   |
-   +---- Child
-```
-
-Parent may finish before child.
-
-With:
-
-```cpp
-wait(nullptr);
-```
-
-parent waits for a child to finish.
-
-```text
-Parent
-   |
-   | wait()
-   v
-Child finishes
-   |
-   v
-Parent continues
-```
-
----
-
-# 13. `wait()` and Zombie Processes
-
-When a child terminates, the OS keeps some information about the child until the parent collects it.
-
-If the parent doesn't call:
-
-```cpp
-wait()
-```
-
-or:
-
-```cpp
-waitpid()
-```
-
-the child can remain as a:
-
-```text
-Zombie
+Child ------> Copy of Page A
 ```
 
 Therefore:
 
 ```text
-Child exits
-     |
-     v
-Zombie
-     |
-     | parent calls wait()
-     v
-Zombie removed
+fork()
+   |
+   v
+Pages shared where possible
+   |
+   | write
+   v
+Private physical copy
 ```
+
+### Interview answer
+
+> `fork()` uses Copy-on-Write, so parent and child initially share physical pages where possible; a page is copied only when one process modifies it.
 
 ---
 
-# 14. `waitpid()`
+# 9. `wait()`
 
-`waitpid()` allows the parent to wait for a specific child.
-
-Syntax:
-
-```cpp
-waitpid(
-    pid,
-    nullptr,
-    0
-);
-```
-
-Example:
+`wait()` allows a parent to wait for a child.
 
 ```cpp
 #include <iostream>
 #include <unistd.h>
 #include <sys/wait.h>
-
-using namespace std;
 
 int main()
 {
@@ -605,62 +291,51 @@ int main()
 
     if (pid == 0)
     {
-        cout << "Child running\n";
+        std::cout << "Child running\n";
         sleep(2);
-        cout << "Child done\n";
+        std::cout << "Child finished\n";
     }
     else
     {
-        cout << "Waiting for child...\n";
+        std::cout << "Parent waiting\n";
 
-        waitpid(
-            pid,
-            nullptr,
-            0
-        );
+        wait(nullptr);
 
-        cout << "Child finished\n";
+        std::cout << "Parent continues\n";
     }
 
     return 0;
 }
 ```
 
----
-
-# 15. `wait()` vs `waitpid()`
+Flow:
 
 ```text
-wait()
-    -> Wait for any child
-
-waitpid(pid, ...)
-    -> Wait for specific child
-```
-
-Example:
-
-```cpp
-wait(nullptr);
-```
-
-vs:
-
-```cpp
-waitpid(
-    child_pid,
-    nullptr,
-    0
-);
+Parent
+   |
+ fork()
+   |
+   +------> Child
+   |           |
+ wait()        |
+   |           v
+   |         exits
+   |           |
+   +-----------+
+   |
+   v
+Parent continues
 ```
 
 ---
 
-# 16. `waitpid()` Non-Blocking
+# 10. `waitpid()`
 
-Normally:
+`waitpid()` allows the parent to wait for a specific child.
 
 ```cpp
+#include <sys/wait.h>
+
 waitpid(
     pid,
     nullptr,
@@ -668,98 +343,78 @@ waitpid(
 );
 ```
 
-blocks.
-
-With:
-
-```cpp
-WNOHANG
-```
-
-the parent does not block.
-
 Example:
 
 ```cpp
-pid_t result = waitpid(
+pid_t pid = fork();
+
+if (pid == 0)
+{
+    sleep(2);
+}
+else
+{
+    waitpid(pid, nullptr, 0);
+}
+```
+
+### `wait()` vs `waitpid()`
+
+```text
+wait()
+    -> wait for a child
+
+waitpid(pid, ...)
+    -> wait for a specific child
+    -> supports options such as WNOHANG
+```
+
+---
+
+# 11. Non-Blocking `waitpid()`
+
+Normally:
+
+```cpp
+waitpid(pid, nullptr, 0);
+```
+
+blocks.
+
+Use:
+
+```cpp
+waitpid(
     pid,
     nullptr,
     WNOHANG
 );
 ```
 
-Possible result:
+to avoid blocking.
+
+Return value:
 
 ```text
-result == 0
+0
     -> child still running
 
-result == child PID
-    -> child finished
+child PID
+    -> child has changed state / finished
 
-result == -1
+-1
     -> error
 ```
 
 ---
 
-# 17. `exit()`
-
-`exit()` terminates the process.
-
-```cpp
-#include <iostream>
-#include <cstdlib>
-
-using namespace std;
-
-int main()
-{
-    cout << "Before exit\n";
-
-    exit(0);
-
-    cout << "After exit\n";
-
-    return 0;
-}
-```
-
-Output:
-
-```text
-Before exit
-```
-
-This is never executed:
-
-```cpp
-cout << "After exit\n";
-```
-
----
-
-# 18. Exit Status
-
-A child can return an exit status.
-
-Child:
-
-```cpp
-exit(42);
-```
-
-Parent can collect it.
-
-Example:
+# 12. Collecting Child Exit Status
 
 ```cpp
 #include <iostream>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <cstdlib>
-
-using namespace std;
 
 int main()
 {
@@ -769,253 +424,121 @@ int main()
     {
         exit(42);
     }
-    else
+
+    int status;
+
+    waitpid(
+        pid,
+        &status,
+        0
+    );
+
+    if (WIFEXITED(status))
     {
-        int status;
-
-        waitpid(
-            pid,
-            &status,
-            0
-        );
-
-        if (WIFEXITED(status))
-        {
-            cout << "Exit status = "
-                 << WEXITSTATUS(status)
-                 << endl;
-        }
+        std::cout
+            << "Exit status = "
+            << WEXITSTATUS(status)
+            << '\n';
     }
 
     return 0;
 }
 ```
 
-Output:
+Important macros:
 
 ```text
-Exit status = 42
+WIFEXITED(status)
+    -> child exited normally
+
+WEXITSTATUS(status)
+    -> exit status
+
+WIFSIGNALED(status)
+    -> child terminated by signal
+
+WTERMSIG(status)
+    -> signal that terminated child
 ```
 
 ---
 
-# 19. `_exit()`
+# 13. `exit()` vs `_exit()`
 
-`_exit()` immediately terminates the process.
+### `exit()`
 
 ```cpp
-#include <unistd.h>
+exit(0);
+```
 
-int main()
+Performs normal user-space termination processing, including flushing standard C stdio streams.
+
+### `_exit()`
+
+```cpp
+_exit(0);
+```
+
+Terminates immediately without normal stdio cleanup.
+
+Important after `fork()`:
+
+```cpp
+exec(...);
+
+if exec fails
 {
-    _exit(0);
+    perror("exec");
+    _exit(1);
 }
 ```
 
-Important interview difference:
-
-```text
-exit()
-    -> performs normal user-space cleanup
-    -> flushes stdio buffers
-
-_exit()
-    -> immediately terminates process
-    -> does not perform those stdio cleanup operations
-```
-
-This difference matters particularly around:
-
-```text
-fork()
-```
-
-and buffered output.
+Using `_exit()` in the forked child avoids running inherited user-space cleanup/stdio handling again.
 
 ---
 
-# 20. `exec()` — Most Important Concept
+# 14. `exec()` — Replaces the Process Image
 
-`exec()` does NOT create a new process.
+`exec()` **does not create a process**.
 
-It replaces the current process's program.
-
-Before:
+It replaces the current process image with another program.
 
 ```text
-Process
+Before:
+
+PID 5000
    |
-   v
 Program A
-```
+
+
+exec()
+
 
 After:
 
-```text
-Process
+PID 5000
    |
-   v
 Program B
 ```
 
 The PID remains the same.
 
-Remember:
+### Memorize
 
 ```text
 fork()
-    -> creates process
+    -> creates a process
 
 exec()
-    -> replaces program
+    -> replaces the program inside the process
 ```
 
 ---
 
-# 21. Why `fork() + exec()`?
-
-This is one of the most important Linux process patterns.
-
-```text
-Parent
-   |
-   | fork()
-   |
-   +---------> Child
-                  |
-                  | exec()
-                  v
-              New Program
-```
-
-Parent remains running.
-
-Child becomes another program.
-
----
-
-# 22. `execl()`
-
-Example:
+# 15. `exec()` Returns Only on Failure
 
 ```cpp
 #include <iostream>
-#include <unistd.h>
-
-using namespace std;
-
-int main()
-{
-    cout << "Before exec\n";
-
-    execl(
-        "/bin/ls",
-        "ls",
-        "-l",
-        nullptr
-    );
-
-    cout << "After exec\n";
-
-    return 0;
-}
-```
-
-Output will contain the `ls -l` result.
-
-You will NOT normally see:
-
-```text
-After exec
-```
-
-because if `exec` succeeds, it replaces the current program.
-
----
-
-# 23. What If `exec()` Fails?
-
-Important:
-
-`exec()` only returns if it fails.
-
-Example:
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-
-using namespace std;
-
-int main()
-{
-    execl(
-        "/does/not/exist",
-        "test",
-        nullptr
-    );
-
-    cout << "exec failed\n";
-
-    return 0;
-}
-```
-
-Output:
-
-```text
-exec failed
-```
-
-Production code should normally check the error:
-
-```cpp
-perror("execl");
-```
-
----
-
-# 24. `execl()`
-
-The `l` means:
-
-```text
-list
-```
-
-Arguments are passed as a list.
-
-Example:
-
-```cpp
-execl(
-    "/bin/ls",
-    "ls",
-    "-l",
-    "-a",
-    nullptr
-);
-```
-
-Conceptually:
-
-```text
-path
-argv[0]
-argv[1]
-argv[2]
-NULL
-```
-
----
-
-# 25. `execlp()`
-
-The `p` means it searches the `PATH`.
-
-Example:
-
-```cpp
 #include <unistd.h>
 
 int main()
@@ -1027,154 +550,148 @@ int main()
         nullptr
     );
 
+    std::cout << "exec failed\n";
+
     return 0;
 }
 ```
 
-Difference:
+If `exec()` succeeds:
 
 ```text
-execl()
-    -> path explicitly specified
-
-execlp()
-    -> searches PATH
+Current program disappears
+New program runs
+"exec failed" is never executed
 ```
 
----
-
-# 26. `execv()`
-
-The `v` means arguments are supplied as a vector/array.
-
-```cpp
-#include <unistd.h>
-
-int main()
-{
-    char* args[] =
-    {
-        (char*)"ls",
-        (char*)"-l",
-        nullptr
-    };
-
-    execv(
-        "/bin/ls",
-        args
-    );
-
-    return 0;
-}
-```
-
----
-
-# 27. `execvp()`
-
-`execvp()` combines:
+If `exec()` fails:
 
 ```text
-v = vector/array arguments
-
-p = search PATH
+exec() returns -1
+execution continues
 ```
 
-Example:
+Production-style pattern:
 
 ```cpp
-#include <unistd.h>
+execlp(
+    "ls",
+    "ls",
+    "-l",
+    nullptr
+);
 
-int main()
-{
-    char* args[] =
-    {
-        (char*)"ls",
-        (char*)"-l",
-        nullptr
-    };
-
-    execvp(
-        "ls",
-        args
-    );
-
-    return 0;
-}
+perror("execlp");
+_exit(1);
 ```
 
 ---
 
-# 28. `exec` Family
+# 16. `exec` Family
 
 The common variants:
 
 ```text
 execl()
 execlp()
-
 execv()
 execvp()
 ```
 
-Meaning:
+Remember:
 
 ```text
 l = list
 v = vector/array
-
 p = search PATH
 ```
 
-Quick table:
+| Function   | Arguments | PATH search |
+| ---------- | --------- | ----------- |
+| `execl()`  | List      | No          |
+| `execlp()` | List      | Yes         |
+| `execv()`  | Array     | No          |
+| `execvp()` | Array     | Yes         |
 
-| Function | Arguments | PATH |
-|---|---|---|
-| `execl` | list | No |
-| `execlp` | list | Yes |
-| `execv` | array | No |
-| `execvp` | array | Yes |
+### `execl()`
+
+```cpp
+execl(
+    "/bin/ls",
+    "ls",
+    "-l",
+    nullptr
+);
+```
+
+### `execlp()`
+
+```cpp
+execlp(
+    "ls",
+    "ls",
+    "-l",
+    nullptr
+);
+```
+
+### `execv()`
+
+```cpp
+char* args[] =
+{
+    (char*)"ls",
+    (char*)"-l",
+    nullptr
+};
+
+execv(
+    "/bin/ls",
+    args
+);
+```
+
+### `execvp()`
+
+```cpp
+char* args[] =
+{
+    (char*)"ls",
+    (char*)"-l",
+    nullptr
+};
+
+execvp(
+    "ls",
+    args
+);
+```
 
 ---
 
-# 29. Easy Way to Remember exec Functions
+# 17. `fork() + exec()`
+
+This is one of the most important Linux process patterns.
 
 ```text
-l = list
-
-v = vector
-
-p = PATH
+Parent
+   |
+ fork()
+   |
+   +--------> Child
+                 |
+                exec()
+                 |
+                 v
+             New Program
 ```
 
-Therefore:
-
-```text
-execl
-    -> list
-
-execlp
-    -> list + PATH
-
-execv
-    -> vector
-
-execvp
-    -> vector + PATH
-```
-
----
-
-# 30. `fork() + exec()`
-
-This is probably the most important example.
+Example:
 
 ```cpp
 #include <iostream>
 #include <unistd.h>
 #include <sys/wait.h>
-
-using namespace std;
 
 int main()
 {
@@ -1182,14 +699,12 @@ int main()
 
     if (pid < 0)
     {
-        cout << "fork failed\n";
+        perror("fork");
         return 1;
     }
 
     if (pid == 0)
     {
-        cout << "Child executing ls\n";
-
         execlp(
             "ls",
             "ls",
@@ -1197,110 +712,8 @@ int main()
             nullptr
         );
 
-        cout << "exec failed\n";
-    }
-    else
-    {
-        cout << "Parent waiting\n";
-
-        waitpid(
-            pid,
-            nullptr,
-            0
-        );
-
-        cout << "Child finished\n";
-    }
-
-    return 0;
-}
-```
-
-Compile:
-
-```bash
-g++ fork_exec.cpp -o fork_exec
-```
-
-Run:
-
-```bash
-./fork_exec
-```
-
----
-
-# 31. What Happens in `fork() + exec()`?
-
-```text
-Parent
-  |
-  |
- fork()
-  |
-  +----------------+
-  |                |
-Parent            Child
-  |                |
-  |                |
-wait()            exec()
-                   |
-                   v
-                 ls
-```
-
-The child keeps its PID but gets a new program image.
-
----
-
-# 32. Does `exec()` Change PID?
-
-No.
-
-Example:
-
-```text
-Before exec:
-
-PID = 5000
-Program = A
-
-exec(B)
-
-After:
-
-PID = 5000
-Program = B
-```
-
-This is a very common interview question.
-
----
-
-# 33. `fork()` + `exec()` + `wait()`
-
-Complete pattern:
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-#include <sys/wait.h>
-
-using namespace std;
-
-int main()
-{
-    pid_t pid = fork();
-
-    if (pid == 0)
-    {
-        execlp(
-            "date",
-            "date",
-            nullptr
-        );
-
-        return 1;
+        perror("exec");
+        _exit(1);
     }
 
     waitpid(
@@ -1309,38 +722,81 @@ int main()
         0
     );
 
-    cout << "Child completed\n";
+    std::cout << "Child finished\n";
 
     return 0;
 }
 ```
 
-Flow:
+This gives the classic:
 
 ```text
 fork()
-   |
-   v
-Child
-   |
-   v
-exec("date")
-   |
-   v
-date runs
-   |
-   v
-Child exits
-   |
-   v
-Parent wait() returns
+  |
+  v
+child
+  |
+exec()
+  |
+  v
+new program
+  |
+  v
+exit
+  |
+  v
+parent waitpid() returns
 ```
 
 ---
 
-# 34. Orphan Process
+# 18. Why `fork() + exec()`?
 
-An orphan is a child whose parent terminates before it.
+If a process directly executes:
+
+```cpp
+exec(...);
+```
+
+the current program is replaced.
+
+If the parent should continue running:
+
+```text
+Parent
+   |
+ fork()
+   |
+   +------> Child
+               |
+              exec()
+               |
+               v
+          Other Program
+
+Parent continues
+```
+
+This is the basic model used when a process launches another program.
+
+---
+
+# 19. Zombie Process
+
+A **zombie** is a child that has terminated but whose parent has not yet collected its termination status.
+
+```text
+Child
+  |
+ exits
+  |
+  v
+Zombie
+  |
+  | wait()/waitpid()
+  v
+Reaped
+```
 
 Example:
 
@@ -1348,7 +804,65 @@ Example:
 #include <iostream>
 #include <unistd.h>
 
-using namespace std;
+int main()
+{
+    pid_t pid = fork();
+
+    if (pid == 0)
+    {
+        std::cout << "Child exiting\n";
+        return 0;
+    }
+
+    std::cout << "Parent sleeping\n";
+    sleep(10);
+
+    return 0;
+}
+```
+
+During the parent's sleep, the child can appear as:
+
+```text
+Z
+```
+
+The parent should reap it using:
+
+```cpp
+wait();
+```
+
+or:
+
+```cpp
+waitpid();
+```
+
+---
+
+# 20. Orphan Process
+
+An orphan is a child that is still running after its parent terminates.
+
+```text
+Parent
+   |
+   +----> Child
+
+Parent exits
+
+Child
+   |
+   v
+Adopted by appropriate system process/subreaper
+```
+
+Example:
+
+```cpp
+#include <iostream>
+#include <unistd.h>
 
 int main()
 {
@@ -1358,210 +872,134 @@ int main()
     {
         sleep(3);
 
-        cout << "Child PID = "
-             << getpid()
-             << endl;
-
-        cout << "New Parent PID = "
-             << getppid()
-             << endl;
+        std::cout
+            << "PID  = " << getpid() << '\n'
+            << "PPID = " << getppid() << '\n';
     }
     else
     {
-        cout << "Parent exiting\n";
+        std::cout << "Parent exiting\n";
     }
 
     return 0;
 }
 ```
 
-The child may become adopted by a system process.
+### Zombie vs Orphan
 
-Conceptually:
-
-```text
-Original Parent
-      |
-      v
-    Child
-
-Parent exits
-
-    Child
-      |
-      v
-adopted by system
-```
-
-Modern Linux uses special mechanisms for orphan adoption; the exact visible PPID depends on the environment.
+|           | Zombie                 | Orphan             |
+| --------- | ---------------------- | ------------------ |
+| Child     | Finished               | Still running      |
+| Parent    | Alive                  | Terminated         |
+| Key issue | Not reaped             | Parent disappeared |
+| Handling  | `wait()` / `waitpid()` | System adoption    |
 
 ---
 
-# 35. Zombie Process
-
-A zombie is a child that has terminated but whose parent hasn't collected its termination status.
+# 21. Multiple `fork()`
 
 Example:
 
 ```cpp
-#include <iostream>
-#include <unistd.h>
+fork();
+fork();
 
-using namespace std;
-
-int main()
-{
-    pid_t pid = fork();
-
-    if (pid == 0)
-    {
-        cout << "Child exiting\n";
-        return 0;
-    }
-    else
-    {
-        cout << "Parent sleeping\n";
-
-        sleep(10);
-    }
-
-    return 0;
-}
+std::cout << "Hello\n";
 ```
 
-During the parent's sleep, the child may appear as:
+Process count:
 
 ```text
-Z
-```
-
-in process listings.
-
-Parent should normally call:
-
-```cpp
-wait()
-```
-
-or:
-
-```cpp
-waitpid()
-```
-
-to reap the child.
-
----
-
-# 36. Zombie vs Orphan
-
-Very important:
-
-```text
-Zombie
--------
-Child has finished.
-Parent is still alive.
-Parent has not collected status.
-
-Orphan
-------
-Parent has finished.
-Child is still running.
-```
-
-Table:
-
-| | Zombie | Orphan |
-|---|---|---|
-| Child | Finished | Running |
-| Parent | Alive | Finished |
-| Problem | Not reaped | Parent disappeared |
-| Solution | `wait()` / `waitpid()` | System adoption |
-
----
-
-# 37. Multiple `fork()`
-
-Example:
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-
-using namespace std;
-
-int main()
-{
-    fork();
-    fork();
-
-    cout << "Hello\n";
-
-    return 0;
-}
-```
-
-How many processes?
-
-First fork:
-
-```text
-1 -> 2
-```
-
-Second fork:
-
-```text
-2 -> 4
+Initial       = 1
+After fork 1  = 2
+After fork 2  = 4
 ```
 
 Therefore:
 
 ```text
-4 processes
+Hello
+Hello
+Hello
+Hello
 ```
 
-Output:
+For `N` unconditional `fork()` calls:
 
 ```text
-Hello
-Hello
-Hello
-Hello
+Maximum processes = 2^N
+```
+
+Example:
+
+```text
+3 fork() calls -> 8 processes
+```
+
+This assumes every `fork()` succeeds and every resulting process reaches every subsequent `fork()`.
+
+---
+
+# 22. `fork()` and File Descriptors
+
+After `fork()`, the child inherits copies of the parent's file descriptors.
+
+Conceptually:
+
+```text
+Parent FD 3 ----+
+                |
+                v
+          Open File Description
+                ^
+                |
+Child FD 3 -----+
+```
+
+This is important for:
+
+```text
+pipes
+file redirection
+fork() + exec()
 ```
 
 ---
 
-# 38. Three Forks
+# 23. Pipes
+
+A pipe provides byte-stream IPC.
 
 ```cpp
-fork();
-fork();
-fork();
+int fd[2];
+
+pipe(fd);
 ```
 
-Number of processes:
+Meaning:
 
 ```text
-2^3 = 8
+fd[0] -> read end
+fd[1] -> write end
 ```
 
-General rule:
+Typical parent-to-child pattern:
 
 ```text
-n fork() calls
-
-maximum processes = 2^n
+Parent
+   |
+ write(fd[1])
+   |
+   v
+ PIPE
+   |
+ read(fd[0])
+   |
+   v
+Child
 ```
 
-Assuming every fork succeeds and all resulting processes reach the subsequent fork.
-
----
-
-# 39. `fork()` + Pipe
-
-Parent sends data to child.
+Example:
 
 ```cpp
 #include <iostream>
@@ -1569,13 +1007,15 @@ Parent sends data to child.
 #include <sys/wait.h>
 #include <cstring>
 
-using namespace std;
-
 int main()
 {
     int fd[2];
 
-    pipe(fd);
+    if (pipe(fd) == -1)
+    {
+        perror("pipe");
+        return 1;
+    }
 
     pid_t pid = fork();
 
@@ -1591,9 +1031,10 @@ int main()
             sizeof(buffer)
         );
 
-        cout << "Child received: "
-             << buffer
-             << endl;
+        std::cout
+            << "Child received: "
+            << buffer
+            << '\n';
 
         close(fd[0]);
     }
@@ -1601,8 +1042,7 @@ int main()
     {
         close(fd[0]);
 
-        const char* msg =
-            "Hello child";
+        const char* msg = "Hello child";
 
         write(
             fd[1],
@@ -1625,120 +1065,35 @@ int main()
 
 ---
 
-# 40. `fork() + exec() + pipe()`
+# 24. Why Close Unused Pipe Ends?
 
-This pattern is extremely important because it is conceptually similar to how a shell connects commands.
-
-Example:
-
-```text
-Parent
-   |
-   +---- pipe ----+
-                  |
-                Child
-                  |
-                 exec()
-                  |
-                  v
-              some program
-```
-
-Simple example:
+If the parent only writes:
 
 ```cpp
-#include <iostream>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <cstring>
-
-using namespace std;
-
-int main()
-{
-    int fd[2];
-
-    pipe(fd);
-
-    pid_t pid = fork();
-
-    if (pid == 0)
-    {
-        // Child reads from pipe
-
-        close(fd[1]);
-
-        dup2(
-            fd[0],
-            STDIN_FILENO
-        );
-
-        close(fd[0]);
-
-        execlp(
-            "wc",
-            "wc",
-            "-c",
-            nullptr
-        );
-
-        return 1;
-    }
-    else
-    {
-        // Parent writes to pipe
-
-        close(fd[0]);
-
-        const char* msg =
-            "Hello from parent\n";
-
-        write(
-            fd[1],
-            msg,
-            strlen(msg)
-        );
-
-        close(fd[1]);
-
-        waitpid(
-            pid,
-            nullptr,
-            0
-        );
-    }
-
-    return 0;
-}
+close(fd[0]);
 ```
 
-Compile:
+If the child only reads:
 
-```bash
-g++ pipe_exec.cpp -o pipe_exec
+```cpp
+close(fd[1]);
 ```
 
-Run:
+Unused descriptors must be closed.
 
-```bash
-./pipe_exec
-```
+Otherwise, a reader may not receive EOF because some process still has a write end open.
 
-The child executes:
+### Interview rule
 
-```text
-wc -c
-```
-
-and receives the parent's pipe data as standard input.
+> After `fork()`, each process should close the pipe ends it does not use.
 
 ---
 
-# 41. `dup2()`
+# 25. `dup2()` — File Descriptor Redirection
 
-`dup2()` duplicates a file descriptor.
+`dup2()` makes one file descriptor refer to the same open file description as another descriptor.
 
-Example:
+Common use:
 
 ```cpp
 dup2(
@@ -1747,22 +1102,34 @@ dup2(
 );
 ```
 
-This means:
+Meaning:
 
 ```text
-stdin
-  |
-  v
+stdin (0)
+   |
+   v
 pipe read end
 ```
 
-Therefore the program executed by `exec()` reads from the pipe when it reads standard input.
+Similarly:
 
----
+```cpp
+dup2(
+    fd[1],
+    STDOUT_FILENO
+);
+```
 
-# 42. Standard File Descriptors
+means:
 
-Remember:
+```text
+stdout (1)
+   |
+   v
+pipe write end
+```
+
+Standard descriptors:
 
 ```text
 0 -> stdin
@@ -1770,77 +1137,147 @@ Remember:
 2 -> stderr
 ```
 
-Therefore:
-
-```cpp
-STDIN_FILENO
-    -> 0
-
-STDOUT_FILENO
-    -> 1
-
-STDERR_FILENO
-    -> 2
-```
-
 ---
 
-# 43. Redirect stdout to a File
+# 26. `fork() + pipe() + exec()`
+
+This is an important interview pattern.
+
+```text
+Parent
+   |
+   | write
+   v
++-------+
+| PIPE  |
++-------+
+   |
+   | stdin
+   v
+Child
+   |
+  exec()
+   |
+   v
+Program
+```
 
 Example:
 
 ```cpp
-#include <fcntl.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <cstring>
 
 int main()
 {
-    int fd = open(
-        "output.txt",
-        O_WRONLY | O_CREAT | O_TRUNC,
-        0644
+    int fd[2];
+
+    if (pipe(fd) == -1)
+        return 1;
+
+    pid_t pid = fork();
+
+    if (pid == 0)
+    {
+        // Child reads from pipe as stdin
+
+        dup2(
+            fd[0],
+            STDIN_FILENO
+        );
+
+        close(fd[0]);
+        close(fd[1]);
+
+        execlp(
+            "wc",
+            "wc",
+            "-c",
+            nullptr
+        );
+
+        _exit(1);
+    }
+
+    // Parent writes to pipe
+
+    close(fd[0]);
+
+    const char* msg =
+        "Hello from parent\n";
+
+    write(
+        fd[1],
+        msg,
+        strlen(msg)
     );
 
-    dup2(
-        fd,
-        STDOUT_FILENO
-    );
+    close(fd[1]);
 
-    close(fd);
-
-    execlp(
-        "ls",
-        "ls",
-        "-l",
-        nullptr
+    waitpid(
+        pid,
+        nullptr,
+        0
     );
 
     return 0;
 }
 ```
 
-Now:
-
-```text
-ls output
-     |
-     v
-output.txt
-```
+The executed `wc -c` receives the pipe data through standard input.
 
 ---
 
-# 44. `system()` vs `exec()`
+# 27. Shell Pipeline: `ls | wc -l`
 
-`system()`:
+A shell pipeline can be understood as:
+
+```text
+ls
+ |
+ | stdout
+ v
+PIPE
+ |
+ | stdin
+ v
+wc -l
+```
+
+Conceptually the shell performs:
+
+```text
+1. pipe()
+
+2. fork() -> ls child
+       dup2(pipe_write, stdout)
+       exec(ls)
+
+3. fork() -> wc child
+       dup2(pipe_read, stdin)
+       exec(wc)
+
+4. Parent closes pipe descriptors
+
+5. Parent waits
+```
+
+This is a very common senior Linux interview topic.
+
+---
+
+# 28. `system()` vs `exec()`
+
+### `system()`
 
 ```cpp
 system("ls -l");
 ```
 
-runs a command through a shell.
+Runs a command through a shell.
 
-`exec()`:
+### `exec()`
 
 ```cpp
 execlp(
@@ -1851,63 +1288,35 @@ execlp(
 );
 ```
 
-directly replaces the current process image.
+Replaces the current process image directly with the specified program.
 
-Conceptually:
+Remember:
 
 ```text
 system()
-    -> shell involved
+    -> shell command
 
 exec()
-    -> directly execute program
+    -> replace current process image
 ```
 
-For process-control interviews, understand:
-
-```text
-fork()
-+
-exec()
-```
-
-rather than using `system()`.
+For process-control code, `fork() + exec()` gives much more control.
 
 ---
 
-# 45. Simple `system()` Example
+# 29. `vfork()`
 
-```cpp
-#include <iostream>
-#include <cstdlib>
-
-using namespace std;
-
-int main()
-{
-    cout << "Running command\n";
-
-    system("ls -l");
-
-    cout << "Command finished\n";
-
-    return 0;
-}
-```
-
----
-
-# 46. `vfork()`
-
-`vfork()` is related to `fork()` but has stricter semantics.
+`vfork()` is a specialized process-creation mechanism with stricter semantics.
 
 Basic idea:
 
 ```text
 vfork()
-    -> creates child
-    -> parent is suspended
-    -> child should quickly call exec() or _exit()
+    |
+    +--> Child runs
+    |
+    +--> Parent is suspended
+          until child calls exec() or _exit()
 ```
 
 Example:
@@ -1915,8 +1324,6 @@ Example:
 ```cpp
 #include <iostream>
 #include <unistd.h>
-
-using namespace std;
 
 int main()
 {
@@ -1933,7 +1340,7 @@ int main()
         _exit(1);
     }
 
-    cout << "Parent\n";
+    std::cout << "Parent\n";
 
     return 0;
 }
@@ -1941,35 +1348,43 @@ int main()
 
 Important:
 
-Do not treat `vfork()` like a normal `fork()`.
-
-For normal interview code, prefer:
-
-```cpp
-fork()
-+
-exec()
+```text
+Do NOT treat vfork() like normal fork().
 ```
+
+For normal application code:
+
+```text
+fork() + exec()
+```
+
+is the standard pattern.
 
 ---
 
-# 47. Process Groups
+# 30. `fork()` vs `vfork()`
 
-Processes can belong to a process group.
+| Feature         | `fork()`                 | `vfork()`                                               |
+| --------------- | ------------------------ | ------------------------------------------------------- |
+| Purpose         | General process creation | Specialized creation before exec/exit                   |
+| Parent          | Can run independently    | Suspended until child execs/exits                       |
+| Memory          | CoW                      | Temporarily shares address space under strict semantics |
+| Usage           | General                  | Restricted                                              |
+| Typical pattern | `fork() + exec()`        | `vfork() + exec()`                                      |
 
-A process has:
+---
+
+# 31. Process Groups
+
+A process belongs to a process group.
+
+Useful IDs:
 
 ```text
-PID
-PPID
-PGID
-SID
-```
-
-Useful function:
-
-```cpp
-getpgrp()
+PID -> Process ID
+PPID -> Parent Process ID
+PGID -> Process Group ID
+SID -> Session ID
 ```
 
 Example:
@@ -1978,76 +1393,54 @@ Example:
 #include <iostream>
 #include <unistd.h>
 
-using namespace std;
-
 int main()
 {
-    cout << "PID  = "
-         << getpid()
-         << endl;
-
-    cout << "PPID = "
-         << getppid()
-         << endl;
-
-    cout << "PGID = "
-         << getpgrp()
-         << endl;
+    std::cout << "PID  = " << getpid() << '\n';
+    std::cout << "PPID = " << getppid() << '\n';
+    std::cout << "PGID = " << getpgrp() << '\n';
 
     return 0;
 }
 ```
 
+Process groups are important for:
+
+```text
+job control
+shells
+signal delivery to groups
+```
+
 ---
 
-# 48. Signals
+# 32. Signals
 
 A signal is an asynchronous notification sent to a process.
 
-Examples:
+Important signals:
 
 ```text
 SIGINT
-SIGTERM
-SIGKILL
-SIGSTOP
-SIGCHLD
-```
-
-Common meanings:
-
-```text
-SIGINT
-    -> Interrupt, commonly Ctrl+C
+    -> interrupt, commonly Ctrl+C
 
 SIGTERM
-    -> Request termination
+    -> termination request
 
 SIGKILL
-    -> Force termination
+    -> force termination
 
 SIGSTOP
-    -> Stop process
+    -> stop process
 
 SIGCHLD
-    -> Child state changed
+    -> child state changed
 ```
 
 ---
 
-# 49. `kill()`
+# 33. `kill()`
 
-Despite its name:
-
-```cpp
-kill()
-```
-
-does not necessarily mean "kill the process."
-
-It sends a signal.
-
-Example:
+Despite its name, `kill()` means **send a signal**.
 
 ```cpp
 kill(
@@ -2056,25 +1449,14 @@ kill(
 );
 ```
 
-This sends:
+This sends `SIGTERM` to the target process.
 
-```text
-SIGTERM
-```
-
-to the process.
-
----
-
-# 50. Send Signal to Child
+Example:
 
 ```cpp
-#include <iostream>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
-
-using namespace std;
 
 int main()
 {
@@ -2083,28 +1465,21 @@ int main()
     if (pid == 0)
     {
         while (true)
-        {
-            cout << "Child running\n";
             sleep(1);
-        }
     }
-    else
-    {
-        sleep(3);
 
-        cout << "Parent sending SIGTERM\n";
+    sleep(3);
 
-        kill(
-            pid,
-            SIGTERM
-        );
+    kill(
+        pid,
+        SIGTERM
+    );
 
-        waitpid(
-            pid,
-            nullptr,
-            0
-        );
-    }
+    waitpid(
+        pid,
+        nullptr,
+        0
+    );
 
     return 0;
 }
@@ -2112,53 +1487,34 @@ int main()
 
 ---
 
-# 51. `SIGKILL`
+# 34. `SIGKILL` and `SIGSTOP`
 
-You can send:
-
-```cpp
-kill(
-    pid,
-    SIGKILL
-);
-```
-
-Important:
+These signals cannot be caught or ignored:
 
 ```text
-SIGKILL cannot be caught.
-SIGKILL cannot be ignored.
-SIGKILL cannot be handled by user code.
-```
-
-Similarly:
-
-```text
+SIGKILL
 SIGSTOP
 ```
 
-cannot be caught or ignored.
+Therefore a program cannot install a handler for them.
 
 ---
 
-# 52. `signal()`
+# 35. `signal()`
 
-You can register a signal handler.
-
-Example:
+Simple signal handler:
 
 ```cpp
 #include <iostream>
 #include <unistd.h>
 #include <signal.h>
 
-using namespace std;
-
-void handler(int signal)
+void handler(int sig)
 {
-    cout << "Signal received: "
-         << signal
-         << endl;
+    std::cout
+        << "Signal received: "
+        << sig
+        << '\n';
 }
 
 int main()
@@ -2169,19 +1525,10 @@ int main()
     );
 
     while (true)
-    {
-        cout << "Running...\n";
         sleep(1);
-    }
 
     return 0;
 }
-```
-
-Run:
-
-```bash
-./signal
 ```
 
 Press:
@@ -2190,36 +1537,22 @@ Press:
 Ctrl+C
 ```
 
-The handler runs.
+to generate `SIGINT`.
+
+For robust POSIX programs, prefer `sigaction()`.
 
 ---
 
-# 53. Important Signal Rule
+# 36. `sigaction()`
 
-Do not assume every normal C++ operation is safe inside a signal handler.
-
-For simple interview examples, keep handlers minimal.
-
-For robust POSIX code, `sigaction()` is generally preferred over `signal()`.
-
----
-
-# 54. `sigaction()`
-
-Basic example:
+More controllable POSIX signal-handling interface:
 
 ```cpp
-#include <iostream>
 #include <unistd.h>
 #include <signal.h>
 
-using namespace std;
-
-void handler(
-    int signal
-)
+void handler(int)
 {
-    cout << "Signal received\n";
 }
 
 int main()
@@ -2241,123 +1574,67 @@ int main()
     );
 
     while (true)
-    {
         sleep(1);
-    }
 
     return 0;
 }
 ```
 
-Compile:
-
-```bash
-g++ sigaction.cpp -o sigaction
-```
-
----
-
-# 55. `signal()` vs `sigaction()`
-
-For interviews:
+### `signal()` vs `sigaction()`
 
 ```text
 signal()
-    -> simple API
+    -> simple interface
 
 sigaction()
-    -> more robust POSIX interface
-    -> more control over signal handling
+    -> POSIX interface
+    -> more control
+    -> preferred for robust signal handling
 ```
 
-Modern POSIX code generally prefers:
-
-```cpp
-sigaction()
-```
+Signal handlers should perform only async-signal-safe operations; avoid things such as `std::cout` in production signal handlers.
 
 ---
 
-# 56. `SIGCHLD`
+# 37. `SIGCHLD`
 
-`SIGCHLD` is sent to a parent when a child changes state, commonly when it terminates.
-
-Conceptually:
+A parent can receive `SIGCHLD` when a child changes state, commonly when it terminates.
 
 ```text
+Child
+  |
+ exits
+  |
+  v
+SIGCHLD
+  |
+  v
 Parent
-   |
-   +---- Child
-            |
-            v
-          exits
-            |
-            v
-        SIGCHLD
-            |
-            v
-         Parent
 ```
 
-The parent can use this together with:
+The parent can then use:
 
 ```cpp
 waitpid()
 ```
 
-to reap children.
+to reap the child.
 
----
+Important:
 
-# 57. `SIGCHLD` Example
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/wait.h>
-
-using namespace std;
-
-void handler(int signal)
-{
-    cout << "SIGCHLD received\n";
-}
-
-int main()
-{
-    signal(
-        SIGCHLD,
-        handler
-    );
-
-    pid_t pid = fork();
-
-    if (pid == 0)
-    {
-        sleep(2);
-        return 0;
-    }
-
-    waitpid(
-        pid,
-        nullptr,
-        0
-    );
-
-    cout << "Child reaped\n";
-
-    return 0;
-}
+```text
+SIGCHLD notification
++
+waitpid()
 ```
 
-For production-quality asynchronous child reaping, use careful `sigaction()`/`waitpid()` handling rather than relying on `cout` inside a signal handler.
+are often used together for child-process management.
 
 ---
 
-# 58. Process States
+# 38. Process States
 
-A process can conceptually be in states such as:
+Conceptually:
 
 ```text
 NEW
@@ -2367,1358 +1644,39 @@ READY
  |
  v
 RUNNING
- |
- +-------> WAITING
- |             |
- |             v
- +---------- READY
+ |   \
+ |    \
+ v     v
+WAITING  TERMINATED
  |
  v
-TERMINATED
+READY
 ```
 
-Linux tools may show states such as:
+Linux process-state examples:
 
 ```text
-R -> Running
-S -> Sleeping
+R -> Running / runnable
+S -> Interruptible sleep
 D -> Uninterruptible sleep
 T -> Stopped
 Z -> Zombie
 ```
 
----
-
-# 59. `ps` Command
-
-Useful command:
+Useful commands:
 
 ```bash
 ps
-```
-
-More detailed:
-
-```bash
+ps -ef
 ps aux
-```
-
-Process tree:
-
-```bash
 pstree
 ```
 
-Find process:
-
-```bash
-ps -ef
-```
-
 ---
 
-# 60. Parent-Child Process Tree
+# 39. Important Process Templates
 
-Example:
-
-```text
-init/systemd
-     |
-     +---- shell
-             |
-             +---- program
-                     |
-                     +---- child
-                             |
-                             +---- grandchild
-```
-
-Each process has:
-
-```text
-PID
-PPID
-```
-
----
-
-# 61. Important Difference: `fork()` vs `exec()`
-
-This should be memorized.
-
-```text
-fork()
-------
-Creates a new process.
-
-Parent and child both continue.
-
-PID:
-    Parent -> unchanged
-    Child  -> new PID
-
-
-exec()
-------
-Does not create a process.
-
-Replaces current process image.
-
-PID:
-    unchanged
-```
-
----
-
-# 62. `fork()` vs `exec()` Example
-
-```text
-fork():
-
-       Parent PID 100
-             |
-           fork()
-             |
-       +-----+-----+
-       |           |
- PID 100        PID 101
- Parent          Child
-
-
-exec():
-
-PID 101
-  |
- exec()
-  |
-  v
-new program
-
-PID remains 101
-```
-
----
-
-# 63. `fork()` vs `vfork()`
-
-```text
-fork()
-    -> Parent and child can run independently.
-    -> Copy-on-write.
-
-vfork()
-    -> Parent is suspended until child execs/exits.
-    -> Has stricter usage requirements.
-```
-
-For most application code:
-
-```text
-fork()
-+
-exec()
-```
-
-is the normal pattern.
-
----
-
-# 64. `fork()` + `wait()`
-
-```text
-Parent
-   |
- fork()
-   |
-   +--------> Child
-   |            |
- wait()         |
-   |            |
-   |         finishes
-   |            |
-   +<-----------+
-```
-
-Use this when parent needs to wait for child completion.
-
----
-
-# 65. `fork()` + `exec()`
-
-```text
-Parent
-   |
- fork()
-   |
-   +--------> Child
-                 |
-                exec()
-                 |
-                 v
-             New Program
-```
-
-This is the basic model behind launching another program.
-
----
-
-# 66. `fork()` + `pipe()` + `exec()`
-
-```text
-Parent
-   |
-   | write()
-   v
-+-------+
-| PIPE  |
-+-------+
-   |
-   | stdin
-   v
-Child
-   |
-  exec()
-   |
-   v
-Program
-```
-
-This is a very useful pattern for understanding shell pipelines.
-
----
-
-# 67. Shell Pipeline Concept
-
-When you run:
-
-```bash
-ls | wc -l
-```
-
-conceptually:
-
-```text
-ls
- |
- | stdout
- v
-PIPE
- |
- | stdin
- v
-wc -l
-```
-
-The shell can create processes, set up pipes, redirect descriptors with `dup2()`, and then use `exec()` to run the programs.
-
----
-
-# 68. Example: `ls | wc -l`
-
-A simplified implementation:
-
-```cpp
-#include <iostream>
-#include <unistd.h>
-#include <sys/wait.h>
-
-using namespace std;
-
-int main()
-{
-    int fd[2];
-
-    pipe(fd);
-
-    pid_t p1 = fork();
-
-    if (p1 == 0)
-    {
-        // First child: ls
-
-        dup2(
-            fd[1],
-            STDOUT_FILENO
-        );
-
-        close(fd[0]);
-        close(fd[1]);
-
-        execlp(
-            "ls",
-            "ls",
-            nullptr
-        );
-
-        _exit(1);
-    }
-
-    pid_t p2 = fork();
-
-    if (p2 == 0)
-    {
-        // Second child: wc
-
-        dup2(
-            fd[0],
-            STDIN_FILENO
-        );
-
-        close(fd[0]);
-        close(fd[1]);
-
-        execlp(
-            "wc",
-            "wc",
-            "-l",
-            nullptr
-        );
-
-        _exit(1);
-    }
-
-    close(fd[0]);
-    close(fd[1]);
-
-    waitpid(
-        p1,
-        nullptr,
-        0
-    );
-
-    waitpid(
-        p2,
-        nullptr,
-        0
-    );
-
-    return 0;
-}
-```
-
-Compile:
-
-```bash
-g++ pipeline.cpp -o pipeline
-```
-
-Run:
-
-```bash
-./pipeline
-```
-
-Conceptually this implements:
-
-```bash
-ls | wc -l
-```
-
----
-
-# 69. Why Close Pipe Ends in Pipeline?
-
-Suppose:
-
-```text
-ls ----> pipe ----> wc
-```
-
-After setting up `dup2()`:
-
-```text
-ls
- |
-stdout
- |
-pipe
- |
-stdin
- |
-wc
-```
-
-Unused descriptors should be closed.
-
-Otherwise the reader may keep waiting because some process still has the write end open.
-
-This is a very common pipe interview question.
-
----
-
-# 70. File Descriptors After `fork()`
-
-After:
-
-```cpp
-fork();
-```
-
-the child inherits copies of the parent's file descriptors.
-
-Conceptually:
-
-```text
-Parent
- fd 3 ----+
-          |
-          v
-       Open File
-          ^
-          |
- fd 3 ----+
-Child
-```
-
-The descriptors in parent and child refer to the same underlying open-file description.
-
-This is why pipes can be used naturally with `fork()`.
-
----
-
-# 71. File Descriptors and `exec()`
-
-By default, many file descriptors remain open across `exec()` unless marked close-on-exec.
-
-Therefore:
-
-```text
-fork()
-   |
-   v
-child inherits FD
-   |
-   v
-dup2()
-   |
-   v
-exec()
-   |
-   v
-new program uses redirected FD
-```
-
-This is the basis of:
-
-```text
-stdin/stdout redirection
-pipes
-shell pipelines
-```
-
----
-
-# 72. `exec()` Does Not Return on Success
-
-Very important:
-
-```cpp
-execlp(
-    "ls",
-    "ls",
-    nullptr
-);
-
-cout << "hello";
-```
-
-If `exec()` succeeds:
-
-```text
-cout << "hello";
-```
-
-is never executed.
-
-If `exec()` fails:
-
-```text
-execution continues
-```
-
-Therefore:
-
-```cpp
-exec(...);
-
-perror("exec failed");
-```
-
-is a common pattern.
-
----
-
-# 73. Why `fork()` Before `exec()`?
-
-Suppose you want to run:
-
-```bash
-ls
-```
-
-but don't want your parent program to disappear.
-
-If you directly:
-
-```cpp
-exec(...);
-```
-
-your current process becomes `ls`.
-
-Instead:
-
-```text
-Parent
-  |
- fork()
-  |
-  +---- Child
-          |
-         exec()
-          |
-          v
-          ls
-
-Parent continues
-```
-
-This is why:
-
-```text
-fork() + exec()
-```
-
-is so common.
-
----
-
-# 74. Process Creation Pattern
-
-Memorize this template:
-
-```cpp
-pid_t pid = fork();
-
-if (pid < 0)
-{
-    // fork failed
-}
-else if (pid == 0)
-{
-    // child
-
-    execlp(
-        "program",
-        "program",
-        nullptr
-    );
-
-    _exit(1);
-}
-else
-{
-    // parent
-
-    waitpid(
-        pid,
-        nullptr,
-        0
-    );
-}
-```
-
-This is one of the most useful Linux process templates for interviews.
-
----
-
-# 75. Important Error Handling
-
-System calls can fail.
-
-For example:
-
-```cpp
-pid_t pid = fork();
-
-if (pid == -1)
-{
-    perror("fork");
-}
-```
-
-For `exec()`:
-
-```cpp
-if (execlp(...) == -1)
-{
-    perror("exec");
-}
-```
-
-For `pipe()`:
-
-```cpp
-if (pipe(fd) == -1)
-{
-    perror("pipe");
-}
-```
-
-For `waitpid()`:
-
-```cpp
-if (waitpid(...) == -1)
-{
-    perror("waitpid");
-}
-```
-
----
-
-# 76. Common Interview Question
-
-## Q: Does `fork()` copy the entire memory immediately?
-
-Answer:
-
-```text
-Not necessarily.
-
-Modern systems generally use Copy-on-Write.
-
-Parent and child initially share physical pages
-where possible.
-
-When one process modifies a page,
-the OS creates a private copy.
-```
-
----
-
-# 77. Common Interview Question
-
-## Q: Does `exec()` create a new process?
-
-Answer:
-
-```text
-No.
-
-exec() replaces the current process image.
-
-The PID remains the same.
-```
-
----
-
-# 78. Common Interview Question
-
-## Q: Why use fork() + exec()?
-
-Answer:
-
-```text
-fork() creates a child process.
-
-exec() replaces the child with another program.
-
-This allows the parent to continue running
-while the child executes another program.
-```
-
----
-
-# 79. Common Interview Question
-
-## Q: What happens to PID after exec()?
-
-Answer:
-
-```text
-PID does not change.
-```
-
-Example:
-
-```text
-PID 1000
-Program A
-
-exec(Program B)
-
-PID 1000
-Program B
-```
-
----
-
-# 80. Common Interview Question
-
-## Q: What happens if exec() fails?
-
-Answer:
-
-```text
-exec() returns -1.
-
-The current program continues executing
-from the next statement.
-```
-
-Therefore:
-
-```cpp
-execlp(...);
-
-perror("exec");
-_exit(1);
-```
-
----
-
-# 81. Common Interview Question
-
-## Q: What is a zombie?
-
-Answer:
-
-```text
-A child that has terminated but whose parent
-has not yet collected its termination status.
-```
-
-Usually:
-
-```cpp
-wait();
-```
-
-or:
-
-```cpp
-waitpid();
-```
-
-reaps it.
-
----
-
-# 82. Common Interview Question
-
-## Q: What is an orphan?
-
-Answer:
-
-```text
-A child whose parent has terminated while
-the child is still running.
-```
-
-The child is adopted by an appropriate system process/subreaper.
-
----
-
-# 83. Common Interview Question
-
-## Q: Can parent and child have the same PID?
-
-Answer:
-
-```text
-No.
-
-Every process has a unique PID at a given time.
-
-Parent keeps its PID.
-Child gets a new PID.
-```
-
----
-
-# 84. Common Interview Question
-
-## Q: Is memory shared after fork()?
-
-Answer:
-
-```text
-Parent and child have separate virtual address spaces.
-
-Initially, physical pages may be shared using
-Copy-on-Write.
-
-A normal modification becomes private to that process.
-```
-
----
-
-# 85. Common Interview Question
-
-## Q: What does the child get from fork()?
-
-Conceptually, the child gets a copy of the parent's process state, including:
-
-```text
-Virtual address space
-File descriptor table entries
-Environment
-Program state
-```
-
-But it has its own:
-
-```text
-PID
-execution context
-address-space identity
-```
-
----
-
-# 86. Common Interview Question
-
-## Q: What happens to file descriptors after fork()?
-
-The child inherits copies of the parent's file descriptors.
-
-This is why:
-
-```text
-fork()
-+
-pipe()
-```
-
-works naturally.
-
----
-
-# 87. Common Interview Question
-
-## Q: What happens to file descriptors after exec()?
-
-Normally, open file descriptors remain open across `exec()` unless configured close-on-exec.
-
-This allows:
-
-```text
-fork()
-dup2()
-exec()
-```
-
-to implement:
-
-```text
-stdin redirection
-stdout redirection
-pipes
-```
-
----
-
-# 88. Common Interview Question
-
-## Q: `wait()` vs `waitpid()`?
-
-```text
-wait()
-    -> wait for a child
-
-waitpid()
-    -> wait for a specific child
-    -> supports options such as WNOHANG
-```
-
----
-
-# 89. Common Interview Question
-
-## Q: `exit()` vs `_exit()`?
-
-```text
-exit()
-    -> normal process termination
-    -> performs stdio/user-space cleanup
-
-_exit()
-    -> immediate process termination
-    -> commonly used in forked child after exec failure
-```
-
-Example:
-
-```cpp
-if (exec_failed)
-{
-    _exit(1);
-}
-```
-
----
-
-# 90. Common Interview Question
-
-## Q: `system()` vs `exec()`?
-
-```text
-system()
-    -> runs command through shell
-
-exec()
-    -> replaces current process image
-```
-
-For example:
-
-```cpp
-system("ls -l");
-```
-
-vs:
-
-```cpp
-execlp(
-    "ls",
-    "ls",
-    "-l",
-    nullptr
-);
-```
-
----
-
-# 91. Common Interview Question
-
-## Q: Why use `_exit()` after failed exec in a child?
-
-After:
-
-```text
-fork()
-```
-
-the child inherits the parent's user-space state, including stdio buffers.
-
-Using:
-
-```cpp
-_exit()
-```
-
-avoids normal stdio cleanup that could otherwise duplicate buffered output.
-
-Common pattern:
-
-```cpp
-exec(...);
-
-perror("exec failed");
-
-_exit(1);
-```
-
----
-
-# 92. Common Interview Question
-
-## Q: What is `dup2()` used for?
-
-`dup2()` is commonly used for I/O redirection.
-
-Example:
-
-```cpp
-dup2(
-    pipefd[1],
-    STDOUT_FILENO
-);
-```
-
-Means:
-
-```text
-stdout
-  |
-  v
-pipe write end
-```
-
-Then:
-
-```cpp
-exec(...)
-```
-
-causes the new program to inherit that redirection.
-
----
-
-# 93. Common Interview Question
-
-## Q: How does a shell implement `ls | wc`?
-
-Conceptually:
-
-```text
-1. Create pipe
-
-2. fork child for ls
-
-3. Child:
-       dup2(pipe_write, stdout)
-       exec(ls)
-
-4. fork child for wc
-
-5. Child:
-       dup2(pipe_read, stdin)
-       exec(wc)
-
-6. Parent closes pipe descriptors
-
-7. Parent waits
-```
-
-Diagram:
-
-```text
-        PIPE
-       /    \
-      /      \
-     v        v
-    ls       wc
-   stdout    stdin
-```
-
----
-
-# 94. Common Interview Question
-
-## Q: How many processes after N forks?
-
-If every fork succeeds and every resulting process executes every fork:
-
-```text
-2^N
-```
-
-Example:
-
-```text
-1 fork  -> 2
-2 forks -> 4
-3 forks -> 8
-4 forks -> 16
-```
-
----
-
-# 95. Common Interview Question
-
-Consider:
-
-```cpp
-fork();
-cout << "A\n";
-fork();
-cout << "B\n";
-```
-
-Process count:
-
-```text
-Initial = 1
-
-First fork:
-    2
-
-Second fork:
-    4
-```
-
-Therefore:
-
-```text
-A -> printed 2 times
-B -> printed 4 times
-```
-
----
-
-# 96. Common Interview Question
-
-Consider:
-
-```cpp
-fork();
-
-if (fork() == 0)
-{
-    cout << "Child\n";
-}
-```
-
-After first fork:
-
-```text
-2 processes
-```
-
-Both execute second fork:
-
-```text
-4 processes
-```
-
-The second fork creates one child for each existing process.
-
-Only the two newly created children enter:
-
-```cpp
-if (fork() == 0)
-```
-
-Therefore:
-
-```text
-"Child"
-```
-
-prints twice.
-
----
-
-# 97. Process Creation Cheat Sheet
-
-```text
-fork()
-    -> create process
-
-getpid()
-    -> current PID
-
-getppid()
-    -> parent PID
-
-wait()
-    -> wait for child
-
-waitpid()
-    -> wait for specific child
-
-exit()
-    -> terminate normally
-
-_exit()
-    -> terminate immediately
-
-exec()
-    -> replace program
-
-kill()
-    -> send signal
-```
-
----
-
-# 98. Exec Cheat Sheet
-
-```text
-l = list
-v = vector
-p = PATH
-```
-
-Therefore:
-
-```text
-execl
-    list
-
-execlp
-    list + PATH
-
-execv
-    vector
-
-execvp
-    vector + PATH
-```
-
----
-
-# 99. Process Relationship Cheat Sheet
-
-```text
-fork()
-   |
-   +---- Parent
-   |
-   +---- Child
-```
-
-Child:
-
-```text
-new PID
-same initial process state
-separate virtual address space
-```
-
-Then:
-
-```text
-child
-  |
- exec()
-  |
-  v
-new program
-```
-
-Parent:
-
-```text
-waitpid()
-```
-
----
-
-# 100. Zombie vs Orphan Cheat Sheet
-
-```text
-ZOMBIE
-------
-Child finished
-Parent alive
-Parent hasn't reaped child
-
-Fix:
-wait()
-waitpid()
-
-
-ORPHAN
-------
-Parent finished
-Child still running
-
-System adopts child
-```
-
----
-
-# 101. Pipe + Process Cheat Sheet
-
-```text
-pipe(fd)
-
-fd[0] = read
-fd[1] = write
-
-fork()
-
-Parent:
-    close(fd[0])
-    write(fd[1], ...)
-
-Child:
-    close(fd[1])
-    read(fd[0], ...)
-```
-
----
-
-# 102. Pipe + Exec Cheat Sheet
-
-```text
-pipe()
-
-fork()
-
-Child:
-
-dup2(
-    pipefd[0],
-    STDIN_FILENO
-);
-
-close(...);
-
-exec(...);
-```
-
-For stdout:
-
-```cpp
-dup2(
-    pipefd[1],
-    STDOUT_FILENO
-);
-```
-
----
-
-# 103. Process + Signal Cheat Sheet
-
-```text
-kill(pid, signal)
-```
-
-Common:
-
-```text
-SIGINT
-    Ctrl+C
-
-SIGTERM
-    graceful termination request
-
-SIGKILL
-    force termination
-
-SIGSTOP
-    stop process
-
-SIGCHLD
-    child state changed
-```
-
----
-
-# 104. Important Compile Commands
-
-Basic process program:
-
-```bash
-g++ program.cpp -o program
-```
-
-Run:
-
-```bash
-./program
-```
-
-For pthread programs:
-
-```bash
-g++ program.cpp -pthread -o program
-```
-
-For most process examples in this file:
-
-```bash
-g++ program.cpp -o program
-```
-
----
-
-# 105. Most Important Code Templates
-
-## Template 1 — fork
+## Template 1 — `fork()`
 
 ```cpp
 pid_t pid = fork();
@@ -3739,7 +1697,7 @@ else
 
 ---
 
-# 106. Template 2 — fork + wait
+## Template 2 — `fork() + waitpid()`
 
 ```cpp
 pid_t pid = fork();
@@ -3760,7 +1718,7 @@ else
 
 ---
 
-# 107. Template 3 — fork + exec
+## Template 3 — `fork() + exec()`
 
 ```cpp
 pid_t pid = fork();
@@ -3779,7 +1737,7 @@ if (pid == 0)
 
 ---
 
-# 108. Template 4 — fork + exec + wait
+## Template 4 — `fork() + exec() + waitpid()`
 
 ```cpp
 pid_t pid = fork();
@@ -3806,7 +1764,7 @@ else
 
 ---
 
-# 109. Template 5 — Pipe
+## Template 5 — Pipe
 
 ```cpp
 int fd[2];
@@ -3849,146 +1807,343 @@ else
 
 ---
 
-# 110. Template 6 — Pipe + exec
+# 40. Common Interview Questions
+
+### Q1. Does `fork()` create a new program?
+
+No.
+
+```text
+fork()
+    -> creates a new process
+```
+
+The child initially has the same program image.
+
+---
+
+### Q2. Does `exec()` create a new process?
+
+No.
+
+```text
+exec()
+    -> replaces the current process image
+```
+
+---
+
+### Q3. Does PID change after `exec()`?
+
+No.
+
+```text
+PID remains unchanged.
+```
+
+---
+
+### Q4. Does `fork()` copy the entire memory immediately?
+
+No.
+
+Linux uses Copy-on-Write, so physical pages are copied only when required.
+
+---
+
+### Q5. Does parent and child share variables?
+
+They have separate virtual address spaces.
+
+Initially physical pages may be shared through CoW, but normal modifications are private.
+
+---
+
+### Q6. What does the child inherit after `fork()`?
+
+Important inherited state includes:
+
+```text
+Memory mappings
+File descriptors
+Environment
+Working directory
+Process attributes
+```
+
+The child gets a new:
+
+```text
+PID
+process identity
+```
+
+---
+
+### Q7. What happens to file descriptors after `fork()`?
+
+The child inherits copies of the parent's file descriptors, referring to the same underlying open-file descriptions.
+
+---
+
+### Q8. What happens to file descriptors after `exec()`?
+
+They normally remain open unless marked close-on-exec (`FD_CLOEXEC`).
+
+This enables:
+
+```text
+fork()
+dup2()
+exec()
+```
+
+for pipes and redirection.
+
+---
+
+### Q9. What is a zombie?
+
+```text
+Child terminated
++
+Parent hasn't collected its termination status
+=
+Zombie
+```
+
+Use:
 
 ```cpp
-int fd[2];
+wait()
+```
 
-pipe(fd);
+or:
 
-pid_t pid = fork();
+```cpp
+waitpid()
+```
 
-if (pid == 0)
-{
-    dup2(
-        fd[0],
-        STDIN_FILENO
-    );
+to reap it.
 
-    close(fd[0]);
-    close(fd[1]);
+---
 
-    execlp(
-        "program",
-        "program",
-        nullptr
-    );
+### Q10. What is an orphan?
 
-    _exit(1);
-}
+```text
+Parent terminates
++
+Child is still running
+=
+Orphan
+```
+
+The child is adopted by an appropriate system process/subreaper.
+
+---
+
+### Q11. `wait()` vs `waitpid()`?
+
+```text
+wait()
+    -> waits for a child
+
+waitpid()
+    -> can wait for a specific child
+    -> supports WNOHANG and other options
 ```
 
 ---
 
-# 111. Final Mental Model
-
-The most important Linux process concepts can be remembered as:
+### Q12. `exit()` vs `_exit()`?
 
 ```text
-                 PROCESS
-                    |
-        +-----------+-----------+
-        |           |           |
-        v           v           v
-      fork()      exec()      wait()
-        |           |           |
-        v           v           v
-    new process   replace     parent waits
-```
+exit()
+    -> normal user-space termination processing
 
-Then IPC:
-
-```text
-Process A
-    |
-    +---- pipe -------> Process B
-    |
-    +---- FIFO -------> Process B
-    |
-    +---- shared -----> Process B
-    |      memory
-    |
-    +---- message ----> Process B
-           queue
-```
-
-And signals:
-
-```text
-Process A
-    |
-    | kill(pid, SIGTERM)
-    v
-Process B
+_exit()
+    -> immediate process termination
+    -> commonly used in forked child after exec failure
 ```
 
 ---
 
-# 112. Final One-Page Revision
+### Q13. Why use `_exit()` after failed `exec()`?
+
+Because the child inherited the parent's user-space state and stdio buffers after `fork()`.
+
+```cpp
+exec(...);
+
+perror("exec failed");
+_exit(1);
+```
+
+avoids normal stdio cleanup being performed again in the child.
+
+---
+
+### Q14. What is `dup2()` used for?
+
+Primarily file-descriptor redirection.
+
+Example:
+
+```cpp
+dup2(
+    pipefd[1],
+    STDOUT_FILENO
+);
+```
+
+means the program's stdout goes to the pipe.
+
+---
+
+### Q15. How does a shell implement `ls | wc -l`?
+
+Conceptually:
 
 ```text
-FORK
-----
-fork()
-    -> creates child
+pipe()
+   |
+fork() -> ls
+   |       |
+   |    dup2(pipe_write, stdout)
+   |       |
+   |     exec(ls)
+   |
+fork() -> wc
+           |
+        dup2(pipe_read, stdin)
+           |
+         exec(wc)
 
-return value:
-    < 0  -> failure
-    == 0 -> child
-    > 0  -> parent, value = child PID
+close unused FDs
+waitpid()
+```
 
+---
+
+### Q16. How many processes after N unconditional forks?
+
+```text
+2^N
+```
+
+assuming every fork succeeds and every resulting process reaches all subsequent forks.
+
+---
+
+### Q17. Can `SIGKILL` be caught?
+
+No.
+
+```text
+SIGKILL -> cannot catch
+SIGKILL -> cannot ignore
+```
+
+Same for:
+
+```text
+SIGSTOP
+```
+
+---
+
+### Q18. Why is `fork() + exec()` so common?
+
+Because it separates:
+
+```text
+process creation
+    +
+program execution
+```
+
+The parent can remain alive while the child becomes another program.
+
+---
+
+# 41. Final Interview Revision Sheet
+
+```text
+PROCESS
+-------
+Process = program in execution.
 
 PID
 ---
-getpid()
-    -> current PID
+getpid()  -> current PID
+getppid() -> parent PID
 
-getppid()
-    -> parent PID
+
+FORK
+----
+fork()
+    -> creates child process
+
+return:
+    < 0  -> failure
+    == 0 -> child
+    > 0  -> parent, return value = child PID
+
+
+MEMORY
+------
+Parent and child have separate virtual address spaces.
+
+fork() uses Copy-on-Write.
+
+Physical pages are shared where possible
+until one process modifies a page.
 
 
 WAIT
 ----
 wait()
-    -> wait for any child
+    -> wait for a child
 
 waitpid()
     -> wait for specific child
 
 WNOHANG
-    -> don't block
+    -> non-blocking wait
 
 
 EXEC
 ----
 exec()
     -> replaces current process image
-    -> does NOT create process
-    -> PID remains same
+    -> does not create process
+    -> PID remains unchanged
+    -> returns only on failure
 
 l = list
 v = vector
 p = PATH
 
-execl
-execlp
-execv
-execvp
+execl()
+execlp()
+execv()
+execvp()
 
 
 EXIT
 ----
 exit()
-    -> normal termination
+    -> normal termination processing
 
 _exit()
     -> immediate termination
-    -> commonly used after failed exec in child
+    -> common after failed exec in child
 
 
 ZOMBIE
 ------
 Child finished
+Parent alive
 Parent hasn't reaped child
 
 Use:
@@ -4001,53 +2156,66 @@ ORPHAN
 Parent finished
 Child still running
 
-System adopts child
-
-
-COPY-ON-WRITE
--------------
-fork()
-    -> virtual address spaces separate
-    -> physical pages shared where possible
-    -> copy made when modified
+System adopts child.
 
 
 PIPE
 ----
-fd[0] = read
-fd[1] = write
-
 pipe(fd)
+
+fd[0] -> read
+fd[1] -> write
+
+Close unused ends.
 
 
 DUP2
 ----
-dup2(
-    fd,
-    STDIN_FILENO
-);
+dup2(fd, STDIN_FILENO)
+dup2(fd, STDOUT_FILENO)
 
-dup2(
-    fd,
-    STDOUT_FILENO
-);
+0 -> stdin
+1 -> stdout
+2 -> stderr
 
 
 SIGNALS
 -------
 kill(pid, signal)
 
-SIGINT
-SIGTERM
-SIGKILL
-SIGSTOP
-SIGCHLD
+SIGINT  -> interrupt
+SIGTERM -> termination request
+SIGKILL -> force termination
+SIGSTOP -> stop
+SIGCHLD -> child state change
+
+SIGKILL and SIGSTOP cannot be caught or ignored.
 
 
 SIGNAL HANDLING
 ---------------
 signal()
 sigaction()
+
+Prefer sigaction() for robust POSIX code.
+
+
+VFORk
+-----
+vfork()
+    -> parent suspended
+    -> child should quickly exec() or _exit()
+
+Use normal fork() + exec() unless vfork()
+is specifically required.
+
+
+PROCESS GROUP
+-------------
+PID
+PPID
+PGID
+SID
 
 
 MOST IMPORTANT PATTERN
@@ -4058,71 +2226,65 @@ Parent
  fork()
    |
    +------> Child
-              |
-             exec()
-              |
-              v
+               |
+              exec()
+               |
+               v
           New Program
-
-Parent:
-    waitpid()
+               |
+             exit
+               |
+               v
+        parent waitpid()
 ```
 
 ---
 
-# 113. Interview Golden Rules
+# 42. Golden Rules for Interviews
 
 ```text
-1. fork() creates a new process.
+1. fork() creates a process.
 
-2. exec() does NOT create a new process.
+2. exec() replaces a process image.
 
-3. exec() replaces the current process image.
+3. exec() does NOT create a process.
 
 4. PID remains unchanged across exec().
 
-5. fork() returns:
-       0  -> child
-       >0 -> parent
-       <0 -> error
+5. fork() returns 0 to child.
 
-6. Child gets a new PID.
+6. fork() returns child's PID to parent.
 
 7. fork() uses Copy-on-Write.
 
-8. wait()/waitpid() reaps children.
+8. Parent and child have separate virtual address spaces.
 
-9. Zombie = child finished, parent hasn't reaped it.
+9. wait()/waitpid() reap children.
 
-10. Orphan = parent finished, child still running.
+10. Zombie = terminated child not yet reaped.
 
-11. Pipe is byte-stream IPC.
+11. Orphan = running child whose parent terminated.
 
-12. dup2() is commonly used for redirection.
+12. fork() + exec() is the standard process-launch pattern.
 
-13. fork() + exec() is the standard process-launch pattern.
+13. dup2() is used for descriptor redirection.
 
-14. system() typically involves a shell.
+14. Pipe:
+       fd[0] = read
+       fd[1] = write
 
-15. SIGKILL cannot be caught or ignored.
+15. Always close unused pipe ends.
 
-16. SIGSTOP cannot be caught or ignored.
+16. exec() returns only when it fails.
 
-17. Always close unused pipe ends.
+17. Use _exit() in a forked child after exec failure.
 
-18. exec() returns only on failure.
+18. system() normally invokes a shell.
 
-19. Use _exit() in a forked child after exec failure.
+19. SIGKILL and SIGSTOP cannot be caught or ignored.
 
-20. For:
-       ls | wc -l
-
-    think:
-
+20. Shell pipeline:
        pipe()
-       fork()
-       dup2()
-       exec()
        fork()
        dup2()
        exec()
@@ -4131,4 +2293,3 @@ Parent:
 ```
 
 # End
-
