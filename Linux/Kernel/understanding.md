@@ -105,3 +105,67 @@ Login
 Applications
 ```
 --------------------------------------------------------------------------------
+# When we do cat command:
+```
+cat
+  ↓
+glibc / system-call wrapper
+  ↓
+open() / read() system calls
+  ↓
+Kernel
+  ↓
+VFS
+  ↓
+File System (e.g., ext4)
+  ↓
+Block Layer
+  ↓
+Storage Driver
+  ↓
+SSD
+  ↓
+Data returned to Kernel
+  ↓
+cat
+  ↓
+prints file
+```
+# When we ping to IPs:
+```
+ping
+  ↓
+socket() / send-related system calls
+  ↓
+Kernel Network Stack
+  ↓
+NIC Driver
+  ↓
+Network Card
+  ↓
+Network / Internet
+  ↓
+Reply
+  ↓
+Network Card
+  ↓
+NIC Driver
+  ↓
+Kernel Network Stack
+  ↓
+ping
+```
+--------------------------------------------------------------
+Why do we need User Space and Kernel Space? To protect the operating system and hardware from faulty or malicious
+applications while allowing controlled access through system calls.
+Why can’t applications access hardware directly? Direct hardware access could corrupt memory, bypass security, and crash
+the system. The kernel safely manages all hardware resources.
+What is the Linux Kernel? The kernel is the core of the operating system. It manages CPU scheduling, memory, ﬁlesystems,
+networking, device drivers, and communication with hardware.
+What is a system call? A controlled interface through which user-space applications request services from the kernel, such as
+ﬁle I/O, process creation, or networking.
+Why does Linux use a monolithic kernel? Because direct function calls between kernel subsystems provide higher
+performance with lower overhead compared to message-passing architectures.
+What is a kernel module? A piece of kernel code that can be loaded or unloaded at runtime to add functionality (such as a device
+driver) without rebuilding or rebooting the kernel.
+
