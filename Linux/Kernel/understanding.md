@@ -56,8 +56,9 @@ DEVICE CONTROLLER
     | controls
     v
 PHYSICAL DEVICE
+```
 ---------------------------------------------------------------------------
-Important Notes
+## Important Notes
 The application calls the library function.
 The library function / wrapper prepares the system call.
 The wrapper places the system-call number and arguments in CPU registers.
