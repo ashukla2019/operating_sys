@@ -274,3 +274,22 @@ Low Address
 **Terminated** Execution completed. 
 
 -------------------------------------------------------
+**What happens when we call fork:**
+After fork(), the child gets a separate page table, while parent and child initially share the same physical page frames using Copy-on-Write. When either process modifies a shared page, a new page frame is allocated and the page contents are copied.
+
+Resource / State        What happens after fork()
+
+Address space           Child gets a logical copy of parent's memory
+Stack                   Copied
+Heap                    Copied
+Global/static variables Copied
+CPU registers           Copied, but return value differs
+Program counter         Child continues from the instruction after fork()
+Open file descriptors   Copied, referring to the same underlying open files
+Current working         Inherited
+directory
+Environment variables   Copied
+Signal dispositions     Inherited
+Process credentials     Inherited
+
+--------------------------------------------------------------------------------------------------
