@@ -1,6 +1,3 @@
-
-Priority inversion:
-
 L acquires lock
        ↓
 H blocks waiting for lock
