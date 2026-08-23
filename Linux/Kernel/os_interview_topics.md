@@ -1,3 +1,7 @@
+
+## Priority inversion
+
+```text
 L acquires lock
        ↓
 H blocks waiting for lock
@@ -9,3 +13,7 @@ H waits until M finishes
 L resumes, releases lock
        ↓
 H finally runs
+
+
+
+```
