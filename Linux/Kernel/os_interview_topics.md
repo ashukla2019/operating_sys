@@ -1,5 +1,11 @@
 
-## Priority inversion
+## Priority inversion: 
+
+Suppose there are three tasks:
+
+H – High priority
+M – Medium priority
+L – Low priority
 
 ```text
 L acquires lock
