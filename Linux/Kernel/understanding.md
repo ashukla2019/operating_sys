@@ -1,34 +1,3 @@
-# **TABLE OF CONTENTS**
-
-## **Part A — Kernel Internals & OS Concepts**
-
-1. Linux Architecture
-
-2. Inter-Process Communication (IPC)
-
-3. Process Management
-
-4. File System (VFS)
-
-5. System Calls & Interrupts
-
-6. Memory Management
-
-7. Interrupts (Deep Dive)
-
-8. Networking Basics
-
-9. Block I/O
-
-10. Kernel Locking, Synchronization & RCU
-
-11. ARM & SoC Internals
-
-12. Kernel Debugging & Crash Analysis
-
-13. Driver Skeleton & Real Kernel Code Walkthrough
-
---------------------------------
 ## **High Level Linux Architecture**
 Core component of the Kernel
 Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
