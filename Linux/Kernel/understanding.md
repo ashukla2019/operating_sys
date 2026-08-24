@@ -1,13 +1,16 @@
 ## **High Level Linux Architecture**
 Core component of the Kernel
 Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
+
 ---------------------
+
 ## **User Space vs Kernel Space**
 
 User space = applications with limited privileges.
 Kernel space = OS with full privileges.
 CPU modes enforce this separation for protection and stability.
 ------------------------
+
 ## **CPU Modes**
 
 CPU Modes
