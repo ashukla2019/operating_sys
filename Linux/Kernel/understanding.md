@@ -9,6 +9,7 @@ Process management - Thread scheduling - Virtual memory - Device drivers - File 
 User space = applications with limited privileges.
 Kernel space = OS with full privileges.
 CPU modes enforce this separation for protection and stability.
+
 ------------------------
 
 ## **CPU Modes**
