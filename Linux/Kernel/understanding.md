@@ -28,34 +28,12 @@
 
 13. Driver Skeleton & Real Kernel Code Walkthrough
 
-## **Part B — Linux System Programming (User-Space APIs)**
-
-14. Linux System Programming — Complete Study Guide (chapters, code examples, interview-prep patterns)
-
-# **PART A.1 — Linux Architecture**
-
-# **Chapter 1 – Linux Architecture**
-
-## **Objectives**
-
-After completing this chapter, you should understand: - Overall Linux architecture - User Space vs Kernel Space - What happens when an application runs - What is the Linux Kernel - Why system calls are needed - Kernel modules - Monolithic vs Microkernel - Linux boot process (high level) - Complete execution flow from application to hardware
-
-## **What is Linux?**
-
-Linux is an operating system kernel created by Linus Torvalds. A complete Linux operating system consists of: - Linux Kernel - GNU utilities - Libraries (glibc, musl, etc.) - Shell (bash, zsh) - System services (systemd) - Applications Example:
-
-Ubuntu ├── Linux Kernel ├── GNU Tools ├── Bash ├── GCC ├── Libraries └── Applications
-
-The kernel is the core of the operating system. Everything eventually goes through the kernel.
-
+--------------------------------
 ## **High Level Linux Architecture**
 
-## **Responsibilities of the Kernel**
-
-The kernel manages every important hardware resource. Main responsibilities include: - Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
-
-Think of the kernel as the manager of the entire computer. Applications cannot directly access hardware.
-
+## **Responsibilities/core component of the Kernel* 
+Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
+---------------------
 ## **User Space vs Kernel Space**
 
 Linux separates execution into two areas.
