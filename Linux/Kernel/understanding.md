@@ -30,15 +30,14 @@
 
 --------------------------------
 ## **High Level Linux Architecture**
-
-## **Responsibilities/core component of the Kernel* 
+Core component of the Kernel
 Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
 ---------------------
 ## **User Space vs Kernel Space**
 
 Linux separates execution into two areas.
 
-**User Space** — Applications execute here (Chrome, Firefox, Python, GCC, Vim, Games). Applications cannot: - Access physical memory - Access hardware directly - Execute privileged CPU instructions
+**User Space** Application can not access physical memory - Access hardware directly - Execute privileged CPU instructions
 
 This protects the operating system.
 
@@ -53,11 +52,11 @@ Imagine a buggy application writing random values into RAM.
 Without protection: kernel memory gets corrupted, file system gets corrupted, entire OS crashes. With separation: the application crashes, but the kernel remains safe.
 
 This isolation is one of Linux’s biggest strengths.
-
+------------------------
 ## **CPU Modes**
 
 Modern CPUs have privilege levels. Simplified: <mark>User Mode → Kernel Mode → Hardware</mark> **User Mode** — Restricted; cannot execute privileged instructions. **Kernel Mode** — Full privileges; can access hardware directly. The CPU switches between these modes during system calls and interrupts.
-
+-----------------------
 ## **What is a System Call?**
 
 Examples of system calls: <mark>open() , read()</mark> , <mark>write()</mark> , <mark>close() , fork()</mark> , <mark>execve() , socket() , connect()</mark> , <mark>mmap()</mark>
