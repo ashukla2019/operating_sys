@@ -58,12 +58,18 @@ This isolation is one of Linux’s biggest strengths.
 Modern CPUs have privilege levels. Simplified: <mark>User Mode → Kernel Mode → Hardware</mark> **User Mode** — Restricted; cannot execute privileged instructions. **Kernel Mode** — Full privileges; can access hardware directly. The CPU switches between these modes during system calls and interrupts.
 -----------------------
 ## **What is a System Call?**
+A system call is a controlled interface provided by the operating system kernel through which a user-space program requests previleged kernel space services.
 
-Examples of system calls: <mark>open() , read()</mark> , <mark>write()</mark> , <mark>close() , fork()</mark> , <mark>execve() , socket() , connect()</mark> , <mark>mmap()</mark>
+open()       → open a file
+read()       → read data
+write()      → write data
+fork()       → create a process
+execve()     → execute a program
+mmap()       → map memory
+ioctl()      → device-specific control operation
+socket()     → create a socket
 
-## **Example**
 
-#include **<unistd.h>** int main() { write(1, "Hello\n", 6); }
 
 The application never writes directly to the display hardware.
 
