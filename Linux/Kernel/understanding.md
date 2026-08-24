@@ -93,7 +93,7 @@ DEVICE CONTROLLER
     | controls
     v
 PHYSICAL DEVICE
-
+```
 
 The application never writes directly to the display hardware.
 
