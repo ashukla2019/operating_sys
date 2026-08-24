@@ -1,5 +1,5 @@
 ## **High Level Linux Architecture**
-Core component of the Kernel
+Core component of the Kernel:
 Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
 
 ---------------------
@@ -12,8 +12,6 @@ CPU modes enforce this separation for protection and stability.
 ------------------------
 
 ## **CPU Modes**
-
-CPU Modes
 CPU mode = the privilege level at which the CPU is executing instructions.
 
 There are mainly two modes:
