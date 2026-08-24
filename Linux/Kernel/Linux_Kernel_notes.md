@@ -1,21 +1,3 @@
-<style>
-@media print {
-  @page { margin: 0.45in 0.5in; }
-  body { font-size: 9.5pt; line-height: 1.18; }
-  h1 { font-size: 17pt; margin: 10pt 0 5pt; }
-  h2 { font-size: 13pt; margin: 8pt 0 4pt; }
-  h3 { font-size: 11pt; margin: 6pt 0 3pt; }
-  p, ul, ol, table { margin-top: 3pt; margin-bottom: 3pt; }
-  pre { font-size: 7.5pt; line-height: 1.05; margin: 4pt 0; padding: 4pt; }
-  code { font-size: 0.9em; }
-  table { font-size: 8.5pt; }
-  th, td { padding: 2px 4px; }
-  h1, h2, h3, h4, table, pre { break-inside: avoid; page-break-inside: avoid; }
-}
-</style>
-
-Linux Kernel Internals, OS Concepts & System Programming @@@
-
 # **TABLE OF CONTENTS**
 
 ## **Part A — Kernel Internals & OS Concepts**
