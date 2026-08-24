@@ -35,27 +35,20 @@ Process management - Thread scheduling - Virtual memory - Device drivers - File 
 ---------------------
 ## **User Space vs Kernel Space**
 
-Linux separates execution into two areas.
-
-**User Space** Application can not access physical memory - Access hardware directly - Execute privileged CPU instructions
-
-This protects the operating system.
-
-**Kernel Space** — Kernel code executes here. The kernel has complete access to CPU, RAM, Storage, Network card, USB, Interrupt controller, and MMU. Only trusted kernel code executes here.
-
-## **Memory Layout**
-
-## **Why Separate User and Kernel Space?**
-
-Imagine a buggy application writing random values into RAM.
-
-Without protection: kernel memory gets corrupted, file system gets corrupted, entire OS crashes. With separation: the application crashes, but the kernel remains safe.
-
-This isolation is one of Linux’s biggest strengths.
+User space = applications with limited privileges.
+Kernel space = OS with full privileges.
+CPU modes enforce this separation for protection and stability.
 ------------------------
 ## **CPU Modes**
 
-Modern CPUs have privilege levels. Simplified: <mark>User Mode → Kernel Mode → Hardware</mark> **User Mode** — Restricted; cannot execute privileged instructions. **Kernel Mode** — Full privileges; can access hardware directly. The CPU switches between these modes during system calls and interrupts.
+CPU Modes
+CPU mode = the privilege level at which the CPU is executing instructions.
+
+There are mainly two modes:
+User mode — low privilege; normal applications run here.
+Kernel mode — high privilege; the operating system runs here.
+The CPU uses hardware protection so a user program cannot directly perform privileged operations.
+
 -----------------------
 ## **What is a System Call?**
 A system call is a controlled interface provided by the operating system kernel through which a user-space program requests previleged kernel space services.
