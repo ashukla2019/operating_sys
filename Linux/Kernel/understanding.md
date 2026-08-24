@@ -109,6 +109,11 @@ The Linux kernel consists of many subsystems:
 
 Each subsystem performs a specialized task.
 
+
+----------------------------
+
+## Types of kernel:
+
 ## **Monolithic Kernel**
 
 Linux uses a **Monolithic Kernel** architecture — all major services run inside kernel space.
@@ -121,17 +126,7 @@ A Microkernel keeps only minimal functionality inside the kernel; everything els
 
 **Advantages:** better isolation, better reliability, easier debugging. **Disadvantages:** more IPC, slower than monolithic kernels.
 
-## **Monolithic vs Microkernel**
-
-|**Feature**|**Monolithic**|**Microkernel**|
-|---|---|---|
-|Performance|High|Lower|
-|Drivers|Kernel Space|User Space|
-|IPC|Less|More|
-|Reliability|Lower|Higher|
-|Context Switches|Fewer|More|
-
-Linux chooses performance over maximum isolation.
+-------------------------
 
 ## **Loadable Kernel Modules (LKM)**
 
@@ -143,37 +138,8 @@ Commands: <mark>lsmod</mark> , <mark>insmod , rmmod</mark> , <mark>modprobe</mar
 
 Advantages: no reboot, smaller kernel image, easier driver updates.
 
-## **Linux Boot Process (High Level)**
 
-We will study the boot process in detail in a later chapter.
-
-## **Complete Execution Flow**
-
-Suppose you type: <mark>cat notes.txt</mark>
-
-**Another example** — Typing: <mark>ping google.com</mark>
-
-## **Key Interview Questions**
-
-**Why do we need User Space and Kernel Space?** To protect the operating system and hardware from faulty or malicious applications while allowing controlled access through system calls.
-
-**Why can’t applications access hardware directly?** Direct hardware access could corrupt memory, bypass security, and crash the system. The kernel safely manages all hardware resources.
-
-**What is the Linux Kernel?** The kernel is the core of the operating system. It manages CPU scheduling, memory, filesystems, networking, device drivers, and communication with hardware.
-
-**What is a system call?** A controlled interface through which user-space applications request services from the kernel, such as file I/O, process creation, or networking.
-
-**Why does Linux use a monolithic kernel?** Because direct function calls between kernel subsystems provide higher performance with lower overhead compared to message-passing architectures.
-
-**What is a kernel module?** A piece of kernel code that can be loaded or unloaded at runtime to add functionality (such as a device driver) without rebuilding or rebooting the kernel.
-
-## **Summary**
-
-In this chapter, we learned: - Linux architecture - User Space vs Kernel Space - CPU privilege levels - System calls - Kernel responsibilities - Linux kernel subsystems - Monolithic vs Microkernel - Loadable Kernel Modules - High-level Linux boot process - End-to-end execution flow from application to hardware
-
-The next chapter dives into **Process Internals** , where we’ll explore <mark>task</mark> _ <mark>struct ,</mark> process creation <mark>( fork()</mark> ), <mark>exec() ,</mark> scheduling, context switching, and process lifecycle in detail.
-
-⬆ Back to Table of Contents
+----------------------------------------
 
 # **PART A.2 — Inter-Process Communication (IPC)**
 
