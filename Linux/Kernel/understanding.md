@@ -7,6 +7,7 @@ Process management - Thread scheduling - Virtual memory - Device drivers - File 
 ## **User Space vs Kernel Space**
 
 User space = applications with limited privileges.
+
 Kernel space = OS with full privileges.
 CPU modes enforce this separation for protection and stability.
 
@@ -21,6 +22,7 @@ Kernel mode — high privilege; the operating system runs here.
 The CPU uses hardware protection so a user program cannot directly perform privileged operations.
 
 -----------------------
+
 ## **What is a System Call?**
 A system call is a controlled interface provided by the operating system kernel through which a user-space program requests previleged kernel space services.
 
