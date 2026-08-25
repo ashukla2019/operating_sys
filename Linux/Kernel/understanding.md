@@ -284,10 +284,9 @@ A Microkernel keeps only minimal functionality inside the kernel; everything els
 **Advantages:** better isolation, better reliability, easier debugging. **Disadvantages:** more IPC, slower than monolithic kernels.
 
 --------------------------------------------------------------------------------------------------------------------------------
-********************************************************************************************************************************
 --------------------------------------------------------------------------------------------------------------------------------
 
-## IPC — Inter-Process Communication
+## 2 IPC — Inter-Process Communication
 
 Processes have **separate address spaces**, so they cannot directly access each other's memory. The Operating System provides **IPC (Inter-Process Communication)** mechanisms for safe communication.
 
@@ -307,19 +306,6 @@ Examples:
 - Database ↔ Application
 - Shell ↔ Child Process
 - Producer ↔ Consumer
-
----
-
-# IPC Mechanisms
-
-| Mechanism | Related | Unrelated | Across Machines | Speed | Data |
-|---|---:|---:|---:|---|---|
-| **Unnamed Pipe** | ✅ | ❌ | ❌ | Medium | Byte stream |
-| **FIFO** | ✅ | ✅ | ❌ | Medium | Byte stream |
-| **Shared Memory** | ✅ | ✅ | ❌ | ⭐ Very fast | Shared memory |
-| **Message Queue** | ✅ | ✅ | ❌ | Fast | Messages |
-| **Socket** | ✅ | ✅ | ✅ | Medium | Stream / Datagram |
-| **mmap()** | ✅ | ✅ | ❌ | Very fast | Shared memory + file |
 
 ---
 
@@ -446,939 +432,994 @@ Shared Memory   → shared RAM
 Socket          → communication endpoint
 mmap()          → file/shared memory mapped into address space
 
-**
 --------------------------------------------------------------------------------------------------------------------------------
-********************************************************************************************************************************
---------------------------------------------------------------------------------------------------------------------------------**
-
-## 2 IPC — Inter-Process Communication
-
+--------------------------------------------------------------------------------------------------------------------------------
 
 ## 3 Process Management
+# 3. Process Management
 
-# **1. What is a Process?**
+## 1. What is a Process?
 
-A **process** is a **program in execution** .
+A **process is a program in execution**.
 
-A process is the basic unit of: CPU scheduling Resource allocation Process management Unlike a program, a process has: Program Counter CPU Registers Stack Heap Open Files Process State Memory
+A process is the basic unit of:
 
+- CPU scheduling
+- Resource allocation
+- Process management
+- Protection and isolation
+
+Unlike a program stored on disk, a process has execution state and resources such as:
+
+- Program Counter (PC)
+- CPU registers
+- Stack
+- Heap
+- Open files
+- Process state
+- Virtual address space
+- Process Control Block (PCB)
+
+```text
 Program on disk
+      │
+      │ Execute
+      ↓
+Operating System
+      │
+      ↓
+Running Process
+```
 
-calculator.exe When executed calculator.exe ↓ Running Process
+---
 
-The operating system creates a process for it.
+## 2. Program vs Process
 
-# **2. Program vs Process**
-
-|**Program**|**Process**|
+| Program | Process |
 |---|---|
-|Passive entity|Active entity|
-|Stored on disk|Exists in memory|
-|Collection of instructions|Instructions currently executing|
-|No execution state|Has execution state|
-|Doesn’t consume CPU|Uses CPU|
-|No PCB|Has PCB|
+| Passive entity | Active entity |
+| Stored on disk | Running/executing entity |
+| Collection of instructions | Instructions + execution state |
+| No execution state | Has execution state |
+| Does not directly consume CPU | Uses CPU |
+| No PCB | Has PCB |
 
-# **3. Components of a Process**
+---
 
-Every process contains several sections.
+## 3. Process Memory Layout
 
-## **1. Text Section**
+A process has its own virtual address space.
 
-Contains Machine instructions Executable code Example
+```text
+High Address
+┌──────────────────┐
+│      Stack       │
+│        ↓         │
+├──────────────────┤
+│                  │
+│   Memory gap     │
+│                  │
+├──────────────────┤
+│        ↑         │
+│       Heap       │
+├──────────────────┤
+│       Data       │
+├──────────────────┤
+│       Text       │
+│   Machine Code   │
+└──────────────────┘
+Low Address
+```
 
-main() { printf("Hello"); }
+### Text Section
+Contains executable machine instructions.
 
-Stored here.
+```c
+int main() {
+    printf("Hello");
+}
+```
 
-## **2. Data Section**
+### Data Section
+Contains initialized global and static variables.
 
-Contains Global variables Static variables Example
+```c
+int count = 10;
+static int x = 5;
+```
 
-int count = 10; static int x = 5;
+### BSS
+Contains uninitialized or zero-initialized global/static variables.
 
-## **3. Heap**
+### Heap
+Used for dynamic memory allocation.
 
-Dynamic memory allocated during runtime. Example
+- `malloc()`
+- `new`
 
-**new** int; malloc();
+Typically grows upward.
 
-Heap grows upward.
+### Stack
+Stores:
 
-## **4. Stack**
+- Function call information
+- Local variables
+- Parameters
+- Return addresses
 
-Stores Function calls Local variables Parameters Return address Example void fun() { int x; }
+Typically grows downward.
 
-“x” is stored on stack. Stack grows downward.
+### Program Counter
+Stores the address of the next instruction to execute.
 
-## **5. Program Counter (PC)**
+---
 
-Stores
+## 4. Process Control Block (PCB)
 
-Address of next instruction to execute.
+The PCB is maintained by the OS and contains the information required to manage and resume a process.
 
-After every instruction, PC updates automatically.
+In Linux, the main process descriptor is:
 
-# **4. Process Memory Layout**
+```
+task_struct
+```
 
-# **5. Process Control Block (PCB)**
+A classical OS textbook calls this information the PCB.
 
-Every process has a PCB. PCB is maintained by the operating system. It stores everything needed to resume a process.
+### Important PCB Information
 
-## **PCB Contents**
+| Information | Purpose |
+|---|---|
+| PID | Process identifier |
+| TGID | Thread group ID |
+| Process state | Running, ready, waiting, etc. |
+| Program Counter | Next instruction |
+| CPU registers | Saved/restored during context switching |
+| Scheduling information | Priority, scheduling class, queues |
+| Memory information | Address space, page tables, mm_struct |
+| Parent/children | Process hierarchy |
+| Open files | File descriptor information |
+| Signals | Signal information |
+| Credentials | User/group/security information |
 
-### **Process ID (PID)**
+> **Interview Tip:** You do not need to memorize every `task_struct` field. Know what information the kernel needs to manage and resume a process.
 
-|Unique identifer.|
-|---|
-|Example<br>|
-|PID = 2345|
-|**Process State**|
-|Current state|
-|Running|
-|Ready|
-|Waiting|
-|**Program Counter**|
-|Address of next instruction.|
-|**CPU Registers**|
-|Stores<br>|
-|General Registers<br>|
-|Stack Pointer|
-|Instruction Pointer|
-|during context switching.|
-|**Scheduling Information**|
-|Contains<br>|
-|Priority|
-|Scheduling Queue|
-|Time Slice|
-|**Memory Information**<br>Contains<br>|
-|Base Register|
-|Limit Register|
-|Page Table|
-|Segment Table|
+---
 
-### **I/O Status**
+## 5. Process States
 
-Contains Open Files
+A process changes state during its lifetime.
 
-Devices Pending I/O
+```text
+             ┌─────────┐
+             │   New   │
+             └────┬────┘
+                  │ Admit
+                  ↓
+             ┌─────────┐
+        ┌───►│  Ready  │◄──────────┐
+        │    └────┬────┘           │
+        │         │ Dispatch       │ I/O complete
+        │         ↓                │
+        │    ┌──────────┐          │
+        │    │ Running  │──────────┘
+        │    └────┬─────┘
+        │         │
+        │    I/O wait
+        │         ↓
+        │    ┌──────────┐
+        └────│ Waiting  │
+             └──────────┘
 
-## **PCB Diagram**
+Running ──Exit──► Terminated
+```
 
-PCB acts like the **identity card** of a process.
-
-# **Process Creation to Execution Flow in Linux**
-
-This chapter explains what happens internally in Linux from the moment a process is created until it starts executing on the CPU.
-
-# **6. Process States**
-
-A process changes states during execution.
-
-New
- │
- ▼
-Ready
- │
- ▼
-Running ───────────────► Waiting
- │                         │
- │                         │ I/O complete
- │                         ▼
- │                       Ready
- │
- └──────────────► Terminated
-
-## **New**
-
+### New
 Process is being created.
 
-## **Ready**
+### Ready
+Process is ready to execute but waiting for CPU time.
 
-Loaded into memory. Waiting for CPU.
+### Running
+CPU is currently executing the process.
 
-## **Running**
+### Waiting / Blocked
+Process is waiting for an event, commonly:
 
-CPU executing instructions.
+- Disk I/O
+- Network I/O
+- Keyboard input
+- Synchronization event
 
-## **Waiting (Blocked)**
+### Terminated
+Process has finished execution and its resources are released.
 
-Waiting for Disk I/O Keyboard Network Event CPU executes another process.
+### Suspended States
+Some systems also use:
 
-## **Terminated**
+- Ready Suspended
+- Blocked Suspended
 
-Execution completed. Resources released.
+These allow processes to be temporarily removed from active memory to reduce memory pressure.
 
-## **Suspended States**
+---
 
-Some operating systems add Ready Suspended Blocked Suspended Used when memory is insufficient.
+## 6. Process Scheduling
 
-# **7. State Transition Diagram**
+The CPU is limited while many processes may be runnable.
 
-Admit
-               │
-               ▼
-          +----------+
-          |   New    |
-          +----------+
-               │
-               │ Dispatch
-               ▼
-          +----------+
-          |  Ready   |◄───────────────+
-          +----------+                │
-               │                      │ I/O complete
-               │ Dispatch             │
-               ▼                      │
-          +----------+                │
-          | Running  |────────────────+
-          +----------+
-            │      │
-      I/O wait      │ Exit
-            │       ▼
-            ▼   +-----------+
-       +---------| Terminated|
-       | Waiting +-----------+
-       +---------+
-            │
-            └──────────────► Ready
+The scheduler decides: **Which process should run next?**
 
-# **8. Process Scheduling**
+Goals include:
 
-CPU is limited.
+- Fairness
+- High CPU utilization
+- Low waiting time
+- Good responsiveness
+- Efficient resource usage
 
-Many processes compete for CPU. Scheduler decides
+### Types of Schedulers
 
-Who gets CPU next?
+#### Long-Term Scheduler
+Also called the Job Scheduler.
 
-Goal Fairness Efficiency High CPU utilization Low waiting time
+Responsible for:
+- Selecting jobs/processes
+- Admitting them into the system
 
-# **9. Types of Schedulers**
+Controls the degree of multiprogramming. Runs relatively infrequently.
 
-## **Long-Term Scheduler**
+#### Medium-Term Scheduler
+Responsible for:
+- Suspending processes
+- Resuming processes
 
-Also called
+Used to reduce memory pressure.
 
-Job Scheduler
+#### Short-Term Scheduler
+Also called the CPU Scheduler.
 
-Responsible for Selecting jobs Loading into memory
-
-Controls
-
-Degree of Multiprogramming
-
-Runs rarely.
-
-## **Medium-Term Scheduler**
-
-Responsible for Suspend process Resume process Used to reduce memory load.
-
-## **Short-Term Scheduler**
-
-CPU Scheduler
-
-Chooses Ready Process ↓
-
-Running
-
-Runs every few milliseconds. Very fast.
-
-# **10. Scheduling Queues**
-
-Processes move through queues.
-
-## **Job Queue**
-
-Contains All processes in system.
-
-## **Ready Queue**
-
-Contains Processes waiting for CPU.
-
-CPU ↑ | Ready Queue
-
-## **Device Queue**
-
-Processes waiting for Printer Disk Keyboard Network
-
-# **11. Context Switching**
-
-CPU switches from one process to another. Steps
-
-## **Why Needed?**
-
-Single CPU cannot execute all processes simultaneously. Context switching enables multitasking.
-
-## **Cost**
-
-Context switching performs no useful computation. It is pure overhead. Therefore, Lower context switching = Better performance.
-
-# **12. Types of Processes**
-
-## **Independent Process**
-
-Doesn’t share data Doesn’t depend on others Example Calculator
-
-## **Cooperating Process**
-
-Shares data. Communicates with other processes. Example Web Server Database Browser Need IPC.
-
-# **15. Process vs Thread**
-
-|**Process**|**Thread**|
-|---|---|
-|Heavyweight|Lightweight|
-|Own memory|Shared memory|
-|Own PCB|Shares PCB resources|
-|Slow creation|Fast creation|
-|Expensive switching|Cheap switching|
-|IPC required|Shared memory directly|
-
-# **16. Deadlock**
-
-Deadlock occurs when Processes wait forever. None can proceed.
-
-Both wait forever.
-
-######
-
-All four must exist.
-
-### **1. Mutual Exclusion**
-
-Resource cannot be shared.
-
-### **2. Hold and Wait**
-
-Holding one resource. Waiting for another.
-
-### **3. No Preemption**
-
-OS cannot forcibly remove resource.
-
-### **4. Circular Wait**
-
-Circular dependency exists.
-
-P1 → P2 → P3 → P1
-
-# **17. CPU Scheduling Algorithms**
-
-## **FCFS**
-
-First Come First Serve Characteristics Non-preemptive Simple Poor response time
-
-## **SJF**
-
-Shortest Job First Runs shortest job first. Advantages Minimum average waiting time Disadvantages Hard to predict burst time Starvation possible
-
-## **Priority Scheduling**
-
-Higher priority runs first. Problem Low priority starvation. Solution Aging.
-
-## **Round Robin**
-
-Each process receives
-
-Time Quantum
-
-Example
-
-P1 ↓ P2 ↓ P3 ↓ P1 ↓ P2 Advantages Fair Interactive systems
-
-## **Multilevel Queue**
-
-Separate queues Example Foreground Queue Background Queue Each queue has its own scheduling.
-
-## **Multilevel Feedback Queue**
-
-Most advanced scheduler. Processes move between queues. Interactive processes receive higher priority.
-
-# **18. Advantages of Process Management**
-
-Better CPU utilization Supports multitasking Supports multiprogramming Resource sharing Process isolation Protection Improved responsiveness Concurrency support
-
-Efficient scheduling
-
-## **Based on Execution**
-
-|**Foreground Process**|
-|---|
-|Runs with user interaction.|
-|Examples|
-|Browser|
-|Terminal|
-|Editor|
-|**Background Process**|
-|Runs without user interaction.|
-|Examples<br>|
-|Daemons|
-|Services|
-|Cron jobs|
-|**Based on Function**|
-|**System Process**|
-|Created by operating system.|
-|Examples|
-|systemd|
-|init<br>|
-|scheduler|
-|**User Process**<br>|
-|Created by users.|
-|Examples|
-|Chrome|
-|VS Code<br>|
-|GCC|
-|**Based on Behavior**<br>**CPU Bound**<br>|
-|Mostly CPU computation.|
-|Example|
-|Image processing.|
-**I/O Bound**
-|Mostly waits for I/O.|
-|Example|
-|Web server.|
-|**Based on Creation**|
-|**Parent Process**|
-|Creates child processes.|
-|Example|
-|Using|
-|fork()|
-
-**Child Process** Created by parent.
-
-## **Based on Communication Independent**
-
-No interaction.
-
-**Cooperating** Uses IPC.
-
-## **Based on Threading**
-
-### **Single Threaded**
-
-One thread.
-
-### **Multi Threaded**
-
-Multiple threads. Shared memory.
-
-# **20. Process Execution Models**
-
-| **Multiprogramming** | Many programs in memory; CPU runs another when one waits for I/O. | | **Multitasking** | CPU rapidly switches between programs to make them appear simultaneous. | | **Multiprocessing** | Multiple CPU cores execute multiple tasks truly in parallel. | | **Multithreading** | One process creates multiple threads that share memory and work together.
-
-## **Distributed Processing**
-
-Multiple computers. One problem. Examples Hadoop Kubernetes Cloud
-
-## **Time Sharing**
-
-CPU gives each process
-
-Time Slice
-
-Ensures fairness.
-
-## **Real Time Processing**
-
-Deadline must be met. Examples Airbag Pacemaker Flight control
-
-### **Hard Real-Time**
-
-Missing deadline = System failure.
-
-### **Soft Real-Time**
-
-Occasional deadline miss acceptable.
-
-## **Concurrency**
-
-Managing multiple tasks together. May execute on Single CPU. Tasks overlap.
-
-## **Parallelism**
-
-Executing multiple tasks simultaneously. Requires Multiple cores or CPUs.
-
-# **21. Concurrency vs Parallelism**
-
-|**Concurrency**|**Parallelism**|
-|---|---|
-|Multiple tasks in progress|Multiple tasks executing simultaneously|
-|Can use one CPU|Requires multiple cores|
-|Focuses on structure|Focuses on speed|
-|Achieved using scheduling|Achieved using hardware|
-
-## **Relationship**
-
-Parallelism ⊂
-
-Concurrency
-
-Every parallel program is concurrent. Every concurrent program is **not** parallel.
-
-# **22. Interview Questions**
-
-- What is a process? Difference between process and program? What is PCB? Explain process states. What is context switching? Why is context switching expensive? Explain scheduler types.
-
-Difference between long-term and short-term scheduler? What are scheduling queues?
-
-Explain IPC. Shared memory vs message passing. Process vs thread.
-
-- CPU-bound vs I/O-bound process. Parent vs child process. Explain synchronization. Mutex vs semaphore. Critical section problem.
-
-## **Advanced**
-
-Explain FCFS, SJF, RR.
-
-- Difference between preemptive and non-preemptive scheduling. Explain multilevel feedback queue. Deadlock conditions. Deadlock prevention vs avoidance.
-
-- Explain multiprogramming vs multitasking. Concurrency vs parallelism. Multiprocessing vs multithreading. Real-time operating systems. How Linux schedules processes? What happens during context switching? What information is saved inside PCB?
-
-### What information is saved inside PCB? — Linux Process Control Block (`task_struct`) ⭐⭐⭐⭐⭐
-
-> **Interview Importance:** Extremely High (Qualcomm, NVIDIA, AMD, Broadcom)
-
-In Linux, every process and thread is represented by a kernel data structure called **task_struct**. A classical Operating Systems textbook refers to this as the **Process Control Block (PCB)**, whereas Linux implements it using **task_struct**.
-
-### Important Fields
-
-|Field|Description|
-|---|---|
-|pid|Unique Process ID|
-|tgid|Thread Group ID|
-|state|Current process state|
-|parent|Pointer to parent process|
-|children|List of child processes|
-|mm|Memory descriptor (`mm_struct`)|
-|files|Open file descriptor table|
-|signal|Pending signal information|
-|sched_class|Scheduling class|
-|prio|Dynamic process priority|
-
-> **Interview Tip**
-> You are **not expected to memorize every member** of `task_struct`. Interviewers expect you to know **what information it stores** and why the kernel needs it.
-
-# **Process Creation in Linux**
-
-Linux creates processes primarily using:
-
-<mark>fork() vfork() clone()</mark>
-
-Initially, the parent and child **share the same physical memory pages** using **Copy-on-Write (CoW)** . Only when either process modifies a shared page does Linux allocate a new physical page.
-
-### **Advantages**
-
-Fast process creation Reduced memory usage Efficient <mark>fork()</mark> followed by <mark>exec()</mark>
-
-# **fork() vs vfork() vs clone()**
-
-|**Feature**|**fork()**|**vfork()**|**clone()**|
-|---|---|---|---|
-|Address Space|Copy-on-Write|Shared temporarily|Confgurable|
-|Parent Blocks|No|Yes|Depends on fags|
-|Child Memory|Separate after CoW|Shared until exec()/exit()|Shared or Separate|
-|Typical Use|General process creation|Optimize fork()+exec()|Threads, Containers|
-
-### **Interview Tip**
-
-Linux threads are created using **<mark>clone()</mark>** <mark>,</mark> not <mark>fork() .</mark>
-
-# **exec() Family ⭐⭐⭐⭐⭐**
-
-The <mark>exec()</mark> family **replaces the current process image** with a new program.
-
-Common functions
-
-<mark>execl() execv() execvp() execve()</mark>
-
-### **After a successful** **<mark>exec()</mark>**
-
-PID remains unchanged. Address space is replaced. Execution starts from the new program’s entry point ( <mark>main() )</mark> . Open file descriptors remain open unless marked with <mark>FD</mark> _ <mark>CLOEXEC</mark> .
-
-# **wait() and waitpid()**
-
-When a child process exits, its exit status remains available until the parent collects it.
-
-If the parent never calls <mark>wait()</mark> or <mark>waitpid() ,</mark> the child becomes a **Zombie Process** .
-
-# **Zombie and Orphan Processes ⭐⭐⭐⭐⭐**
-
-## **Zombie Process**
-
-A Zombie Process has finished execution, but its parent has **not yet collected** its exit status.
-
-### **Characteristics**
-
-Uses no CPU
-
-Does not execute Occupies a PID entry Exists until the parent collects its status
-
-## **Orphan Process**
-
-An Orphan Process is still running, but its parent has terminated.
-
-Modern Linux systems automatically re-parent orphan processes to **systemd (PID 1)** .
-
-## **Zombie vs Orphan**
-
-|**Zombie**|**Orphan**|
-|---|---|
-|Already exited|Still running|
-|Waiting for parent|Parent terminated|
-|Uses PID entry|Continues execution|
-|Removed by wait()|Adopted by systemd|
-
-# **Linux Completely Fair Scheduler (CFS)**
-
-Linux uses the **Completely Fair Scheduler (CFS)** for normal processes.
-
-Instead of maintaining fixed-priority queues, CFS attempts to distribute CPU time fairly among runnable tasks.
-
-### **Important Concepts**
-
-<mark>vruntime</mark> Run Queue Red-Black Tree Fair CPU allocation
-
-Prevents starvation Good interactive performance Scales efficiently with many runnable processes
-
-# **Real-Time Scheduling Policies**
-
-Linux supports the following scheduling policies.
-
-|**Policy**|**Description**|
-|---|---|
-|SCHED_OTHER|Default Completely Fair Scheduler|
-|SCHED_FIFO|Real-time First-In First-Out|
-|SCHED_RR|Real-time Round Robin|
-|Real-time proce|sses always have higher priority than normal CFS tasks.|
-
-# **CPU Affinity**
-
-CPU Affinity binds a process to one or more CPUs.
-
-CPU0  ←  Process A CPU1  ←  Process B
-
-Better cache locality Fewer CPU migrations Reduced context-switch overhead Predictable execution
-
-Useful commands
-
-taskset sched_setaffinity()
-
-# **Signals Overview**
-
-Signals provide asynchronous communication with processes.
-
-### **Common Signals**
-
-|**Signal**|**Purpose**|
-|---|---|
-|SIGINT|Interrupt (Ctrl+C)|
-|SIGTERM|Graceful termination|
-|SIGKILL|Immediate termination|
-|SIGSTOP|Suspend process|
-|SIGCONT|Resume process|
-|SIGCHLD|Child process terminated|
-
-# **Context Switch Internals**
-
-A context switch saves the CPU state of the currently running process and restores the state of another process.
-
+```text
+Ready Queue
+     │
+     ↓
+Scheduler
+     │
+     ↓
 Running Process
-      │
-      ▼
-Save Registers / PC / SP
-      │
-      ▼
-Update Task State
-      │
-      ▼
-Scheduler Selects Next Task
-      │
-      ▼
-Load Next Task Context
-      │
-      ▼
-Restore Registers / MM Context
-      │
-      ▼
-Resume Execution
+```
 
-### **Why Context Switching Is Expensive**
+Runs very frequently, so it must be fast.
 
-Saving CPU registers Restoring CPU registers Updating memory-management information Scheduler overhead Cache pollution Possible reduction in TLB efficiency
+---
 
-#### **Interview Tip**
+## 7. Scheduling Queues
 
-Modern CPUs may preserve TLB entries using features such as ASIDs or PCIDs, so a context switch does **not always flush the entire TLB** . However, context switches can still reduce cache and TLB efficiency.
+### Job Queue
+Contains processes/jobs known to the system.
 
-# **Process Debugging Commands**
+### Ready Queue
+Contains processes waiting for CPU time.
 
-|**Command**|**Purpose**|
+```
+Ready Queue → CPU
+```
+
+### Device Queue
+Contains processes waiting for a particular I/O device or event.
+
+Examples:
+- Disk
+- Keyboard
+- Network
+- Printer
+
+---
+
+## 8. CPU Scheduling Algorithms
+
+### FCFS — First Come First Serve
+Runs processes in arrival order.
+
+- Non-preemptive
+- Simple
+- Can have poor response time
+
+### SJF — Shortest Job First
+Runs the process with the shortest CPU burst.
+
+**Advantage:**
+- Minimum average waiting time under ideal assumptions
+
+**Disadvantages:**
+- Burst time is difficult to predict
+- Starvation is possible
+
+### Priority Scheduling
+Higher-priority processes run first.
+
+**Problem:** Low-priority starvation  
+**Solution:** Aging
+
+### Round Robin
+Each process receives a fixed time quantum.
+
+```
+P1 → P2 → P3 → P1 → P2 → ...
+```
+
+**Advantages:**
+- Fair
+- Good for interactive systems
+
+### Multilevel Queue
+Processes are divided into separate queues.
+
+Example:
+- Foreground Queue
+- Background Queue
+
+Each queue can use a different scheduling policy.
+
+### Multilevel Feedback Queue
+Processes can move between queues based on their behavior. Interactive processes can receive higher priority.
+
+---
+
+## 9. Context Switching
+
+A context switch occurs when the CPU stops executing one process/thread and starts another.
+
+```text
+Process A Running
+      │
+      ↓
+Save CPU state
+      │
+      ↓
+Scheduler selects Process B
+      │
+      ↓
+Restore Process B state
+      │
+      ↓
+Process B Running
+```
+
+The saved state includes information such as:
+- CPU registers
+- Program Counter
+- Stack Pointer
+- Memory-management context
+
+### Why Context Switching Is Expensive
+It performs no application work and introduces overhead from:
+
+- Saving/restoring registers
+- Scheduler execution
+- Memory-management changes when required
+- Cache pollution
+- Possible TLB efficiency loss
+
+> Modern CPUs may use mechanisms such as ASIDs/PCIDs, so a context switch does not necessarily flush the entire TLB.
+
+**Goal:** Avoid unnecessary context switches, but do not optimize them blindly—measure first.
+
+---
+
+## 10. Independent vs Cooperating Processes
+
+### Independent Process
+Does not share data or depend on other processes.
+
+**Example:** Calculator
+
+### Cooperating Process
+Shares data or communicates with other processes.
+
+**Examples:**
+- Browser ↔ Renderer
+- Producer ↔ Consumer
+- Application ↔ Database
+
+Cooperating processes commonly use IPC (Inter-Process Communication).
+
+---
+
+## 11. Process vs Thread
+
+| Process | Thread |
 |---|---|
-|ps|List processes|
-|top|Monitor running processes|
-|htop|Interactive process monitor|
-|pstree|Display process hierarchy|
-|pgrep|Find process by name|
-|pidof|Find PID|
-|strace|Trace system calls|
-|ltrace|Trace library calls|
-|lsof|List open fles|
-|taskset|Display or set CPU afinity|
-|pmap|Show process memory map|
+| Independent execution unit | Lightweight execution unit |
+| Separate virtual address space | Shares process address space |
+| Own process resources | Shares many process resources |
+| Higher creation overhead | Lower creation overhead |
+| More expensive switching | Usually cheaper switching |
+| IPC often needed | Shared memory can be used directly |
 
-# **Production Scenarios ⭐⭐⭐⭐⭐**
+> Linux implements threads using the `clone()` mechanism.
 
-## **Scenario 1 – Zombie Processes Increasing**
+---
 
-### **Symptoms**
+## 12. Types of Processes
 
-Large number of <mark><defunct></mark> processes PID exhaustion
+### Based on Execution
 
-### **Debugging**
+**Foreground** — Interactive with the user.
+Examples: Browser, Terminal, Editor
 
-ps -el **|** grep Z
+**Background** — Runs without direct user interaction.
+Examples: Daemons, Services, Cron jobs
 
-### **Root Cause**
+### Based on Function
 
-Parent process never calls <mark>wait()</mark> or <mark>waitpid() .</mark>
+**System Process** — Created/managed by the operating system.
+Examples: systemd, Kernel/system services
 
-### **Solution**
+**User Process** — Created by users/applications.
+Examples: Chrome, VS Code, GCC
 
-Handle <mark>SIGCHLD</mark>
+### Based on Behavior
 
-Call <mark>wait()</mark> or <mark>waitpid()</mark>
+**CPU-Bound** — Spends most of its time computing.
+Example: Image processing
 
-## **Scenario 2 – High Context Switch Rate**
+**I/O-Bound** — Spends much of its time waiting for I/O.
+Example: Web server
 
-High CPU utilization Low throughput Increased latency
+### Based on Communication
 
-vmstat 1 pidstat -w
+**Independent** — No interaction with other processes.
 
-### **Possible Causes**
+**Cooperating** — Communicates using IPC.
 
-Excessive threads Lock contention Frequent wake-ups CPU oversubscription
+### Based on Threading
 
-## **Scenario 3 – fork() Fails**
+**Single-Threaded** — Contains one thread.
 
-### **Possible Reasons**
+**Multi-Threaded** — Contains multiple threads sharing the process's resources/address space.
 
-<mark>ENOMEM</mark> (Insufficient memory) <mark>EAGAIN</mark> (Process limit reached) PID exhaustion
+---
 
-## **Scenario 4 – Process Stuck in D State**
+## 13. Process Creation in Linux
 
-The process cannot be terminated, even using <mark>SIGKILL</mark> .
+Linux primarily uses:
+- `fork()`
+- `vfork()`
+- `clone()`
 
-### **Common Causes**
+### fork()
+Creates a child process. Linux uses Copy-on-Write (CoW), so the parent and child initially share physical memory pages.
 
-Waiting for disk I/O NFS or network storage delays Driver or hardware issues
+```text
+Parent ─────┐
+            ├── Shared physical pages
+Child  ─────┘
+```
 
-ps -eo pid,state,comm
+If either process writes to a shared page, Linux creates a private copy.
 
-# **Senior Interview Questions**
+### Why fork() is Fast
+Linux does not immediately copy all process memory. It mainly creates process metadata and page-table structures while using CoW for memory.
 
-1. Why is <mark>fork()</mark> fast in Linux?
+---
 
-2. Explain Copy-on-Write.
+## 14. Copy-on-Write (CoW)
 
-- <mark>fork()</mark> , <mark>vfork()</mark> , and <mark>clone() .</mark>
+During `fork()`, shared pages are initially marked so that a write causes a page fault.
 
-4. What happens during <mark>exec() ?</mark>
+When a process writes:
 
-5. Explain Zombie and Orphan processes.
+```text
+1. Write attempt
+      ↓
+2. Page fault
+      ↓
+3. Kernel allocates new physical page
+      ↓
+4. Data is copied
+      ↓
+5. Page table is updated
+      ↓
+6. Process writes to its private copy
+```
 
-6. What information is stored in <mark>task</mark> _ <mark>struct ?</mark>
+### Advantages
+- Faster process creation
+- Lower memory usage
+- Avoids unnecessary copying
 
-7. How does the Linux Completely Fair Scheduler (CFS) work?
+---
 
-8. What is <mark>vruntime</mark> ?
+## 15. fork() vs vfork() vs clone()
 
-9. Why are context switches expensive?
-
-10. What is CPU affinity, and when should it be used?
-
-11. Explain <mark>SCHED</mark> _ <mark>FIFO</mark> and <mark>SCHED</mark> _ <mark>RR</mark> .
-
-12. How would you debug hundreds of Zombie processes?
-
-13. What does a process in **D (Uninterruptible Sleep)** state indicate?
-
-14. How do Linux threads differ from processes?
-
-15. How would you investigate high context-switch rates?——————————– # Answers to Senior Interview Questions
-
-# **1. Why is** **<mark>fork()</mark> fast in Linux?**
-
-<mark>fork()</mark> creates a new process by duplicating the parent’s process descriptor <mark>( task</mark> _ <mark>struct</mark> ) and page tables. However, Linux **does not immediately copy all memory pages** .
-
-Instead, Linux uses **Copy-on-Write (CoW)** .
-
-Initially, the parent and child share the same physical memory pages. If either process modifies a page, only that page is copied.
-
-Fast process creation Low memory overhead Efficient for <mark>fork()</mark> followed by <mark>exec()</mark>
-
-# **2. Explain Copy-on-Write (CoW).**
-
-Copy-on-Write is an optimization technique used during <mark>fork()</mark> . Instead of copying all memory immediately, Linux marks shared pages as **read-only** . Both parent and child initially share the same physical pages.
-
-When one process writes to a page:
-
-1. Page Fault occurs.
-
-2. Kernel allocates a new page.
-
-3. Data is copied.
-
-4. Writing process gets the new page.
-
-- Advantages Saves memory Faster process creation Avoids unnecessary copying
-
-# **<mark>fork()</mark> ,** **<mark>vfork()</mark> , and** **<mark>clone()</mark> .**
-
-|**Feature**|**fork()**|**vfork()**|**clone()**|
+| Feature | fork() | vfork() | clone() |
 |---|---|---|---|
-|Address Space|Copy-on-Write|Shared temporarily|Confgurable|
-|Parent Blocks|No|Yes|Depends|
-|Child Memory|Separate|Shared|Shared or Separate|
-|Typical Use|New Process|fork()+exec() optimization|Threads, Containers|
+| Address Space | CoW | Temporarily shared | Configurable |
+| Parent | Continues | Blocks until child exec()/exit | Depends on flags |
+| Child Memory | Separate after CoW | Shared temporarily | Shared or separate |
+| Typical Use | General process creation | fork() + exec() optimization | Threads, containers |
 
-Linux threads are implemented using **<mark>clone()</mark>** <mark>.</mark>
+---
 
-# **4. What happens during** **<mark>exec() ?</mark>**
+## 16. exec()
 
-The <mark>exec()</mark> family replaces the current process image with a new program. The process itself continues to exist. Only its program image changes.
+The `exec()` family replaces the current process image with a new program.
 
-**After successful** **<mark>exec()</mark>**
+Common functions:
+- `execl()`
+- `execv()`
+- `execvp()`
+- `execve()`
 
-PID remains the same. Address space changes. Program starts from <mark>main() .</mark> File descriptors remain open unless marked <mark>FD</mark> _ <mark>CLOEXEC .</mark>
+Typical pattern:
 
-# **5. Explain Zombie and Orphan Processes.**
+```text
+fork()
+  ↓
+Child
+  ↓
+exec()
+  ↓
+New Program
+```
 
-A Zombie process has completed execution but still occupies an entry in the process table because the parent has not collected its exit status.
+After successful `exec()`:
+- PID remains unchanged
+- Address space is replaced
+- New program starts execution
+- Open file descriptors normally remain open unless marked `FD_CLOEXEC`
 
-Characteristics No CPU usage No executable code Occupies PID Removed by <mark>wait()</mark> or <mark>waitpid()</mark>
+> `exec()` does not create a new process. It replaces the program image of the existing process.
 
-An Orphan process is still running after its parent terminates. Linux automatically assigns it to **systemd/init (PID 1)** .
+---
 
-# **6. What information is stored in** **<mark>task_struct ?</mark>**
+## 17. wait() and waitpid()
 
-<mark>task</mark> _ <mark>struct</mark> is the Linux kernel’s process descriptor. Important information stored includes: Process ID (PID) Thread Group ID (TGID) Process State Scheduling Information CPU Registers Parent Process Child Processes Memory Descriptor <mark>( mm</mark> _ <mark>struct</mark> ) Open File Table Signal Information Credentials Every process and thread has its own <mark>task</mark> _ <mark>struct .</mark>
+When a child exits, its exit status remains available until the parent collects it.
 
-# **7. How does the Linux Completely Fair Scheduler (CFS) work?**
+```text
+Child exits
+    ↓
+Exit status retained
+    ↓
+Parent calls wait()/waitpid()
+    ↓
+Child's process-table entry can be cleaned up
+```
 
-The Completely Fair Scheduler (CFS) attempts to give every runnable process a fair share of CPU time. It maintains all runnable tasks in a **Red-Black Tree** ordered by **Virtual Runtime** **<mark>( vruntime )</mark>** .
+If the parent fails to collect the status, the child becomes a **Zombie**.
 
-The process with the **smallest** **<mark>vruntime</mark>** runs next.
+---
 
-Advantages Fair scheduling Prevents starvation Excellent interactive performance
+## 18. Zombie and Orphan Processes
 
-# **8. What is** **<mark>vruntime ?</mark>**
+### Zombie
+A process that has already exited, but whose parent has not collected its exit status.
 
-<mark>vruntime</mark> (Virtual Runtime) is the amount of CPU time a process has effectively consumed. Instead of using actual execution time, CFS tracks **weighted runtime** .
+**Characteristics:**
+- Does not execute
+- Uses no CPU
+- Occupies a process/PID table entry
+- Removed after `wait()`/`waitpid()`
 
-Smaller vruntime
+```text
+Child exits
+    ↓
+Zombie
+    ↓
+Parent calls wait()
+    ↓
+Removed
+```
 
-↓ Higher chance of running
+### Orphan
+A process that is still running, but whose parent has terminated.
 
-Processes with lower priority (higher nice value) accumulate <mark>vruntime</mark> faster, causing them to receive less CPU time.
+Linux re-parents orphan processes to an appropriate reaper, typically PID 1 (`systemd` on modern systems).
 
-# **9. Why are context switches expensive?**
+| | Zombie | Orphan |
+|---|---|---|
+| Status | Already exited | Still running |
+| Parent | Has not collected status | Has terminated |
+| Resource | Occupies process-table entry | Continues execution |
+| Resolution | Reaped using `wait()` | Re-parented |
 
-During a context switch, Linux must: Save CPU registers Save Program Counter Save Stack Pointer Load next process state Switch memory mapping if required Invoke scheduler logic Additional costs include: Cache pollution Reduced TLB efficiency Scheduler overhead Frequent context switches reduce overall system performance.
+---
 
-# **10. What is CPU Affinity, and when should it be used?**
+## 19. Deadlock
 
-CPU Affinity binds a process or thread to a specific CPU core.
+A deadlock occurs when processes/threads wait forever for resources held by each other.
 
-CPU0 ← Process A CPU1 ← Process B Advantages Better cache locality Reduced CPU migration Lower scheduling overhead Predictable execution Useful in: Real-time systems High-performance networking Embedded systems Commands
+**Example:**
+```
+P1 → waits for P2
+P2 → waits for P1
+```
 
-# **11. Explain** **<mark>SCHED_FIFO</mark> and** **<mark>SCHED_RR .</mark>**
+Deadlock requires all four conditions:
 
-These are Linux real-time scheduling policies.
+### 1. Mutual Exclusion
+A resource cannot be simultaneously shared.
 
-### **SCHED_FIFO**
+### 2. Hold and Wait
+A process holds one resource while waiting for another.
 
-First-In First-Out Highest-priority task runs until: Blocks Terminates Voluntarily yields No time slicing Suitable for deterministic real-time applications.
+### 3. No Preemption
+Resources cannot be forcibly taken away.
 
-### **SCHED_RR**
+### 4. Circular Wait
+A circular dependency exists.
 
-Round Robin scheduling for real-time tasks. Processes of equal priority receive fixed time slices.
+```
+P1 → P2 → P3 → P1
+```
 
-P1
+---
 
-↓
+## 20. Process Execution Models
 
-P2 ↓ P3 ↓ P1
-
-Provides fairness among equal-priority real-time tasks.
-
-# **12. How would you debug hundreds of Zombie processes?**
-
-<defunct>
-
-appears in process listings.
-
-ps -el **|** grep Z pstree strace -p <parent_pid>
-
-Parent process is not calling:
-
-<mark>wait() waitpid()</mark>
-
-Handle <mark>SIGCHLD</mark> Call <mark>wait()</mark> or <mark>waitpid()</mark>
-
-# **13. What does a process in D (Uninterruptible Sleep) state indicate?**
-
-A process in **D state** is waiting for an operation that **cannot be interrupted by signals** , typically I/O. Common causes
-
-Disk I/O NFS delays Storage failures Driver issues
-
-Debugging
-
-ps -eo pid,state,comm cat /proc/<pid>/stack dmesg
-
-Even <mark>SIGKILL</mark> cannot terminate a process while it remains in this state.
-
-# **14. How do Linux threads differ from processes?**
-
-|**Process**|**Thread**|
+| Model | Meaning |
 |---|---|
-|Independent execution unit|Lightweight execution unit|
-|Separate virtual address space|Shares process address space|
-|Separate fle descriptor table (unless shared explicitly)|Typically shares process resources|
-|Higher creation overhead|Lower creation overhead|
-|IPC required for communication|Shared memory communication|
+| Multiprogramming | Multiple programs are in memory; CPU switches when one waits |
+| Multitasking | CPU rapidly switches between tasks to provide responsive execution |
+| Multiprocessing | Multiple CPU cores execute tasks in parallel |
+| Multithreading | Multiple threads within a process share memory/resources |
+| Distributed Processing | Multiple computers cooperate on a problem |
+| Time Sharing | CPU gives tasks time slices for fairness/responsiveness |
 
-Linux implements threads using the **<mark>clone()</mark>** system call.
+---
 
-# **15. How would you investigate high context-switch rates?**
+## 21. Concurrency vs Parallelism
 
-### **Step 1 – Measure Context Switches**
+### Concurrency
+Multiple tasks are in progress and their execution may overlap. Can occur on one CPU through scheduling.
 
-vmstat 1 pidstat -w sar -w
+### Parallelism
+Multiple tasks execute simultaneously. Requires multiple CPU cores/CPUs.
 
-### **Step 2 – Identify Busy Processes**
+| | Concurrency | Parallelism |
+|---|---|---|
+| Definition | Multiple tasks in progress | Multiple tasks executing simultaneously |
+| Hardware | Can use one CPU | Requires multiple cores/CPUs |
+| Focus | Managing tasks | Simultaneous execution |
+| Achieved via | Scheduling | Hardware capable of parallel execution |
 
-top
+> **Parallelism ⊂ Concurrency**  
+> Every parallel program is concurrent, but not every concurrent program is parallel.
 
-htop
+---
 
-### **Step 3 – Check Thread Count**
+## 22. Real-Time Processing
 
-ps -eLf
+Real-time systems must meet timing requirements.
 
-### **Step 4 – Look for Lock Contention**
+**Examples:** Airbag systems, Flight control, Pacemakers
 
-Use:
+### Hard Real-Time
+Missing a deadline can cause system failure.
 
-perf strace
+### Soft Real-Time
+Occasional deadline misses are acceptable.
 
-- Excessive threads Lock contention Frequent wake-ups Short CPU bursts CPU oversubscription Improper scheduling policy
+---
 
-### **Solutions**
+## 23. Linux Scheduling
 
-- Reduce unnecessary threads. Increase task granularity. Minimize lock contention. Use appropriate scheduling policies. Pin critical threads using CPU affinity if beneficial. Profile before optimizing to identify the real bottleneck.
+Linux uses different scheduling policies. For normal tasks, modern Linux uses the fair scheduling framework; historically this was called the **Completely Fair Scheduler (CFS)**.
 
+Important CFS concepts include:
+- `vruntime`
+- Run queue
+- Fair CPU allocation
+- Red-black tree in the traditional CFS implementation
 
-**--------------------------------------------------------------------------------------------------------------------------------
-********************************************************************************************************************************
---------------------------------------------------------------------------------------------------------------------------------**
+The task with the smallest effective `vruntime` was selected to run under the traditional CFS design.
+
+### vruntime
+Represents weighted CPU time consumed by a task. Tasks with lower effective `vruntime` have a stronger claim to CPU time.
+
+---
+
+## 24. Real-Time Scheduling Policies
+
+| Policy | Description |
+|---|---|
+| SCHED_OTHER | Default normal scheduling policy |
+| SCHED_FIFO | Real-time first-in-first-out |
+| SCHED_RR | Real-time round robin |
+
+### SCHED_FIFO
+A real-time task runs until it:
+- Blocks
+- Terminates
+- Voluntarily yields
+
+### SCHED_RR
+Equal-priority real-time tasks receive time slices.
+
+```
+P1 → P2 → P3 → P1
+```
+
+> Real-time scheduling policies can have higher priority than normal scheduling classes.
+
+---
+
+## 25. CPU Affinity
+
+CPU affinity binds a process/thread to one or more CPUs.
+
+```
+CPU0 ← Process A
+CPU1 ← Process B
+```
+
+**Potential benefits:**
+- Better cache locality
+- Fewer CPU migrations
+- More predictable execution
+- Useful for real-time/high-performance workloads
+
+**Commands/APIs:**
+- `taskset`
+- `sched_setaffinity()`
+
+---
+
+## 26. Signals
+
+Signals provide asynchronous notification to processes.
+
+| Signal | Purpose |
+|---|---|
+| SIGINT | Interrupt, e.g. Ctrl+C |
+| SIGTERM | Request graceful termination |
+| SIGKILL | Force termination |
+| SIGSTOP | Suspend process |
+| SIGCONT | Resume process |
+| SIGCHLD | Child state changed/terminated |
+
+---
+
+## 27. Linux Process Debugging Commands
+
+| Command | Purpose |
+|---|---|
+| `ps` | List processes |
+| `top` | Monitor processes |
+| `htop` | Interactive process monitor |
+| `pstree` | Process hierarchy |
+| `pgrep` | Find process by name |
+| `pidof` | Find PID |
+| `strace` | Trace system calls |
+| `ltrace` | Trace library calls |
+| `lsof` | List open files |
+| `taskset` | Display/set CPU affinity |
+| `pmap` | Show process memory map |
+| `vmstat` | System/process statistics |
+| `pidstat` | Per-process statistics |
+| `perf` | Performance analysis |
+
+---
+
+## 28. Common Production Scenarios
+
+### Scenario 1 — Zombie Processes
+
+**Symptoms:**
+- Many `<defunct>` processes
+- PID exhaustion
+
+**Debug:**
+```bash
+ps -el | grep Z
+pstree
+```
+
+**Cause:** Parent does not call `wait()` / `waitpid()`
+
+**Solution:**
+- Handle `SIGCHLD`
+- Call `wait()`/`waitpid()`
+
+---
+
+### Scenario 2 — High Context-Switch Rate
+
+**Symptoms:**
+- High CPU usage
+- Low throughput
+- Increased latency
+
+**Measure:**
+```bash
+vmstat 1
+pidstat -w
+```
+
+**Possible Causes:**
+- Excessive threads
+- Lock contention
+- Frequent wake-ups
+- CPU oversubscription
+- Very short CPU bursts
+- Poor scheduling configuration
+
+**Solution:** Measure first, then consider:
+- Reducing unnecessary threads
+- Reducing lock contention
+- Improving task granularity
+- Adjusting scheduling
+- CPU affinity where appropriate
+
+---
+
+### Scenario 3 — fork() Fails
+
+Possible errors:
+- `ENOMEM` → Insufficient memory/resources
+- `EAGAIN` → Process/resource limit reached
+
+Other causes can include PID/resource exhaustion.
+
+---
+
+### Scenario 4 — Process Stuck in D State
+
+`D` means uninterruptible sleep, commonly while waiting for I/O.
+
+**Possible causes:**
+- Disk I/O delays
+- NFS/network storage problems
+- Storage failures
+- Driver problems
+- Hardware issues
+
+**Debug:**
+```bash
+ps -eo pid,state,comm
+cat /proc/<pid>/stack
+dmesg
+```
+
+> A process cannot normally respond to signals, including `SIGKILL`, while it remains stuck in an uninterruptible kernel wait.
+
+---
+
+## 29. Interview Questions
+
+### Fundamentals
+- What is a process?
+- Program vs process?
+- What is a PCB?
+- What information is stored in a PCB?
+- Explain process states.
+- What is context switching?
+- Why is context switching expensive?
+- What are scheduling queues?
+- Explain long-, medium-, and short-term schedulers.
+
+### IPC and Processes
+- What is IPC?
+- Shared memory vs message passing
+- Independent vs cooperating processes
+- Process vs thread
+- CPU-bound vs I/O-bound process
+- Parent vs child process
+- Explain synchronization
+- Mutex vs semaphore
+- Critical-section problem
+
+### Scheduling
+- Explain FCFS, SJF, Priority, and Round Robin.
+- Preemptive vs non-preemptive scheduling
+- Explain Multilevel Queue
+- Explain Multilevel Feedback Queue
+- Explain Linux scheduling
+- What is vruntime?
+- Explain SCHED_FIFO and SCHED_RR
+
+### Process Lifecycle
+- Why is fork() fast?
+- Explain Copy-on-Write.
+- fork() vs vfork() vs clone()
+- What happens during exec()?
+- What are Zombie and Orphan processes?
+- What does wait() do?
+- How are Linux threads created?
+
+### Advanced
+- Explain deadlock and its four conditions.
+- Multiprogramming vs multitasking
+- Concurrency vs parallelism
+- Multiprocessing vs multithreading
+- Hard vs soft real-time systems
+- What is CPU affinity?
+- What happens during a context switch?
+- What information is saved in task_struct?
+- How would you debug hundreds of Zombie processes?
+- What does D state indicate?
+- How would you investigate high context-switch rates?
+
+---
+
+## 30. Quick Revision
+
+```text
+PROGRAM
+   │
+   │ execute
+   ↓
+PROCESS
+   │
+   ├── Virtual Address Space
+   ├── CPU Registers
+   ├── Program Counter
+   ├── Stack
+   ├── Heap
+   ├── Open Files
+   └── PCB / task_struct
+           │
+           ↓
+       SCHEDULER
+           │
+           ↓
+       CPU EXECUTION
+           │
+      ┌────┴─────┐
+      │          │
+    Running    Waiting
+      │          │
+      │          │ I/O complete
+      │          ↓
+      └──────► Ready
+```
+
+### Process Creation
+```text
+fork()
+  ↓
+Child process
+  ↓
+Copy-on-Write
+  ↓
+exec()
+  ↓
+New program image
+```
+
+### Process Communication
+```text
+Separate address spaces
+        ↓
+       IPC
+        ↓
+Pipe / FIFO / Shared Memory /
+Message Queue / Socket / mmap()
+```
+
+### Core Concepts
+
+| Concept | Description |
+|---|---|
+| Process | Program in execution |
+| PCB | Information needed to manage process |
+| Scheduler | Chooses what runs |
+| Context switch | Switches CPU from one task to another |
+| fork() | Creates child |
+| CoW | Delays memory copying until write |
+| exec() | Replaces process image |
+| wait() | Collects child exit status |
+| Zombie | Exited child not yet reaped |
+| Orphan | Running child whose parent exited |
+| Thread | Lightweight execution unit sharing process resources |
+| Deadlock | Processes wait forever for resources |
+| Concurrency | Multiple tasks in progress |
+| Parallelism | Multiple tasks executing simultaneously |
+
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
 ## 4 — File System (VFS)
 
