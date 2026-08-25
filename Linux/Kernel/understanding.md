@@ -10,14 +10,14 @@ Core component of the Kernel:
 8) Inter-process communication
 9) Interrupt handling
 
----------------------
+----------------------------------------------------------------
 
 ## **User Space vs Kernel Space**
 
 **User space** = applications run with limited privileges.
 **Kernel space** = OS with full privileges. CPU modes enforce this separation for protection and stability.
 
-------------------------
+----------------------------------------------------------------
 
 ## **CPU Modes**
 **User mode** runs applications with restricted privileges, while **kernel mode** runs the OS with full privileges.
@@ -179,8 +179,7 @@ The **CPU/MMU** checks these permissions and blocks unauthorised access, such as
                                          ↓
                                   21. EXECUTE
 ```
-
------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
 ## **What is a System Call?**
 A system call is a controlled interface provided by the operating system kernel through which a user-space program requests previleged kernel space services.
@@ -269,7 +268,7 @@ The Linux kernel consists of many subsystems:
 Each subsystem performs a specialized task.
 
 
-----------------------------
+----------------------------------------------------------------
 
 ## Types of kernel:
 
@@ -285,7 +284,8 @@ A Microkernel keeps only minimal functionality inside the kernel; everything els
 
 **Advantages:** better isolation, better reliability, easier debugging. **Disadvantages:** more IPC, slower than monolithic kernels.
 
--------------------------
+----------------------------------------------------------------
+
 
 ## **Loadable Kernel Modules (LKM)**
 
@@ -298,323 +298,173 @@ Commands: <mark>lsmod</mark> , <mark>insmod , rmmod</mark> , <mark>modprobe</mar
 Advantages: no reboot, smaller kernel image, easier driver updates.
 
 
-----------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
-# **PART A.2 — Inter-Process Communication (IPC)**
+## IPC — Inter-Process Communication
 
-# **Operating System - IPC (Inter-Process Communication) Handbook**
+Processes have **separate address spaces**, so they cannot directly access each other's memory. The Operating System provides **IPC (Inter-Process Communication)** mechanisms for safe communication.
 
-Complete interview notes covering all major IPC mechanisms in Linux/Unix with concepts, working, system calls, advantages, disadvantages, and use cases.
+## Why IPC?
 
-# **Table of Contents**
+Processes may need to:
 
-1. What is IPC?
-
-2. Why IPC is Needed
-
-3. IPC Mechanisms Overview
-
-4. Unnamed Pipe
-
-5. Named Pipe (FIFO)
-
-6. Shared Memory
-
-7. Message Queue
-
-8. Socket
-
-9. Memory-Mapped File (mmap)
-
-10. IPC Comparison Table
-
-11. Which IPC Should You Use?
-
-12. Real-World Examples
-
-13. Interview Questions
-
-# **IPC and Synchronization Mechanisms - Quick Reference**
-
-|**IPC Mechanism**|**Persistence**|
-|---|---|
-|**Unnamed Pipe**|Exists only as long as at least one process has the pipe open. Once all fle descriptors are closed or the processes exit, the pipe is<br>destroyed automatically.|
-|**Named Pipe**<br>**(FIFO)**|The FIFO fle persists in the flesystem until it is explicitly removed (e.g.,<br>unlink()or<br>rm ). The data inside it exists only while<br>there are writers/readers; the FIFO object itself remains.|
-|**Message Queue**<br>**(POSIX)**|Persists in the kernel until<br>mq_unlink() is called or the system reboots.|
-|**System V**<br>**Message Queue**|Persists until<br>msgctl(..., IPC_RMID, ...) is called or the system reboots.|
-|**POSIX Shared**<br>**Memory**|Persists until<br>shm_unlink()is called or the system reboots.|
-|**System V Shared**<br>**Memory**|Persists until<br>shmctl(..., IPC_RMID, ...) is called or the system reboots.|
-|**Semaphore**<br>**(POSIX Named)**|Persists until<br>sem_unlink()is called or the system reboots.|
-|**System V**<br>**Semaphore**|Persists until<br>semctl(..., IPC_RMID, ...) is called or the system reboots.|
-|**Socket**|Exists only while the socket is open. Closing the socket destroys it.|
-|**UNIX Domain**<br>**Socket**<br>**(pathname)**|The socket fle remains in the flesystem until removed(<br>unlink() ), even after the process exits. The communication endpoint no<br>longer exists once the process terminates.|
-
-# **1. What is IPC?**
-
-**IPC (Inter-Process Communication)** is a mechanism that allows two or more processes to communicate and exchange data. Processes normally have **separate address spaces** , so they cannot directly access each other’s memory. The Operating System provides IPC mechanisms to enable safe communication.
-
-## **Why IPC is Needed**
-
-Processes often need to:
-
-- Exchange data Synchronize execution Share resources Notify events Coordinate tasks
+- Exchange data
+- Synchronize execution
+- Share resources
+- Notify events
+- Coordinate tasks
 
 Examples:
 
-- Browser ↔ Renderer Database ↔ Application Server Shell ↔ Child Process Producer ↔ Consumer
-
-# **2. IPC Mechanisms**
-
-Linux/Unix provides several IPC mechanisms.
-
-# **3. IPC Overview**
-
-|**IPC Mechanism**|**Related Processes**|**Unrelated Processes**|**Across Machines**|**Speed**|**Data Type**|
-|---|---|---|---|---|---|
-|Unnamed Pipe|✅|❌|❌|Medium|Byte Stream|
-|Named Pipe (FIFO)|✅|✅|❌|Medium|Byte Stream|
-|Shared Memory|✅|✅|❌|Very<br>Fast|Shared Memory|
-|Message Queue|✅|✅|❌|Fast|Messages|
-|Socket|✅|✅|✅|Medium|Stream /<br>Datagram|
-|mmap()|✅|✅|❌|Very<br>Fast|Shared Memory<br>+ File|
-
-# **4. Unnamed Pipe**
-
-## **Concept**
-
-An unnamed pipe is the simplest IPC mechanism.
-
-It provides **one-way communication** between **related processes** , typically a **parent** and its **child** . The pipe exists only while the processes are running.
-
-## **How It Works**
-
-The parent writes data to the write end. The child reads data from the read end.
-
-## **System Call**
-
-int fd[2]; pipe(fd);
-
-<mark>fd[0]</mark> → Read End <mark>fd[1]</mark> → Write End
-
-int fd[2]; pipe(fd); write(fd[1], "hello", 5); read(fd[0], buffer, 5);
-
-## **Advantages**
-
-Very simple Fast Low overhead Good for parent-child communication
-
-## **Disadvantages**
-
-One-way communication Related processes only Exists only during process lifetime
-
-## **Use Cases**
-
-Shell pipelines
-
-ls | grep ".cpp" Parent ↔ Child communication
-
-## **Don’t Use When**
-
-Processes are unrelated Bidirectional communication is required Communication must survive process termination
-
-# **5. Named Pipe (FIFO)**
-
-A Named Pipe (FIFO) is similar to an unnamed pipe, but it exists as a file in the filesystem. Because it has a name, **unrelated processes** can communicate through it.
-
-Both processes open the same FIFO file.
-
-## **Create FIFO**
-
-mkfifo("myfifo", 0666);
-
-Terminal 1
-
-cat /tmp/myfifo
-
-Terminal 2 echo "Hello" > /tmp/myfifo
-
-Works between unrelated processes Simple to use File-based communication
-
-Sequential stream only Slower than shared memory One-way by default
-
-Communication between independent applications Simple producer-consumer systems Command-line utilities
-
-High throughput is required Random memory access is needed
-
-# **6. Shared Memory**
-
-Shared Memory is the **fastest IPC mechanism** .
-
-Multiple processes map the same physical memory region into their address space. No copying of data is required.
-
-Both processes directly read and write the same memory.
-
-## **System Calls**
-
-System V
-
-shmget() shmat() shmdt() shmctl()
-
-POSIX
-
-mmap()
-
-# **Simple Shared Memory Example in C (POSIX)** This example demonstrates how to use **POSIX Shared Memory** with **`** shm_open() **` and `** mmap() **`** . --# **# Writer Program (`writer.c`) text
-Writer Process
-      │
-   shm_open()
-      │
-      ▼
-+---------------+
-| Shared Memory |
-+---------------+
-      ▲
-      │
-   mmap()
-      │
-Reader Process
-text
-Process A
-    |
-    | mq_send()
-    v
-+------------------+
-|   Message Queue  |
-|      (kernel)    |
-+------------------+
-    |
-    | mq_receive()
-    v
-Process B
-cpp msgget() msgsnd() msgrcv() msgctl()
-
-# **Simple Message Queue Example in C (POSIX)**
-
-This example demonstrates **POSIX Message Queues using `** mq_open() **`** , **`** mq_send() **`** , **and `** mq_receive() **`** .
+- Browser ↔ Renderer
+- Database ↔ Application
+- Shell ↔ Child Process
+- Producer ↔ Consumer
 
 ---
 
-# **# Sender Program (`sender.c`)**
+# IPC Mechanisms
 
-**text
-Sender
-   │
-mq_send()
-   │
-   ▼
-+------------------+
-|  Message Queue   |
-+------------------+
-   ▲
-   │
-mq_receive()
-   │
-Receiver
-text
-Client Process
-     |
-     | socket()/connect()
-     v
-+-------------+
-| Client      |
-| Socket      |
-+-------------+
-     |
-     | TCP/UDP or Unix-domain transport
-     v
-+-------------+
-| Server      |
-| Socket      |
-+-------------+
-     |
-     v
-Server Process
-cpp socket() bind() listen() accept() connect() send() recv() close()
+| Mechanism | Related | Unrelated | Across Machines | Speed | Data |
+|---|---:|---:|---:|---|---|
+| **Unnamed Pipe** | ✅ | ❌ | ❌ | Medium | Byte stream |
+| **FIFO** | ✅ | ✅ | ❌ | Medium | Byte stream |
+| **Shared Memory** | ✅ | ✅ | ❌ | ⭐ Very fast | Shared memory |
+| **Message Queue** | ✅ | ✅ | ❌ | Fast | Messages |
+| **Socket** | ✅ | ✅ | ✅ | Medium | Stream / Datagram |
+| **mmap()** | ✅ | ✅ | ❌ | Very fast | Shared memory + file |
 
-int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+---
 
-Bidirectional Cross-machine communication Network capable Standard client-server architecture
+**1. Unnamed Pipe**
+Simple one-way IPC, mainly between related processes (parent ↔ child). Exists only while processes are running.
 
-Slower than shared memory Protocol overhead
+int fd[2];
+pipe(fd);
 
-Web Servers Chat Applications REST APIs Distributed Systems Microservices
+fd[0] → read
+fd[1] → write
 
-Both processes are local Maximum performance is required
+Parent → pipe → Child
 
-# **9. Memory-Mapped File (mmap)**
+Use: Shell pipelines (ls | grep .cpp), parent-child communication.
+Avoid: Unrelated processes, persistent or bidirectional communication.
 
-<mark>mmap()</mark> maps a file directly into a process’s virtual memory.
+------------------------------------------------------------------------------------------------
+**2. Named Pipe (FIFO)**
+Like a pipe, but has a filesystem name, allowing unrelated processes to communicate.
 
-Processes access the file as if it were normal memory. Multiple processes can map the same file. Changes automatically update the file.
+mkfifo("myfifo", 0666);
 
-void *mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
+Process A → FIFO → Process B
 
-int fd = open("data.bin", O_RDWR); void *ptr = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
+Pros: Simple, works between unrelated processes.
+Cons: Byte stream, one-way by default, slower than shared memory.
+Use: Independent local programs, simple producer-consumer systems.
 
-Very fast File persistence Large file support No explicit read/write
+------------------------------------------------------------------------------------------------ 
 
-File I/O overhead Local machine only Requires careful synchronization
+**3. Shared Memory**
+Fastest IPC. Multiple processes map the same physical memory into their virtual address spaces, so data doesn't need to be copied through the kernel.
 
-Database engines Shared caches Large file processing Shared file-backed memory
+Process A ──┐
+            ↓
+       Shared Memory
+            ↑
+Process B ──┘
 
-Persistence is unnecessary Simpler IPC mechanisms are sufficient
 
-# **10. IPC Comparison**
+POSIX: shm_open(), mmap()
+System V: shmget(), shmat(), shmdt(), shmctl()
 
-|**Feature**|**Pipe**|**FIFO**|**Shared Memory**|**Message Queue**|**Socket**|**mmap**|
-|---|---|---|---|---|---|---|
-|Parent-Child|✅|✅|✅|✅|✅|✅|
-|Unrelated<br>Processes|❌|✅|✅|✅|✅|✅|
-|Across Machines|❌|❌|❌|❌|✅|❌|
-|Bidirectional|❌|❌|✅|✅|✅|✅|
-|Persistent|❌|FIFO fle<br>exists|❌|Kernel-managed|Network<br>connection|File-backed|
+Pros: Very fast, direct memory access.
+Cons: Requires synchronization (mutexes, semaphores, etc.).
+Use: Databases, video processing, high-speed producer-consumer systems.
 
-|Fast|Medium|Medium|⭐Fastest|Fast|Medium|Very Fast|
-|---|---|---|---|---|---|---|
-|Synchronization<br>Needed|❌|❌|✅|❌|Protocol-based|✅|
+------------------------------------------------------------------------------------------------
 
-# **11. Which IPC Should You Use?**
+**4. Message Queue**
+Processes exchange discrete messages through a kernel-managed queue.
 
-|**Requirement**|**Best Choice**|
-|---|---|
-|Parent ↔ Child|Unnamed Pipe|
-|Unrelated Processes|Named Pipe (FIFO)|
-|Very High Speed|Shared Memory|
-|Structured Messages|Message Queue|
-|Client-Server|Socket|
-|Cross-Machine Communication|Socket|
-|Shared Data + Persistence|mmap()|
+Process A
+   │ mq_send()
+   ↓
+[ Message Queue ]
+   │ mq_receive()
+   ↓
+Process B
 
-# **12. Real-World Examples**
+POSIX: mq_send(), mq_receive()
+System V: msgget(), msgsnd(), msgrcv(), msgctl()
 
-|**Application**|**IPC Used**|
-|---|---|
-|Linux Shell(<br>ls \| grep)|Pipe|
-|Independent Local Programs|FIFO|
-|Database Shared Cache|Shared Memory|
-|Producer-Consumer Queue|Message Queue|
-|Browser ↔ Web Server|TCP Socket|
-|Chat Application|Socket|
-|Database File Cache|mmap()|
-|Video Processing|Shared Memory|
-|Distributed Microservices|Socket|
+Pros: Structured messages, simpler synchronization.
+Use: Producer-consumer systems, task/event communication.
 
-# **13. Interview Questions**
+------------------------------------------------------------------------------------------------
 
-## **Basic**
+**5. Socket**
+Provides bidirectional communication between processes and can work across machines.
 
-What is IPC? Why is IPC needed? Name different IPC mechanisms. What is the fastest IPC mechanism? What is the difference between a pipe and a FIFO?
+Client → Socket → Network/Unix socket → Socket → Server
 
-## **Intermediate**
 
-Explain shared memory.
+Common calls:
 
-Why is synchronization needed in shared memory? How does a message queue work? What is a Unix domain socket?
+socket()
+bind()
+listen()
+accept()
+connect()
+send()
+recv()
+close()
 
-- What is the difference between TCP and Unix sockets? Explain <mark>mmap()</mark>.
 
-- ⬆ Back to Table of Contents
+Pros: Bidirectional, network-capable, client-server model.
+Cons: More protocol/communication overhead than shared memory.
+Use: Web servers, chat apps, REST APIs, microservices, distributed systems.
 
-# **PART A.3 — Process Management**
+------------------------------------------------------------------------------------------------
+
+**6. Memory-Mapped File (mmap)**
+Maps a file into a process's virtual memory, allowing it to access the file like normal memory. Multiple processes can map the same file.
+
+int fd = open("data.bin", O_RDWR);
+
+void *ptr = mmap(
+    NULL, size,
+    PROT_READ | PROT_WRITE,
+    MAP_SHARED, fd, 0
+);
+
+Pros: Fast, persistent, good for large files.
+Cons: File/storage overhead; synchronization may be needed.
+Use: Database files/caches, large-file processing, shared persistent data.
+
+Quick Selection
+Requirement	Use
+Parent ↔ Child	Unnamed Pipe
+Unrelated local processes	FIFO
+Maximum speed	Shared Memory
+Structured messages	Message Queue
+Client ↔ Server	Socket
+Cross-machine communication	Socket
+Shared data + persistence	mmap()
+
+
+One-line mental model
+Pipe/FIFO       → stream of bytes
+Message Queue   → messages
+Shared Memory   → shared RAM
+Socket          → communication endpoint
+mmap()          → file/shared memory mapped into address space
+
+
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
+
+## 3 — Process Management
 
 # **Operating System - Process Management Handbook**
 
