@@ -210,79 +210,6 @@ The **CPU/MMU** checks these permissions and blocks unauthorised access, such as
 
 ---
 
-
-## **What is a System Call?**
-A system call is a controlled interface provided by the operating system kernel through which a user-space program requests previleged kernel space services.
-
-```
-open()       → open a file
-read()       → read data
-write()      → write data
-fork()       → create a process
-execve()     → execute a program
-mmap()       → map memory
-ioctl()      → device-specific control operation
-socket()     → create a socket
-```text
-
-## General System Call Flow
-
-```text
-APPLICATION
-    |
-    | calls
-    v
-LIBRARY FUNCTION
-(e.g., read(), open(), write())
-    |
-    | calls
-    v
-SYSTEM-CALL WRAPPER
-    |
-    | prepares system-call number + arguments
-    v
-CPU REGISTERS
-    |
-    | wrapper executes
-    v
-SYSTEM-CALL INSTRUCTION
-(e.g., syscall)
-    |
-    | causes
-    v
-CPU SWITCHES
-USER MODE -> KERNEL MODE
-    |
-    | enters
-    v
-SYSTEM-CALL HANDLER / SYSTEM-CALL INTERFACE
-    |
-    | uses system-call number to look up
-    v
-SYSTEM-CALL TABLE
-    |
-    | selects
-    v
-CORRESPONDING KERNEL SYSTEM-CALL ROUTINE
-(e.g., sys_read(), sys_open(), sys_write())
-    |
-    | may call
-    v
-KERNEL SUBSYSTEM
-    |
-    | if hardware access is required
-    v
-DEVICE DRIVER
-    |
-    | communicates with
-    v
-DEVICE CONTROLLER
-    |
-    | controls
-    v
-PHYSICAL DEVICE
-```
-
 The application never writes directly to the display hardware.
 
 ## **Why Use Libraries?**
@@ -1407,152 +1334,114 @@ text
 
 # 5 — System Calls & Interrupts**
 
-Interview notes covering system calls, interrupts, kernel mode transition, and their relationship.
+## **What is a System Call?**
+A system call is a controlled interface provided by the operating system kernel through which a user-space program requests previleged kernel space services.
 
-# **1. System Call**
+```
+open()       → open a file
+read()       → read data
+write()      → write data
+fork()       → create a process
+execve()     → execute a program
+mmap()       → map memory
+ioctl()      → device-specific control operation
+socket()     → create a socket
+```text
 
-A **system call** is a mechanism through which a **user program requests a service from the Operating System kernel** . User programs cannot directly access hardware because of:
+## General System Call Flow
 
-Security Protection Resource management Therefore, applications use system calls to request OS services.
+```text
+APPLICATION
+    |
+    | calls
+    v
+LIBRARY FUNCTION
+(e.g., read(), open(), write())
+    |
+    | calls
+    v
+SYSTEM-CALL WRAPPER
+    |
+    | prepares system-call number + arguments
+    v
+CPU REGISTERS
+    |
+    | wrapper executes
+    v
+SYSTEM-CALL INSTRUCTION
+(e.g., syscall)
+    |
+    | causes
+    v
+CPU SWITCHES
+USER MODE -> KERNEL MODE
+    |
+    | enters
+    v
+SYSTEM-CALL HANDLER / SYSTEM-CALL INTERFACE
+    |
+    | uses system-call number to look up
+    v
+SYSTEM-CALL TABLE
+    |
+    | selects
+    v
+CORRESPONDING KERNEL SYSTEM-CALL ROUTINE
+(e.g., sys_read(), sys_open(), sys_write())
+    |
+    | may call
+    v
+KERNEL SUBSYSTEM
+    |
+    | if hardware access is required
+    v
+DEVICE DRIVER
+    |
+    | communicates with
+    v
+DEVICE CONTROLLER
+    |
+    | controls
+    v
+PHYSICAL DEVICE
+```
 
-# **2. Why System Calls Are Needed?**
+# Types of System Calls
 
-Applications run in:
-
-User Mode
-
-User programs have restricted access. The Operating System runs in:
-
-Kernel Mode
-
-The kernel has complete access to: CPU Memory Hardware devices System resources System calls provide a controlled interface between user programs and the OS kernel.
-
-# **3. Examples of System Calls**
-
-## **File Operations**
-
-Used for file handling. Examples:
-
-open() read() write() close()
-
-Example:
-
-read(file, buffer, size);
-
-The program requests the OS to read data from a file.
-
-## **Process Control**
-
-Used for creating and managing processes. Examples:
-
-fork() exec() exit() wait()
-
-fork();
-
-Creates a new process.
-
-## **Device Management**
-
-Used to communicate with hardware devices. Examples:
-
-Requesting keyboard input Sending data to printer Accessing disk devices Communicating with network devices
-
-## **Memory Management**
-
-Programs request memory from the OS. Examples:
-
-brk() mmap()
-
-Functions like: malloc()
-
-internally use system calls to allocate memory.
-
-# **4. Example: printf() and System Call**
-
-When a program executes:
-
-printf("Hello");
-
-The application does not directly access the screen. The kernel handles communication with hardware.
-
-# **6. User Mode vs Kernel Mode**
-
-## **User Mode**
-
-|Used by:|
-|---|
-|Applications|
-|Browsers|
-|Games|
-|Editors|
-|Restrictions:|
-|Cannot access hardware directly|
-|Cannot execute privileged instructions|
-|Cannot directly modify kernel memory|
-
-## **Kernel Mode**
-
-|Used by:|
-|---|
-|Operating System kernel|
-|Has access to:|
-|Hardware|
-|Memory management|
-|CPU instructions|
-|Devices|
-
-## **Mode Switching**
-
-A system call causes:
-
-User Mode ↓ Kernel Mode ↓ User Mode
-
-# **7. Types of System Calls**
-
-## **1. Process Control**
-
+**1. Process Control**
 Responsible for process management. Examples:
+fork() exec() exit() wait() kill() getpid()
 
-## **2. File Management**
+**2. File Management**
+Handles files and directories. Examples:
+open() close() read() write() lseek() stat() mkdir() unlink()
 
-Handles files. Examples:
-
-## **3. Device Management**
-
+**3. Device Management**
 Controls hardware devices. Examples:
+ioctl() read() write() open() close()
 
-ioctl() read() write()
+**4. Information Maintenance**
+Provides system and process information. Examples:
+getpid() getppid() time() uname() getuid() getgid()
 
-## **4. Information Maintenance**
-
-Provides system information. Examples:
-
-getpid() time() uname()
-
-## **5. Communication**
-
+**5. Communication**
 Supports communication between processes. Examples:
+pipe() socket() shmget() shmat() msgget() msgsnd() msgrcv()
 
-pipe() socket() shmget()
-
-## **6. Memory Management**
-
+**6. Memory Management**
+Allocates, maps, and manages memory. Examples:
+brk() sbrk() mmap() munmap() mprotect() mlock()
 Handles memory allocation. Examples:
 
+-----------------------------------------------------------------------------------------------
 # **8. Interrupt**
 
 An **interrupt** is a signal sent to the CPU indicating that an event requires immediate attention. When an interrupt occurs:
-
 1. CPU pauses current execution
-
 2. Saves CPU state
-
 3. Transfers control to Interrupt Service Routine (ISR)
-
 4. ISR handles the event
-
 5. CPU restores previous state
-
 6. Execution resumes
 
 # **10. Types of Interrupts**
@@ -1566,8 +1455,8 @@ Generated by external hardware devices. Examples: Keyboard key press Mouse click
 Generated by software. Examples: System calls Divide by zero error Invalid memory access
 
 ## **3. Timer Interrupt**
-
 Generated by the system clock. Used for: CPU scheduling Multitasking Time sharing Example:
+
 # **11. Interrupt Service Routine (ISR)**
 
 ISR is a special kernel function executed when an interrupt occurs. Responsibilities:
@@ -1620,7 +1509,6 @@ No mode switch Causes mode switch Faster Slower Application code OS service Exam
 Opening a file:
 
 The application never directly controls the disk.
-
 
 ---
 
