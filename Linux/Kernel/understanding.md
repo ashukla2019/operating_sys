@@ -1,4 +1,4 @@
-## **High Level Linux Architecture**
+## 1 **High Level Linux Architecture**
 Core component of the Kernel:
 1) Process management
 2) Thread scheduling
@@ -436,7 +436,6 @@ mmap()          → file/shared memory mapped into address space
 --------------------------------------------------------------------------------------------------------------------------------
 
 ## 3 Process Management
-# 3. Process Management
 
 ## 1. What is a Process?
 
@@ -1456,11 +1455,10 @@ text
 - STRUCT FILE → "How is this particular open() using the file?"
 - FD → "Integer handle used by the application"
 
-**CORE FORMULA:**
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
-# **PART A.5 — System Calls & Interrupts**
-
-# **System Calls and Interrupts - Operating System Notes**
+# 5 — System Calls & Interrupts**
 
 Interview notes covering system calls, interrupts, kernel mode transition, and their relationship.
 
@@ -1690,9 +1688,8 @@ Why are timer interrupts important? Explain mode switching.
 
 How does a system call switch from user mode to kernel mode? Difference between system call and interrupt. How does Linux handle system calls? What happens internally when read() is called? Why are system calls slower than normal function calls? How do interrupts help in multitasking?
 
-**--------------------------------------------------------------------------------------------------------------------------------
-********************************************************************************************************************************
---------------------------------------------------------------------------------------------------------------------------------**
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
 ## 6 — Memory Management
 
@@ -2331,7 +2328,10 @@ Although Copy-on-Write makes <mark>fork()</mark> efficient, creating and copying
 
 20. Explain the memory layout of a Linux process.
 
-**PART A.7 — Interrupts (Deep Dive)**
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
+
+7 — Interrupts (Deep Dive)
 
 # **Linux Interrupts**
 
@@ -2598,9 +2598,10 @@ Device drivers and interrupts should be understood together:
 
 The most important senior-level idea: **a high-performance Linux driver normally configures hardware through MMIO, transfers bulk data through DMA, receives completion notifications through interrupts, performs only minimal work in hard IRQ context, and defers heavier processing to an appropriate context.** ⬆ Back to Table of Contents
 
-# **PART A.8 — Networking Basics**
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
-# **Chapter 11 – Linux Networking Internals**
+# 8 — Networking Basics
 
 # **1. Why Linux Networking Internals?**
 
@@ -3358,9 +3359,10 @@ For receive:
 
 If you understand these two paths deeply, you have the foundation needed to answer most **Linux networking internals** questions at the senior embedded/kernel level.
 
-# **PART A.9 — Block I/O**
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
-# **Chapter 6 – Linux Block I/O**
+# 9 — Block I/O**
 
 # **Objectives**
 
@@ -3850,9 +3852,10 @@ BIO Request Block Layer I/O Scheduler DMA Interrupt Page Cache Buffered I/O Dire
 
 without memorizing kernel source code. ⬆ Back to Table of Contents
 
-# **PART A.10 — Kernel Locking, Synchronization & RCU**
+--------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------
 
-# **Chapter 9 – Kernel Locking, Synchronization & RCU**
+# 10 — Kernel Locking, Synchronization & RCU
 
 After completing this chapter, you should understand: - Why the kernel needs synchronization primitives beyond simple mutexes - Spinlocks, mutexes, semaphores, and when each is legal to use - Atomic operations and per-CPU variables - Seqlocks - RCU (ReadCopy-Update) — the mechanism senior/staff Linux interviews lean on hardest - lockdep, KASAN, and how real kernel concurrency
 
@@ -3864,7 +3867,7 @@ In user space, a thread that blocks on a mutex is simply rescheduled — the OS 
 
 So the kernel needs a _family_ of primitives, each legal in a different context. Picking the wrong one is one of the most common senior-level interview traps (and real production bugs).
 
-# **2. Spinlock ⭐⭐⭐⭐⭐**
+# **2. Spinlock **
 
 A spinlock busy-waits — the CPU spins in a loop until the lock is free. It never sleeps.
 
@@ -3888,7 +3891,7 @@ unsigned long flags; spin_lock_irqsave(&lock, flags); _/* critical section, safe
 
 On SMP: real spinning happens (another CPU may hold the lock). On UP (or with preemption considerations): <mark>spin</mark> _ <mark>lock()</mark> effectively becomes “disable preemption,” since there’s no other CPU to be spinning against.
 
-# **3. Mutex ⭐⭐⭐⭐⭐**
+# **3. Mutex **
 
 A kernel mutex puts the waiting task to sleep instead of spinning.
 
@@ -3908,7 +3911,7 @@ mutex_lock(&mtx); _/* critical section - can sleep, can call kmalloc(GFP_KERNEL)
 
 **Interview one-liner:** _“Spin if the critical section is short and you can’t sleep; sleep (mutex) if the critical section might block or take a while.”_
 
-# **4. Semaphore ⭐⭐⭐**
+# **4. Semaphore **
 
 A counting synchronization primitive — allows N holders instead of just one.
 
@@ -3920,7 +3923,7 @@ sema_init(&sem, N); down(&sem); _/* acquire (may sleep) */ /* critical section *
 
 Largely superseded by mutexes in modern kernel code where mutual exclusion (not counting) is the goal. Still used where a genuine _counting_ resource limit is needed (e.g., limiting concurrent access to N identical resources).
 
-# **5. Atomic Operations ⭐⭐⭐⭐**
+# **5. Atomic Operations **
 
 For simple counters, full locking is overkill. The kernel provides atomic types and operations implemented with CPU-level atomic instructions (e.g., <mark>LOCK</mark> prefix on x86, <mark>LDXR/STXR</mark> on ARM).
 
@@ -3930,7 +3933,7 @@ atomic_t counter = ATOMIC_INIT(0); atomic_inc(&counter); atomic_dec(&counter); a
 
 **Common interview question:** _“Why not just use_ _<mark>i++</mark> on a shared integer?”_ → <mark>i++</mark> is read-modify-write across multiple instructions; two CPUs can interleave and lose an update. <mark>atomic</mark> _ <mark>inc()</mark> is a single indivisible hardware operation.
 
-# **6. Per-CPU Variables ⭐⭐⭐⭐**
+# **6. Per-CPU Variables **
 
 Instead of locking a single shared counter, give every CPU its own private copy.
 
@@ -3942,7 +3945,7 @@ this_cpu_inc(my_counter); _/* no locking needed */_ int val = per_cpu(my_counter
 
 **Used heavily in:** networking statistics, scheduler run-queue data, per-CPU memory allocator caches (SLAB per-CPU caches). **Caveat:** code accessing a per-CPU variable must not be preempted and migrated to another CPU mid-access — the kernel provides <mark>get</mark> _ <mark>cpu()/put</mark> _ <mark>cpu()</mark> or <mark>this</mark> _ <mark>cpu</mark> _ <mark>*()</mark> helpers that handle this safely.
 
-# **7. Seqlock (Sequence Lock) ⭐⭐⭐**
+# **7. Seqlock (Sequence Lock) **
 
 Optimized for **read-mostly, write-rare** data, where readers should never block writers.
 
@@ -3952,7 +3955,7 @@ seqlock_t sl = SEQLOCK_UNLOCKED; _/* Writer */_ write_seqlock(&sl); _/* update d
 
 **Not safe for:** data containing pointers that a concurrent writer might free — a reader could dereference a stale pointer mid-read (this is one motivation for RCU, below, when the read side involves pointers/lists).
 
-# **8. RCU – Read-Copy-Update ⭐⭐⭐⭐⭐**
+# **8. RCU – Read-Copy-Update **
 
 **This is the single most common gap in mid-level notes, and one of the most-asked topics in senior/staff Linux kernel interviews.**
 
@@ -4110,7 +4113,7 @@ After completing this chapter, you should understand: - ARM Exception Levels (EL
 
 Everything in earlier chapters (scheduler, memory management, interrupts, drivers) is largely architecture-agnostic Linux kernel material. Qualcomm, ARM, and other SoC vendors additionally expect you to know **how that generic kernel code maps onto real ARM hardware** — exception levels instead of x86 rings, device tree instead of PCI/ACPI-style enumeration for most on-chip peripherals, and a heavier emphasis on power management because these are battery-powered, thermally-constrained platforms.
 
-# **2. ARM Exception Levels (EL0–EL3) ⭐⭐⭐⭐⭐**
+# **2. ARM Exception Levels (EL0–EL3) **
 
 ARM’s privilege model (AArch64) has **four exception levels** , more granular than x86’s simple user/kernel mode split.
 
@@ -4139,7 +4142,7 @@ Moving to a **higher** EL happens via an explicit exception (syscall, interrupt,
 
 Since normal Linux code at EL1 can’t directly power off/reset a CPU core (that’s a secure/firmware-level operation), ARM systems standardize this through **PSCI** — a firmware interface invoked via <mark>SMC / HVC</mark> calls, used for CPU on/off, system reset, and CPU idle state entry. Linux’s <mark>cpuidle</mark> and SMP boot code call into PSCI rather than touching power-controller hardware registers directly on most modern SoCs.
 
-# **3. Device Tree ⭐⭐⭐⭐⭐**
+# **3. Device Tree **
 
 ## **3.1 The Problem It Solves**
 
@@ -4175,7 +4178,7 @@ static const **struct** of_device_id my_driver_of_match[] = { { .compatible = "v
 
 When the kernel parses the device tree and finds a node whose <mark>compatible</mark> string matches, it calls the driver’s <mark>probe()</mark> with a <mark>platform</mark> _ <mark>device</mark> carrying the resolved address/IRQ/clock info.
 
-# **4. Cache Coherency ⭐⭐⭐⭐⭐**
+# **4. Cache Coherency **
 
 ## **4.1 The Problem**
 
@@ -4216,7 +4219,7 @@ Explains **cache-line bouncing** : if multiple cores frequently write to variabl
 
 operations precisely because the hardware doesn’t guarantee coherency between that device and the CPU caches.
 
-# **5. Linux Power Management on ARM ⭐⭐⭐⭐⭐**
+# **5. Linux Power Management on ARM **
 
 SoCs are battery/thermally constrained, so ARM-focused interviews (especially Qualcomm) lean heavily on this compared to server-class Intel/AMD interviews.
 
@@ -4263,7 +4266,7 @@ The runtime PM framework tracks usage counts per device and automatically calls 
 
 Distinct from per-device runtime PM: whole-system suspend (e.g., “suspend to RAM”).
 
-# **6. Interconnect & PCIe on SoCs ⭐⭐⭐**
+# **6. Interconnect & PCIe on SoCs 
 
 Most SoC-internal peripherals (UART, I2C, GPIO, clock/power controllers) are **not** on PCIe — they’re on a memory-mapped internal bus (AMBA/AXI/AHB on ARM SoCs) and described via device tree, as covered above.
 
@@ -4317,7 +4320,7 @@ After completing this chapter, you should understand: - How to read a kernel oop
 
 Earlier chapters cover command lists <mark>( vmstat</mark> , <mark>pmap</mark> , <mark>/proc/interrupts</mark> , etc.) for symptom-level triage. At the 15–20 year bar, interviewers expect you to go one level deeper: **given an actual kernel oops or a crash dump, can you read it and find the bug?** This chapter covers that.
 
-# **2. Oops vs Panic vs Warning ⭐⭐⭐⭐⭐**
+# **2. Oops vs Panic vs Warning **
 
 |**Event**|**Meaning**|**System survives?**|
 |---|---|---|
@@ -4327,7 +4330,7 @@ Earlier chapters cover command lists <mark>( vmstat</mark> , <mark>pmap</mark> ,
 
 **Interview point:** an oops that happens while the kernel is in interrupt context, holding a spinlock, or already handling another oops, is escalated to a panic — there’s no safe way to “kill the current task” and continue when the current context isn’t a killable task in the first place.
 
-# **3. Reading an Oops Message ⭐⭐⭐⭐⭐**
+# **3. Reading an Oops Message **
 
 A real (simplified) example:
 
@@ -4375,7 +4378,7 @@ addr2line -e vmlinux -i my_driver_process+0x2c _# or, for a module:_ addr2line -
 
 Requires a kernel/module build with debug symbols ( <mark>CONFIG</mark> _ <mark>DEBUG</mark> _ <mark>INFO=y )</mark> .
 
-# **4. kdump and the** **<mark>crash</mark> Tool ⭐⭐⭐⭐⭐**
+# **4. kdump and the** **<mark>crash</mark> Tool **
 
 An oops message tells you a lot, but sometimes the system panics before you can even read the console (headless server, log not flushed, etc.). **kdump** solves this by capturing a full memory dump at the moment of panic, which you analyze afterward.
 
@@ -4407,7 +4410,7 @@ crash /usr/lib/debug/boot/vmlinux-5.15.0 /var/crash/127.0.0.1-2026-08-16-10:22:0
 
 **Interview point:** <mark>bt -a</mark> is the key differentiator between a single-CPU bug (a straightforward NULL deref) and a genuine race condition — if another CPU’s backtrace shows it was in the middle of freeing or modifying the same structure at the same moment, that’s your race.
 
-# **5. ftrace ⭐⭐⭐⭐**
+# **5. ftrace **
 
 The kernel’s built-in, low-overhead tracing framework — useful for **live** systems where you need to see function call flow or timing, not a postmortem dump.
 
@@ -4427,7 +4430,7 @@ Common tracers:
 
 echo irqsoff > current_tracer echo 1 > tracing_on _# reproduce the issue_ cat trace _# shows the exact code path that held IRQs disabled longest, and for how long_
 
-# **6. perf ⭐⭐⭐⭐**
+# **6. perf **
 
 Where ftrace is about _function-level tracing_ , <mark>perf</mark> is about _statistical profiling and hardware performance counters_ — “where is the CPU time actually going?”
 
@@ -4439,7 +4442,7 @@ perf top _# live, continuously updating hotspot view_ perf stat ./some_workload 
 
 **Interview point:** <mark>perf stat</mark> exposing cache-miss and IPC (instructions-per-cycle) counters connects directly back to the cachecoherency material (Chapter 10) — a workload with unexpectedly high cache-miss rates and low IPC across multiple cores is a classic false-sharing symptom.
 
-# **7. KASAN, KFENCE, and KCSAN ⭐⭐⭐⭐**
+# **7. KASAN, KFENCE, and KCSAN **
 
 These are **compile-time-instrumented sanitizers** for kernel builds — they don’t find bugs in production kernels, but are essential in debug/test builds and CI.
 
@@ -4461,13 +4464,13 @@ CPU: 2 PID: 1842 Comm: my_driver_wq Call Trace: my_driver_process+0x5c/0xb0 ... 
 
 This is exactly the RCU-misuse pattern from Chapter 9 — KASAN doesn’t just say “bad access,” it shows **which task allocated it and which task freed it** , immediately pointing at a race between <mark>remove()</mark> freeing a structure and a workqueue item still using it — precisely the bug <mark>call</mark> _ <mark>rcu() /</mark> proper reference counting would have prevented.
 
-# **8. RCU Stall Warnings ⭐⭐⭐**
+# **8. RCU Stall Warnings **
 
 rcu: INFO: rcu_sched detected stalls on CPUs/tasks: rcu:     2-...!: (1 GPs behind) idle=1c2/1/0x4000000000000000 rcu:     (detected by 0, t=6502 jiffies, g=4517, q=193)
 
 Means a grace period (Chapter 9) has been unable to complete for an unusually long time — usually because some CPU is stuck (e.g., spinning with interrupts disabled, or stuck in an RCU read-side critical section that never exits). **First step:** <mark>bt -a</mark> (if you have a dump) or check <mark>dmesg</mark> around that CPU’s activity — the stalled CPU number is given directly in the message.
 
-# **9. Structured Debugging Approach (Interview Framework) ⭐⭐⭐⭐⭐**
+# **9. Structured Debugging Approach (Interview Framework) **
 
 When asked “how would you debug X,” a strong senior answer follows a **narrowing funnel** , not a list of random tools:
 
@@ -4964,247 +4967,7 @@ _These notes summarize the structure and key ideas of each chapter for study pur
 
 ## **—**
 
-## **Part 2: Code Examples (Companion to the Study Notes)**
-
-These are **original example programs** I wrote to illustrate the APIs covered in each chapter of the study notes — they are not reproduced from the book. Each one is a minimal, self-contained, compilable C program ( <mark>gcc -Wall -o prog file.c ,</mark> adding - <mark>pthread</mark> where noted) demonstrating one core concept.
-
-## **Chapter 2 — File I/O:** **<mark>open()</mark> /** **<mark>read()</mark> /** **<mark>write()</mark>**
-
-**Chapter 5 —** **<mark>fork()</mark> +** **<mark>exec()</mark> +** **<mark>waitpid()</mark>**
-
-#include **<stdio.h>**
-
-#include **<stdlib.h>** #include **<unistd.h>** #include **<sys/wait.h>** int main(void) { pid_t pid = fork(); **if** (pid == -1) { perror("fork"); exit(EXIT_FAILURE); } **else if** (pid == 0) { _/* child: replace this process image with `ls -l` */_ execlp("ls", "ls", "-l", (char *)NULL); perror("execlp"); _/* only reached if exec fails */_ _exit(127); } **else** { _/* parent: wait for the child and report how it exited */_ int status; **if** (waitpid(pid, &status, 0) == -1) { perror("waitpid"); exit(EXIT_FAILURE); } **if** (WIFEXITED(status)) printf("child exited with status %d\n", WEXITSTATUS(status)); **else if** (WIFSIGNALED(status)) printf("child killed by signal %d\n", WTERMSIG(status)); } **return** 0; }
-
-## **Chapter 5 (IPC) —** **<mark>pipe()</mark> +** **<mark>fork()</mark>**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<string.h>** #include **<sys/wait.h>** int main(void) { int fds[2]; **if** (pipe(fds) == -1) { perror("pipe"); exit(EXIT_FAILURE); } pid_t pid = fork(); **if** (pid == -1) { perror("fork"); exit(EXIT_FAILURE); } **if** (pid == 0) { _/* child: writer -- close read end, send a message */_ close(fds[0]); const char *msg = "message from child\n"; write(fds[1], msg, strlen(msg)); close(fds[1]); _exit(0); } **else** { _/* parent: reader -- close write end, read the message */_ close(fds[1]); char buf[128]; ssize_t n = read(fds[0], buf, **sizeof** (buf) - 1); **if** (n > 0) { buf[n] = '\0'; printf("parent received: %s", buf); } close(fds[0]); waitpid(pid, NULL, 0); } **return** 0; }
-
-## **Chapter 10 — Signal Handling with** **<mark>sigaction()</mark>**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<signal.h>** #include **<string.h>** static volatile sig_atomic_t got_sigint = 0; static void handle_sigint(int signo) { (void)signo; got_sigint = 1; _/* only touch a sig_atomic_t in a handler -- keep it minimal */_ } int main(void) { **struct** sigaction sa; memset(&sa, 0, **sizeof** (sa)); sa.sa_handler = handle_sigint; sigemptyset(&sa.sa_mask); sa.sa_flags = 0; **if** (sigaction(SIGINT, &sa, NULL) == -1) { perror("sigaction"); exit(EXIT_FAILURE); } printf("running -- press Ctrl-C to trigger the handler (twice to force-quit)\n"); **while** (!got_sigint) pause(); _/* sleep until any signal arrives */_ printf("caught SIGINT, shutting down cleanly\n"); **return** 0; }
-
-## **Chapter 7 — Pthreads: create, join, and a mutex-protected counter**
-
-_/* compile with: gcc -Wall -pthread -o threads threads.c */_ #include **<stdio.h>** #include **<stdlib.h>** #include **<pthread.h>**
-
-#define NUM_THREADS 4 #define INCREMENTS  100000 static long counter = 0; static pthread_mutex_t counter_lock = PTHREAD_MUTEX_INITIALIZER; static void *worker(void *arg) { int id = *(int *)arg; **for** (int i = 0; i < INCREMENTS; i++) { pthread_mutex_lock(&counter_lock); counter++; pthread_mutex_unlock(&counter_lock); } printf("thread %d done\n", id); **return** NULL; } int main(void) { pthread_t threads[NUM_THREADS]; int ids[NUM_THREADS]; **for** (int i = 0; i < NUM_THREADS; i++) { ids[i] = i; **if** (pthread_create(&threads[i], NULL, worker, &ids[i]) != 0) { fprintf(stderr, "pthread_create failed\n"); exit(EXIT_FAILURE); } } **for** (int i = 0; i < NUM_THREADS; i++) pthread_join(threads[i], NULL); _/* without the mutex this would almost never equal 400000 */_ printf("final counter = %ld (expected %d)\n", counter, NUM_THREADS * INCREMENTS); **return** 0; }
-
-## **Chapter 4 —** **<mark>mmap()</mark> for reading a file**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<fcntl.h>** #include **<unistd.h>** #include **<sys/mman.h>** #include **<sys/stat.h>** int main(int argc, char *argv[]) { **if** (argc != 2) { fprintf(stderr, "usage: %s <file>\n", argv[0]); exit(EXIT_FAILURE); } int fd = open(argv[1], O_RDONLY); **if** (fd == -1) { perror("open"); exit(EXIT_FAILURE); } **struct** stat sb; **if** (fstat(fd, &sb) == -1) { perror("fstat"); exit(EXIT_FAILURE); } **if** (sb.st_size == 0) { fprintf(stderr, "empty file\n"); exit(EXIT_FAILURE); } char *data = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0); **if** (data == MAP_FAILED) { perror("mmap"); exit(EXIT_FAILURE); } close(fd); _/* the mapping stays valid after closing the fd */ /* count newlines directly against the mapped memory, no read() needed */_ long lines = 0; **for** (off_t i = 0; i < sb.st_size; i++) **if** (data[i] == '\n') lines++; printf("%s: %ld lines, %lld bytes\n", argv[1], lines, (long long)sb.st_size); munmap(data, sb.st_size); **return** 0; } **<mark>epoll()</mark> watching stdin** #include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<sys/epoll.h>** int main(void) { int epfd = epoll_create1(0); **if** (epfd == -1) { perror("epoll_create1"); exit(EXIT_FAILURE); } **struct** epoll_event ev = { .events = EPOLLIN, .data.fd = STDIN_FILENO }; **if** (epoll_ctl(epfd, EPOLL_CTL_ADD, STDIN_FILENO, &ev) == -1) { perror("epoll_ctl"); exit(EXIT_FAILURE); } printf("type something and press enter (Ctrl-D to stop)\n"); **struct** epoll_event events[1]; **while** (1) { int n = epoll_wait(epfd, events, 1, -1); _/* block forever */_ **if** (n == -1) { perror("epoll_wait"); **break** ; } **if** (events[0].data.fd == STDIN_FILENO) { char buf[256]; ssize_t r = read(STDIN_FILENO, buf, **sizeof** (buf) - 1); **if** (r <= 0) **break** ; _/* EOF or error */_ buf[r] = '\0'; printf("got: %s", buf); } } close(epfd); **return** 0;
-
-## **Chapter 4 —** **<mark>epoll()</mark> watching stdin**
-
-}
-
-**Chapter 11 —** **<mark>nanosleep()</mark> and** **<mark>clock_gettime()</mark>**
-
-#include **<stdio.h>** #include **<time.h>** #include **<errno.h>** int main(void) { **struct** timespec start, end, req = { .tv_sec = 1, .tv_nsec = 500000000 }; _/* 1.5s */_ clock_gettime(CLOCK_MONOTONIC, &start); _/* nanosleep can be interrupted by a signal -- loop on the remaining time */_ **struct** timespec rem; **while** (nanosleep(&req, &rem) == -1 && errno == EINTR) req = rem; clock_gettime(CLOCK_MONOTONIC, &end); double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9; printf("slept for %.3f seconds\n", elapsed); **return** 0; }
-
-_All examples above are original code written to demonstrate the APIs discussed in the study notes — none are reproduced from the source book. They’re intentionally minimal (little error-recovery beyond_ _<mark>perror()</mark> + exit) so the system call usage stays front and center; production code should handle partial reads/writes,_ _<mark>EINTR ,</mark> and cleanup more robustly._ -e
-
-## **Part 3: Interview-Prep Code Examples (Beyond the Book)**
-
-These are **original programs** covering classic systems/embedded-programming interview topics (concurrency correctness, IPC, low-level memory, process lifecycle) that come up often at hardware/systems companies (Qualcomm, AMD, Intel, ARM, HP, and similar) but weren’t part of the book-companion examples. Compile with <mark>gcc -Wall -pthread -o prog file.c</mark> (add <mark>-lrt</mark> on older glibc for <mark>sem</mark> _ <mark>* / shm</mark> _ <mark>*</mark> if needed).
-
-## **1. Producer–Consumer with a Condition Variable**
-
-The classic bounded-buffer problem — shows why a mutex _alone_ isn’t enough when a thread needs to wait for a _condition_ , not just exclusive access.
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<pthread.h>** #define BUF_SIZE 5 #define NUM_ITEMS 10 static int buffer[BUF_SIZE]; static int count = 0, in = 0, out = 0; static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER; static pthread_cond_t  not_full  = PTHREAD_COND_INITIALIZER; static pthread_cond_t  not_empty = PTHREAD_COND_INITIALIZER; static void *producer(void *arg) { **for** (int i = 0; i < NUM_ITEMS; i++) { pthread_mutex_lock(&lock); **while** (count == BUF_SIZE) _/* wait while full */_ pthread_cond_wait(&not_full, &lock); buffer[in] = i; in = (in + 1) % BUF_SIZE; count++; printf("produced %d (count=%d)\n", i, count); pthread_cond_signal(&not_empty); pthread_mutex_unlock(&lock); } **return** NULL; } static void *consumer(void *arg) { **for** (int i = 0; i < NUM_ITEMS; i++) { pthread_mutex_lock(&lock); **while** (count == 0) _/* wait while empty */_ pthread_cond_wait(&not_empty, &lock); int item = buffer[out]; out = (out + 1) % BUF_SIZE; count--; printf("consumed %d (count=%d)\n", item, count); pthread_cond_signal(&not_full); pthread_mutex_unlock(&lock); } **return** NULL; } int main(void) { pthread_t p, c; pthread_create(&p, NULL, producer, NULL); pthread_create(&c, NULL, consumer, NULL); pthread_join(p, NULL);
-
-pthread_join(c, NULL); **return** 0; }
-
-**Why interviewers like it** : tests whether you know to <mark>while</mark> (not <mark>if )</mark> on the condition (guard against spurious wakeups), and why the mutex must be held during <mark>pthread</mark> _ <mark>cond</mark> _ <mark>wait()</mark> (it atomically unlocks while sleeping and relocks on wake).
-
-## **2. POSIX Semaphores**
-
-#include **<stdio.h>** #include **<pthread.h>** #include **<semaphore.h>** static sem_t sem; static void *worker(void *arg) { int id = *(int *)arg; sem_wait(&sem); _/* enter critical section (max 2 at a time) */_ printf("thread %d entered\n", id); sleep(1); printf("thread %d leaving\n", id); sem_post(&sem); **return** NULL; } int main(void) { sem_init(&sem, 0, 2); _/* 2 = allow 2 concurrent threads (like a counting mutex) */_ pthread_t t[5]; int ids[5]; **for** (int i = 0; i < 5; i++) { ids[i] = i; pthread_create(&t[i], NULL, worker, &ids[i]); } **for** (int i = 0; i < 5; i++) pthread_join(t[i], NULL); sem_destroy(&sem); **return** 0; }
-
-**Interview angle** : know the difference between a semaphore (a _count_ , can allow N concurrent holders, can be signaled from a different thread/signal handler than the one that waited) and a mutex (binary, ownership-based — only the locking thread should unlock it).
-
-## **3. Shared Memory IPC —** **<mark>shm_open()</mark> +** **<mark>mmap()</mark>**
-
-Unlike a pipe (byte stream, kernel-buffered, one-directional per fd), POSIX shared memory gives two _unrelated_ processes a directly shared region of memory.
-
-shm_unlink(SHM_NAME); _/* clean up the named segment */_ **return** 0; }
-
-**Interview angle** : know that shared memory is the _fastest_ IPC (no copying through the kernel on each access, unlike pipes/sockets) but requires you to supply your own synchronization (a semaphore or mutex in the shared region) since the OS gives you no ordering guarantees between the two processes.
-
-## **4. Reader-Writer Lock**
-
-#include **<stdio.h>** #include **<pthread.h>** static int shared_data = 0; static pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER; static void *reader(void *arg) { pthread_rwlock_rdlock(&rwlock); _/* many readers can hold this at once */_ printf("reader sees data = %d\n", shared_data); pthread_rwlock_unlock(&rwlock); **return** NULL; } static void *writer(void *arg) { pthread_rwlock_wrlock(&rwlock); _/* exclusive -- blocks all readers/writers */_ shared_data++; printf("writer set data = %d\n", shared_data); pthread_rwlock_unlock(&rwlock); **return** NULL; } int main(void) { pthread_t r[3], w; pthread_create(&w, NULL, writer, NULL); pthread_join(w, NULL); **for** (int i = 0; i < 3; i++) pthread_create(&r[i], NULL, reader, NULL); **for** (int i = 0; i < 3; i++) pthread_join(r[i], NULL); **return** 0; } **5. Deadlock Demonstration (and the fix)** #include **<stdio.h>** #include **<pthread.h>** #include **<unistd.h>** static pthread_mutex_t lock_a = PTHREAD_MUTEX_INITIALIZER; static pthread_mutex_t lock_b = PTHREAD_MUTEX_INITIALIZER; _/* BUGGY: acquires A then B */_ static void *thread1(void *arg) { pthread_mutex_lock(&lock_a); printf("thread1: got A, waiting for B\n"); sleep(1); _/* widen the race window so the deadlock reliably triggers */_ pthread_mutex_lock(&lock_b); printf("thread1: got both\n"); pthread_mutex_unlock(&lock_b); pthread_mutex_unlock(&lock_a); **return** NULL; } _/* BUGGY: acquires B then A -- inconsistent order vs thread1 => deadlock */_ static void *thread2(void *arg) { pthread_mutex_lock(&lock_b); printf("thread2: got B, waiting for A\n"); sleep(1); pthread_mutex_lock(&lock_a); printf("thread2: got both\n"); pthread_mutex_unlock(&lock_a); pthread_mutex_unlock(&lock_b); **return** NULL; } _/* THE FIX: both threads must acquire locks in the SAME global order (A then B) */_ int main(void) { pthread_t t1, t2; pthread_create(&t1, NULL, thread1, NULL); pthread_create(&t2, NULL, thread2, NULL); pthread_join(t1, NULL); _/* this program will hang -- that's the point */_ pthread_join(t2, NULL); printf("done (you won't see this without fixing the lock order)\n"); **return** 0; }
-
-**Interview angle** : use when reads vastly outnumber writes — a plain mutex would needlessly serialize concurrent readers.
-
-**Interview angle** : this is a standard whiteboard/live-coding ask — “show me a deadlock, then fix it.” The fix is enforcing a consistent lock-acquisition order (or using <mark>pthread</mark> _ <mark>mutex</mark> _ <mark>trylock()</mark> with backoff, or a single coarser lock).
-
-**6. Zombie vs. Orphan Process**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<sys/wait.h>** int main(void) { pid_t pid = fork(); **if** (pid == 0) { _/* child */_ printf("child (pid=%d, parent=%d) exiting immediately\n", getpid(), getppid()); _exit(0); _/* parent hasn't called wait() yet -> child becomes a ZOMBIE briefly */_ } **else** { printf("parent (pid=%d) sleeping without waiting -- check `ps` for a <defunct> child\n", getpid()); sleep(5); _/* during this window, `ps aux | grep defunct` shows the zombie */_ wait(NULL); _/* reaping it -- without this call the zombie persists until parent exits */_ printf("parent reaped the child\n"); } **return** 0; } _/* orphan.c -- child outlives its parent, gets re-parented to init/PID 1 (or a subreaper) */_ #include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** int main(void) { pid_t pid = fork(); **if** (pid == 0) { sleep(2); _/* parent exits first, well before this */_ printf("orphan child now has parent pid = %d (was reassigned)\n", getppid()); } **else** { printf("parent (pid=%d) exiting immediately, leaving child as an orphan\n", getpid()); _exit(0); } **return** 0; }
-
-**Interview angle** : a _zombie_ is a child that has exited but hasn’t been reaped (wastes a process table entry — <mark>wait()</mark> / <mark>waitpid()</mark> cleans it up); an _orphan_ is a child whose parent exited first (the kernel reparents it, historically to PID 1 <mark>init</mark> , though modern Linux may use a “subreaper” instead) — orphans are not a resource leak by themselves.
-
-## **7. Advisory File Locking —** **<mark>fcntl()</mark>**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<fcntl.h>** #include **<unistd.h>** int main(int argc, char *argv[]) { **if** (argc != 2) { fprintf(stderr, "usage: %s <file>\n", argv[0]); exit(EXIT_FAILURE); } int fd = open(argv[1], O_RDWR | O_CREAT, 0644); **if** (fd == -1) { perror("open"); exit(EXIT_FAILURE); } **struct** flock fl = { .l_type   = F_WRLCK, _/* exclusive write lock */_ .l_whence = SEEK_SET, .l_start  = 0, .l_len    = 0, _/* 0 = lock to end of file */_ }; printf("attempting to acquire exclusive lock...\n"); **if** (fcntl(fd, F_SETLKW, &fl) == -1) { _/* _SETLKW blocks; _SETLK would return EAGAIN */_ perror("fcntl"); exit(EXIT_FAILURE); } printf("lock acquired -- holding for 5 seconds (try running a second copy now)\n"); sleep(5); fl.l_type = F_UNLCK; fcntl(fd, F_SETLK, &fl); close(fd); **return** 0; }
-
-**Interview angle** : advisory locks only work if _every_ cooperating process checks them (unlike <mark>O</mark> _ <mark>EXCL</mark> , which is enforced by the kernel unconditionally on open); locks are per-process, released automatically on <mark>close()</mark> of _any_ fd referring to the file by that process (a common gotcha) or on process exit.
-
-## **8. Custom** **<mark>memcpy()</mark> and Endianness Check**
-
-Two very common “write it from scratch” whiteboard questions at hardware-adjacent companies.
-
-#include **<stdio.h>** #include **<stddef.h>** #include **<stdint.h>** _/* naive but correct byte-wise memcpy -- interviewers usually want you to at least discuss overlap (memcpy has undefined behavior on overlap; memmove is what handles it) and word-at-a-time optimization as a follow-up */_ void *my_memcpy(void *dest, const void *src, size_t n) { unsigned char *d = dest; const unsigned char *s = src; **while** (n--)
-
-*d++ = *s++; **return** dest; } int is_little_endian(void) { uint32_t x = 1; **return** *(unsigned char *)&x == 1; _/* LSB stored first => little-endian */_ } int main(void) { char src[] = "hello world"; char dst[32] = {0}; my_memcpy(dst, src, **sizeof** (src)); printf("copied: %s\n", dst); printf("this machine is %s-endian\n", is_little_endian() ? "little" : "big"); **return** 0; }
-
-## **9. Full Daemonization Example**
-
-The study notes describe the daemonizing _recipe_ ; here’s the actual code.
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<sys/stat.h>** #include **<syslog.h>** #include **<fcntl.h>** #include **<signal.h>** static void daemonize(void) { pid_t pid = fork(); **if** (pid < 0) exit(EXIT_FAILURE); **if** (pid > 0) exit(EXIT_SUCCESS); _/* parent exits */_ **if** (setsid() < 0) exit(EXIT_FAILURE); _/* new session, no controlling terminal */_ signal(SIGHUP, SIG_IGN); _/* ignore hangup from the now-dead session leader path */_ pid = fork(); _/* second fork: prevent reacquiring a controlling tty */_ **if** (pid < 0) exit(EXIT_FAILURE); **if** (pid > 0) exit(EXIT_SUCCESS); umask(0); chdir("/"); _/* don't keep any directory busy */_ **for** (int fd = sysconf(_SC_OPEN_MAX); fd >= 0; fd--) close(fd); open("/dev/null", O_RDONLY); _/* fd 0 */_ open("/dev/null", O_RDWR); _/* fd 1 */_ open("/dev/null", O_RDWR); _/* fd 2 */_ } int main(void) { daemonize(); openlog("mydaemon", LOG_PID, LOG_DAEMON); syslog(LOG_NOTICE, "daemon started"); **while** (1) { syslog(LOG_INFO, "still alive"); sleep(30); } _/* unreachable */_ closelog(); **return** 0; }
-
-_As with the other companion file, everything above is original code written to demonstrate these concepts — none of it is reproduced from the book. These patterns (condition variables, semaphores, shared memory, rwlocks, deadlock, zombies/orphans, file locking, custom memcpy, daemonizing) are the most commonly recurring systems-programming interview topics beyond what the book’s own chapter structure emphasizes._
-
-## **Part 4: Deep-Dive Patterns — Threading, Semaphores, Signals, IPC, Multi-Process**
-
-This section rounds out Parts 2–3 with the remaining classic patterns interviewers draw from in these categories. As with the other code sections, everything here is original code, not from the book. Compile with <mark>gcc -Wall -pthread -o prog file.c</mark> (add <mark>-lrt</mark> on older glibc for <mark>mq</mark> _ <mark>*</mark> /named <mark>sem</mark> _ <mark>*</mark> if the linker complains).
-
-### **A. Threading — Additional Patterns**
-
-#### **A1. Recursive Mutex**
-
-A normal <mark>pthread</mark> _ <mark>mutex</mark> _ <mark>t</mark> deadlocks if the _same_ thread locks it twice (e.g., a function calling itself, or calling another function that also locks it). A recursive mutex allows that, tracking a lock count internally.
-
-#include **<stdio.h>** #include **<pthread.h>**
-
-static pthread_mutex_t rmutex; void inner(void) { pthread_mutex_lock(&rmutex); printf("inner: locked\n");
-
-pthread_mutex_unlock(&rmutex); } void outer(void) { pthread_mutex_lock(&rmutex); printf("outer: locked, calling inner (same thread)\n"); inner(); _/* would deadlock with a normal mutex */_ pthread_mutex_unlock(&rmutex); } int main(void) { pthread_mutexattr_t attr; pthread_mutexattr_init(&attr); pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE); pthread_mutex_init(&rmutex, &attr); pthread_mutexattr_destroy(&attr); outer(); pthread_mutex_destroy(&rmutex); **return** 0; }
-
-#### **A2. One-Time Initialization —** **<mark>pthread_once()</mark>**
-
-#include **<stdio.h>** #include **<pthread.h>** static pthread_once_t once_ctrl = PTHREAD_ONCE_INIT; static void init_resource(void) { printf("expensive one-time init running (only once, no matter how many threads call it)\n"); } static void *worker(void *arg) { pthread_once(&once_ctrl, init_resource); _/* guaranteed to run exactly once, thread-safely */_ printf("thread %ld proceeding\n", (long)arg); **return** NULL; } int main(void) { pthread_t t[4]; **for** (long i = 0; i < 4; i++) pthread_create(&t[i], NULL, worker, (void *)i); **for** (int i = 0; i < 4; i++) pthread_join(t[i], NULL); **return** 0; }
-
-#### **A3. Detached Threads (fire-and-forget)**
-
-#include **<stdio.h>** #include **<pthread.h>** #include **<unistd.h>** static void *background_task(void *arg) { sleep(1); printf("background task finished (nobody will join() this)\n"); **return** NULL; } int main(void) { pthread_t t; pthread_create(&t, NULL, background_task, NULL); pthread_detach(t); _/* resources reclaimed automatically on thread exit */_ printf("main continuing without waiting\n"); sleep(2); _/* just so the demo doesn't exit before the task prints */_ **return** 0; }
-
-#### **A4. Fixed-Size Thread Pool with a Task Queue**
-
-A very common senior-level “design and implement” question.
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<pthread.h>** #define NUM_WORKERS 4 #define QUEUE_CAP   16 **typedef** void (*task_fn)(void *); **typedef struct** { task_fn fn; void *arg; } task_t; static task_t queue[QUEUE_CAP]; static int q_head = 0, q_tail = 0, q_count = 0; static int shutdown_flag = 0;
-
-static pthread_mutex_t q_lock = PTHREAD_MUTEX_INITIALIZER; static pthread_cond_t  q_not_empty = PTHREAD_COND_INITIALIZER; static pthread_cond_t  q_not_full  = PTHREAD_COND_INITIALIZER; static void pool_submit(task_fn fn, void *arg) {
-
-pthread_mutex_lock(&q_lock); **while** (q_count == QUEUE_CAP) pthread_cond_wait(&q_not_full, &q_lock); queue[q_tail] = (task_t){ fn, arg }; q_tail = (q_tail + 1) % QUEUE_CAP; q_count++; pthread_cond_signal(&q_not_empty); pthread_mutex_unlock(&q_lock); } static void *worker_loop(void *arg) { **while** (1) { pthread_mutex_lock(&q_lock); **while** (q_count == 0 && !shutdown_flag) pthread_cond_wait(&q_not_empty, &q_lock); **if** (q_count == 0 && shutdown_flag) { _/* drained and told to stop */_ pthread_mutex_unlock(&q_lock); **break** ; } task_t t = queue[q_head]; q_head = (q_head + 1) % QUEUE_CAP; q_count--; pthread_cond_signal(&q_not_full); pthread_mutex_unlock(&q_lock); t.fn(t.arg); _/* run the task outside the lock */_ } **return** NULL; } static void print_task(void *arg) { printf("task %d executed by thread %lu\n", *(int *)arg, pthread_self()); free(arg); } int main(void) { pthread_t pool[NUM_WORKERS]; **for** (int i = 0; i < NUM_WORKERS; i++) pthread_create(&pool[i], NULL, worker_loop, NULL); **for** (int i = 0; i < 10; i++) { int *arg = malloc( **sizeof** (int)); *arg = i; pool_submit(print_task, arg); } pthread_mutex_lock(&q_lock); shutdown_flag = 1; pthread_cond_broadcast(&q_not_empty); _/* wake every idle worker so they can see shutdown_flag */_ pthread_mutex_unlock(&q_lock); **for** (int i = 0; i < NUM_WORKERS; i++) pthread_join(pool[i], NULL); **return** 0; }
-
-**A5. Barrier —** **<mark>pthread_barrier_t</mark>**
-
-Makes N threads all wait until every one of them reaches the same point.
-
-#include **<stdio.h>** #include **<pthread.h>** #define NUM_THREADS 4 static pthread_barrier_t barrier; static void *worker(void *arg) { long id = (long)arg; printf("thread %ld: phase 1 work\n", id); pthread_barrier_wait(&barrier); _/* blocks until all 4 threads arrive */_ printf("thread %ld: phase 2 work (all threads finished phase 1)\n", id); **return** NULL; } int main(void) { pthread_barrier_init(&barrier, NULL, NUM_THREADS); pthread_t t[NUM_THREADS]; **for** (long i = 0; i < NUM_THREADS; i++) pthread_create(&t[i], NULL, worker, (void *)i); **for** (int i = 0; i < NUM_THREADS; i++) pthread_join(t[i], NULL); pthread_barrier_destroy(&barrier); **return** 0; }
-
-#### **A6. Thread-Specific Data —** **<mark>pthread_key_create()</mark>**
-
-Each thread gets its own private copy of a variable under a shared key.
-
-#include **<stdio.h>** #include **<pthread.h>** #include **<stdlib.h>** static pthread_key_t tls_key; static void destructor(void *val) { free(val); } static void *worker(void *arg)
-
-{ int *my_val = malloc( **sizeof** (int)); *my_val = *(int *)arg; pthread_setspecific(tls_key, my_val); int *retrieved = pthread_getspecific(tls_key); printf("thread sees its own value: %d\n", *retrieved); **return** NULL; } int main(void) { pthread_key_create(&tls_key, destructor); pthread_t t[3]; int vals[3] = {10, 20, 30}; **for** (int i = 0; i < 3; i++) pthread_create(&t[i], NULL, worker, &vals[i]); **for** (int i = 0; i < 3; i++) pthread_join(t[i], NULL); pthread_key_delete(tls_key); **return** 0; }
-
-### **B. Semaphores — Additional Patterns**
-
-#### **B1. Named Semaphore for Cross-Process Synchronization**
-
-Unlike <mark>sem</mark> _ <mark>init()</mark> (only works between threads or related processes sharing memory), a _named_ semaphore works between any two unrelated processes.
-
-_/* proc_a.c */_ #include **<stdio.h>** #include **<fcntl.h>** #include **<semaphore.h>** #include **<unistd.h>** int main(void) { sem_t *sem = sem_open("/my_named_sem", O_CREAT, 0644, 0); _/* initial value 0 */_ **if** (sem == SEM_FAILED) { perror("sem_open"); **return** 1; } printf("proc_a: doing setup work...\n"); sleep(2); printf("proc_a: signaling proc_b\n"); sem_post(sem); sem_close(sem); **return** 0; }
-
-_/* proc_b.c */_ #include **<stdio.h>** #include **<fcntl.h>** #include **<semaphore.h>** int main(void) { sem_t *sem = sem_open("/my_named_sem", O_CREAT, 0644, 0); **if** (sem == SEM_FAILED) { perror("sem_open"); **return** 1; } printf("proc_b: waiting for proc_a...\n"); sem_wait(sem); _/* blocks until proc_a posts */_ printf("proc_b: got the signal, proceeding\n"); sem_close(sem); sem_unlink("/my_named_sem"); _/* remove the name once no longer needed */_ **return** 0; }
-
-### **C. Signals — Additional Patterns**
-
-#### **C1. Synchronous Signal Handling — Block +** **<mark>sigwait()</mark>**
-
-Instead of an asynchronous handler (with all its reentrancy hazards), a common robust pattern in multithreaded servers is to block a signal in every thread and have one dedicated thread synchronously wait for it.
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<pthread.h>** #include **<signal.h>** static void *signal_handler_thread(void *arg) { sigset_t *set = arg; int sig; **while** (1) { sigwait(set, &sig); _/* blocks here, no async-signal-safety concerns */_ printf("signal thread: received signal %d\n", sig); **if** (sig == SIGTERM || sig == SIGINT) { printf("signal thread: shutting down\n"); exit(0); } } **return** NULL; } int main(void) { sigset_t set; sigemptyset(&set); sigaddset(&set, SIGTERM); sigaddset(&set, SIGINT);
-
-_/* block these signals in ALL threads (main included) so only sigwait() sees them */_ pthread_sigmask(SIG_BLOCK, &set, NULL); pthread_t sig_thread; pthread_create(&sig_thread, NULL, signal_handler_thread, &set); printf("main: doing normal work (Ctrl-C is handled cleanly by the signal thread)\n"); **while** (1) pause(); }
-
-#### **C2. Real-Time Signals with a Payload —** **<mark>sigqueue()</mark> +** **<mark>SA_SIGINFO</mark>**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<signal.h>** #include **<unistd.h>** static void handler(int sig, siginfo_t *info, void *ucontext) { printf("received signal %d with payload value = %d\n", sig, info->si_value.sival_int); } int main(void) { **struct** sigaction sa = {0}; sa.sa_sigaction = handler; sa.sa_flags = SA_SIGINFO; sigaction(SIGRTMIN, &sa, NULL); pid_t pid = fork(); **if** (pid == 0) { sleep(1); **union** sigval value = { .sival_int = 42 }; sigqueue(getppid(), SIGRTMIN, value); _/* unlike kill(), carries data */_ _exit(0); } pause(); _/* wait for the signal */_ **return** 0; }
-
-#### **C3. Graceful Shutdown on Multiple Signals**
-
-#include **<stdio.h>** #include **<signal.h>** #include **<unistd.h>** #include **<string.h>** static volatile sig_atomic_t running = 1; static void shutdown_handler(int signo) { running = 0; _/* only flip a flag -- do real cleanup in main, not the handler */_ } int main(void) { **struct** sigaction sa; memset(&sa, 0, **sizeof** (sa)); sa.sa_handler = shutdown_handler; sigemptyset(&sa.sa_mask); sigaction(SIGINT, &sa, NULL); sigaction(SIGTERM, &sa, NULL); printf("running -- send SIGINT or SIGTERM to stop cleanly\n"); **while** (running) sleep(1); printf("cleaning up and exiting\n"); **return** 0; }
-
-#### **C4. Timeout on a Blocking Call via** **<mark>alarm()</mark>**
-
-#include **<stdio.h>** #include **<signal.h>** #include **<unistd.h>** #include **<errno.h>**
-
-static void alarm_handler(int sig) { _/* just needs to interrupt the blocking read */_ } int main(void) { signal(SIGALRM, alarm_handler); alarm(3); _/* fire SIGALRM in 3 seconds if we're still blocked */_ char buf[128]; printf("waiting up to 3s for input...\n"); ssize_t n = read(STDIN_FILENO, buf, **sizeof** (buf)); **if** (n == -1 && errno == EINTR) printf("timed out waiting for input\n"); **else** printf("got %zd bytes\n", n); alarm(0); _/* cancel any pending alarm */_ **return** 0; }
-
-**D. IPC — Additional Patterns**
-
-**D1. Named Pipe (FIFO) Between Unrelated Processes**
-
-_/* fifo_writer.c */_ #include **<stdio.h>** #include **<fcntl.h>** #include **<sys/stat.h>** #include **<unistd.h>** #include **<string.h>** int main(void) { mkfifo("/tmp/my_fifo", 0666); _/* EEXIST if it already exists -- that's fine */_ int fd = open("/tmp/my_fifo", O_WRONLY); _/* blocks until a reader opens it */_ const char *msg = "hello through a FIFO\n"; write(fd, msg, strlen(msg)); close(fd); **return** 0; } _/* fifo_reader.c */_ #include **<stdio.h>** #include **<fcntl.h>** #include **<unistd.h>** int main(void) { int fd = open("/tmp/my_fifo", O_RDONLY); _/* blocks until a writer opens it */_ char buf[128]; ssize_t n = read(fd, buf, **sizeof** (buf) - 1); buf[n] = '\0'; printf("received: %s", buf); close(fd); unlink("/tmp/my_fifo"); **return** 0; }
-
-**Interview angle** : a FIFO is a pipe with a name in the filesystem, so unrelated processes (not just parent/child) can rendezvous on it — <mark>open()</mark> on a FIFO blocks until both ends are open, a common gotcha.
-
-#### **D2. POSIX Message Queue**
-
-_/* mq_sender.c */_ #include **<stdio.h>** #include **<mqueue.h>** #include **<string.h>** int main(void) { **struct** mq_attr attr = { .mq_flags = 0, .mq_maxmsg = 10, .mq_msgsize = 256, .mq_curmsgs = 0 }; mqd_t mq = mq_open("/my_queue", O_CREAT | O_WRONLY, 0644, &attr); **if** (mq == (mqd_t)-1) { perror("mq_open"); **return** 1; } const char *msg = "message via POSIX mq"; mq_send(mq, msg, strlen(msg) + 1, 0); _/* priority 0 */_ mq_close(mq); **return** 0; } _/* mq_receiver.c */_ #include **<stdio.h>** #include **<mqueue.h>** int main(void) { mqd_t mq = mq_open("/my_queue", O_RDONLY); **if** (mq == (mqd_t)-1) { perror("mq_open"); **return** 1; } char buf[256]; ssize_t n = mq_receive(mq, buf, **sizeof** (buf), NULL); buf[n] = '\0'; printf("received: %s\n", buf); mq_close(mq); mq_unlink("/my_queue"); **return** 0; }
-
-**Interview angle** : unlike a pipe, a message queue preserves _message boundaries_ (no need to frame/delimit yourself) and supports priorities — messages can be received in priority order rather than strictly FIFO.
-
-#### **D3. Unix Domain Socket (stream, connection-oriented IPC)**
-
-_/* uds_server.c */_ #include **<stdio.h>** #include **<string.h>** #include **<sys/socket.h>** #include **<sys/un.h>** #include **<unistd.h>** #define SOCK_PATH "/tmp/my_uds"
-
-int main(void) { int listen_fd = socket(AF_UNIX, SOCK_STREAM, 0); **struct** sockaddr_un addr = { .sun_family = AF_UNIX }; strcpy(addr.sun_path, SOCK_PATH); unlink(SOCK_PATH);
-
-bind(listen_fd, ( **struct** sockaddr *)&addr, **sizeof** (addr)); listen(listen_fd, 5);
-
-printf("server: waiting for a connection...\n"); int conn_fd = accept(listen_fd, NULL, NULL);
-
-char buf[128]; ssize_t n = read(conn_fd, buf, **sizeof** (buf) - 1); buf[n] = '\0'; printf("server received: %s\n", buf); close(conn_fd); close(listen_fd); unlink(SOCK_PATH); **return** 0; } _/* uds_client.c */_ #include **<string.h>** #include **<sys/socket.h>** #include **<sys/un.h>** #include **<unistd.h>** #define SOCK_PATH "/tmp/my_uds" int main(void) { int fd = socket(AF_UNIX, SOCK_STREAM, 0); **struct** sockaddr_un addr = { .sun_family = AF_UNIX }; strcpy(addr.sun_path, SOCK_PATH); connect(fd, ( **struct** sockaddr *)&addr, **sizeof** (addr)); write(fd, "hello over a unix socket", 25); close(fd); **return** 0; }
-
-**Interview angle** : Unix domain sockets are bidirectional (unlike a pipe, which is one-way) and support both <mark>SOCK</mark> _ <mark>STREAM</mark> (reliable, ordered, like TCP) and <mark>SOCK</mark> _ <mark>DGRAM</mark> (like UDP) semantics, plus can pass open file descriptors between processes via <mark>SCM</mark> _ <mark>RIGHTS</mark> ancillary data — a fairly advanced but real interview topic (“how would you hand a file descriptor to another process?”).
-
-### **E. Multi-Process Patterns with** **<mark>fork()</mark> + Pipes**
-
-#### **E1. Fan-Out: Parent Forks N Workers, Collects Results via Pipe**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<sys/wait.h>** #define NUM_WORKERS 4 int main(void) { int pipes[NUM_WORKERS][2]; **for** (int i = 0; i < NUM_WORKERS; i++) { pipe(pipes[i]); pid_t pid = fork(); **if** (pid == 0) { _/* child i: compute something, write result, exit */_ close(pipes[i][0]); _/* close read end */_ int result = (i + 1) * (i + 1); _/* pretend work */_ write(pipes[i][1], &result, **sizeof** (result)); close(pipes[i][1]); _exit(0); } close(pipes[i][1]); _/* parent closes write end of each pipe */_ } int total = 0; **for** (int i = 0; i < NUM_WORKERS; i++) { int result; read(pipes[i][0], &result, **sizeof** (result)); printf("worker %d returned %d\n", i, result); total += result; close(pipes[i][0]); } **for** (int i = 0; i < NUM_WORKERS; i++) wait(NULL); _/* reap all children */_ printf("total = %d\n", total); **return** 0; }
-
-**E2. Two-Stage Pipeline (like shell** **<mark>producer | consumer</mark> )**
-
-#include **<stdio.h>** #include **<unistd.h>** #include **<sys/wait.h>** int main(void) { int fd[2]; pipe(fd); pid_t p1 = fork(); **if** (p1 == 0) { _/* stage 1: producer -- writes to the pipe, stdout redirected there */_ close(fd[0]); dup2(fd[1], STDOUT_FILENO); close(fd[1]); execlp("echo", "echo", "hello from stage 1", (char *)NULL); _exit(127); } pid_t p2 = fork(); **if** (p2 == 0) { _/* stage 2: consumer -- reads from the pipe, stdin redirected there */_
-
-close(fd[1]); dup2(fd[0], STDIN_FILENO); close(fd[0]); execlp("cat", "cat", (char *)NULL); _exit(127); } _/* parent: close both ends, wait for both children */_ close(fd[0]); close(fd[1]); waitpid(p1, NULL, 0); waitpid(p2, NULL, 0); **return** 0; }
-
-**Interview angle** : this is literally how a shell implements <mark>cmd1 | cmd2</mark> — <mark>dup2()</mark> to remap a pipe end onto stdin/stdout before <mark>exec() ,</mark> then close the now-redundant original fd. A very common “implement a simple shell pipeline” systems-programming exercise.
-
-**E3. Process Tree — Multiple Generations of** **<mark>fork()</mark>**
-
-#include **<stdio.h>** #include **<unistd.h>** #include **<sys/wait.h>** void spawn_generation(int depth) { **if** (depth == 0) **return** ; pid_t pid = fork(); **if** (pid == 0) { printf("generation %d: pid=%d, parent=%d\n", depth, getpid(), getppid()); spawn_generation(depth - 1); _/* each child spawns the next generation */_ _exit(0); } waitpid(pid, NULL, 0); _/* each parent waits only for its direct child */_ } int main(void) { spawn_generation(3); _/* creates a 3-generation chain, not a fan-out */_ **return** 0; }
-
-#### **E4. Non-Blocking Reap of Many Children —** **<mark>waitpid()</mark> with** **<mark>WNOHANG</mark>**
-
-#include **<stdio.h>** #include **<stdlib.h>** #include **<unistd.h>** #include **<sys/wait.h>** #define NUM_CHILDREN 5 int main(void) { **for** (int i = 0; i < NUM_CHILDREN; i++) { pid_t pid = fork(); **if** (pid == 0) { sleep(rand() % 3 + 1); _/* children finish at different times */_ _exit(i); } } int remaining = NUM_CHILDREN; **while** (remaining > 0) { pid_t done = waitpid(-1, NULL, WNOHANG); _/* -1 = any child; WNOHANG = don't block */_ **if** (done > 0) { printf("reaped child %d\n", done); remaining--; } **else** { printf("no child finished yet, doing other work...\n"); usleep(200000); } } **return** 0; }
-
-**Interview angle** : <mark>WNOHANG</mark> is the standard way for a long-running process manager (like a shell with job control, or <mark>init</mark> ) to poll for finished children without blocking its main event loop — contrast with the plain <mark>wait()</mark> used elsewhere in this guide, which always blocks.
-
-_As with the rest of this guide, all code in Part 4 is original, written to illustrate these APIs and patterns — not reproduced from the source book._
-
-# PART A.15 — Senior/Staff Interview Addendum: Drivers, Real-Time, PCIe & Memory
+# 15 : Drivers, Real-Time, PCIe & Memory
 
 > **Purpose:** Close the remaining gaps for 10–15+ year Linux Systems, Storage, Embedded, Device Driver, Infrastructure and GPU interviews. This section is intentionally interview-focused and complements the existing chapters rather than duplicating them.
 
@@ -5411,7 +5174,7 @@ For any driver failure, use this sequence:
 
 Useful tools:
 
-# PART A.16 — Senior Interview Rapid-Fire Questions
+# PART A.16 — Interview Rapid-Fire Questions
 
 1. Explain priority inversion and priority inheritance.
 2. Why can a hard IRQ handler not sleep?
@@ -5434,21 +5197,7 @@ Useful tools:
 19. How do lockdep, KASAN and KCSAN differ?
 20. What changes in PREEMPT_RT?
 
-# PART A.17 — Company-Focused Revision Map
 
-## NVIDIA / AMD / Intel / Qualcomm
-
-Prioritize:
-
-## NetApp / Cohesity / Dell / HPE / Pure Storage / Red Hat
-
-## Cisco / Broadcom / Arista / Juniper
-
-## Embedded / Automotive / Safety-Critical
-
-# Final Senior-Level Mental Model
-
-When an interviewer gives you a problem, reason across layers:
 
 Then ask:
 
