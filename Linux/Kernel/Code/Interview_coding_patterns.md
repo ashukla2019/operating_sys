@@ -1,6 +1,3 @@
-# Senior Embedded / Kernel Engineer — Interview Coding Patterns
-### Target: Qualcomm · AMD · Intel · ARM · Red Hat · NVIDIA · Broadcom
-### Level: 15 years experience — Staff / Senior Engineer
 
 > **How to use this document:**  
 > You don't need to memorize syntax perfectly. You need to write these skeletons confidently,
