@@ -302,8 +302,6 @@ Each subsystem performs a specialized task.
 
 
 ---
-
-
 ## Types of kernel:
 
 ## **Monolithic Kernel**
@@ -314,7 +312,7 @@ Linux uses a **Monolithic Kernel** architecture — all major services run insid
 
 ## **Microkernel**
 
-A Microkernel keeps only minimal functionality inside the kernel; everything else runs in user space.
+A Microkernel keeps only minimal functionality inside the kernel **(IPC, Interrupt, scheduler)**; everything else runs in user space.
 
 **Advantages:** better isolation, better reliability, easier debugging. **Disadvantages:** more IPC, slower than monolithic kernels.
 
@@ -360,9 +358,7 @@ Parent → pipe → Child
 Use: Shell pipelines (ls | grep.cpp), parent-child communication.
 Avoid: Unrelated processes, persistent or bidirectional communication.
 
-
 ---
-
 **2. Named Pipe (FIFO)**
 Like a pipe, but has a filesystem name, allowing unrelated processes to communicate.
 
