@@ -673,38 +673,15 @@ Goals include:
 - Efficient resource usage
 
 ### Types of Schedulers
+**Long-Term:** Job Queue → Main Memory → Ready Queue
+Decides which new processes enter memory.
 
-#### Long-Term Scheduler
-Also called the Job Scheduler.
+**Medium-Term:** Main Memory ↔ Disk/Swap
+Suspends processes from memory and later brings them back.
 
-Responsible for:
-- Selecting jobs/processes
-- Admitting them into the system
+**Short-Term:** Ready Queue → CPU
 
-Controls the degree of multiprogramming. Runs relatively infrequently.
-
-#### Medium-Term Scheduler
-Responsible for:
-- Suspending processes
-- Resuming processes
-
-Used to reduce memory pressure.
-
-#### Short-Term Scheduler
-Also called the CPU Scheduler.
-
-```text
-Ready Queue
-     │
-     ↓
-Scheduler
-     │
-     ↓
-Running Process
-```
-
-Runs very frequently, so it must be fast.
-
+Decides which ready process gets the CPU next.
 ---
 
 ## 6. Scheduling Queues
