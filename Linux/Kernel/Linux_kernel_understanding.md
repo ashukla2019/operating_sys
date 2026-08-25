@@ -385,9 +385,7 @@ Pros: Very fast, direct memory access.
 Cons: Requires synchronization (mutexes, semaphores, etc.).
 Use: Databases, video processing, high-speed producer-consumer systems.
 
-
 ---
-
 
 **4. Message Queue**
 Processes exchange discrete messages through a kernel-managed queue.
@@ -406,18 +404,14 @@ System V: msgget(), msgsnd(), msgrcv(), msgctl()
 Pros: Structured messages, simpler synchronization.
 Use: Producer-consumer systems, task/event communication.
 
-
 ---
-
 
 **5. Socket**
 Provides bidirectional communication between processes and can work across machines.
 
 Client → Socket → Network/Unix socket → Socket → Server
 
-
 Common calls:
-
 socket()
 bind()
 listen()
@@ -427,14 +421,11 @@ send()
 recv()
 close()
 
-
 Pros: Bidirectional, network-capable, client-server model.
 Cons: More protocol/communication overhead than shared memory.
 Use: Web servers, chat apps, REST APIs, microservices, distributed systems.
 
-
 ---
-
 
 **6. Memory-Mapped File (mmap)**
 Maps a file into a process's virtual memory, allowing it to access the file like normal memory. Multiple processes can map the same file.
@@ -661,11 +652,9 @@ These allow processes to be temporarily removed from active memory to reduce mem
 ## 5. Process Scheduling
 
 The CPU is limited while many processes may be runnable.
-
 The scheduler decides: **Which process should run next?**
 
 Goals include:
-
 - Fairness
 - High CPU utilization
 - Low waiting time
@@ -680,8 +669,8 @@ Decides which new processes enter memory.
 Suspends processes from memory and later brings them back.
 
 **Short-Term:** Ready Queue → CPU
-
 Decides which ready process gets the CPU next.
+
 ---
 
 ## 6. Scheduling Queues
@@ -827,6 +816,26 @@ Cooperating processes commonly use IPC (Inter-Process Communication).
 | Higher creation overhead | Lower creation overhead |
 | More expensive switching | Usually cheaper switching |
 | IPC often needed | Shared memory can be used directly |
+
+```
+             PROCESS
+    ┌─────────────────────────┐
+    │ Virtual Address Space   │
+    │                         │
+    │ Code ───────────────┐   │
+    │ Heap ───────────────┤   │
+    │ Globals ────────────┤   │
+    │ Open Files ─────────┤   │
+    │                     │   │
+    │   Thread 1          │   │
+    │   PC, Registers     │   │
+    │   Stack             │   │
+    │                     │   │
+    │   Thread 2          │   │
+    │   PC, Registers     │   │
+    │   Stack             │   │
+    └─────────────────────────┘
+```
 
 > Linux implements threads using the `clone()` mechanism.
 
