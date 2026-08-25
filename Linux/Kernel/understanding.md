@@ -267,7 +267,6 @@ The Linux kernel consists of many subsystems:
 
 Each subsystem performs a specialized task.
 
-
 ----------------------------------------------------------------
 
 ## Types of kernel:
@@ -283,20 +282,6 @@ Linux uses a **Monolithic Kernel** architecture — all major services run insid
 A Microkernel keeps only minimal functionality inside the kernel; everything else runs in user space.
 
 **Advantages:** better isolation, better reliability, easier debugging. **Disadvantages:** more IPC, slower than monolithic kernels.
-
-----------------------------------------------------------------
-
-
-## **Loadable Kernel Modules (LKM)**
-
-Linux supports loading drivers without rebooting.
-
-Example: <mark>USB Driver → Load Module → Kernel Starts Using Driver</mark>
-
-Commands: <mark>lsmod</mark> , <mark>insmod , rmmod</mark> , <mark>modprobe</mark>
-
-Advantages: no reboot, smaller kernel image, easier driver updates.
-
 
 --------------------------------------------------------------------------------------------------------------------------------
 ********************************************************************************************************************************
