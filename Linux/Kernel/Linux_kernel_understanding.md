@@ -48,142 +48,167 @@ The **CPU/MMU** checks these permissions and blocks unauthorised access, such as
       ↓
 2. COMPILER
       │
-      │ Converts source code → machine/assembly code.
-      │
+      │ Source code → assembly/object code
       ↓
 3. LINKER
       │
-      │ Combines your code + libraries and creates
-      │ the final executable file.
-      │
+      │ Combines object files + libraries
       ↓
 4. EXECUTABLE
       │
-      │ Stored on SSD/HDD.
-      │ It contains code, data, etc.
-      │
+      │ Stored on SSD/HDD
+      │ Contains code, data, metadata, etc.
       ↓
 5. YOU RUN THE PROGRAM
       │
-      │ OS receives a request to execute the file.
+      │ Example:
+      │ ./myprogram
+      ↓
+6. SHELL / PARENT PROCESS
+      │
+      │ The shell is already a process.
+      │ It normally creates a child using:
+      │
+      │        fork() / clone()
       │
       ↓
-6. OS KERNEL CREATES A PROCESS
+7. CHILD PROCESS
       │
-      │ Kernel creates process information:
-      │ - process ID
-      │ - CPU state
-      │ - virtual address space
-      │ - page tables
+      │ Child initially has a copy-on-write
+      │ view of the parent's address space.
       │
+      │ Then child calls:
+      │
+      │        execve()
+      │
+      │
+      │ execve() DOES NOT create a new process.
+      │ It replaces the child's program image
+      │ with ./myprogram.
       ↓
-7. VIRTUAL ADDRESS SPACE
+8. KERNEL LOADS THE EXECUTABLE
       │
-      │ Kernel gives the process its own virtual
-      │ address space.
+      │ Kernel examines the executable
+      │ (e.g. ELF on Linux).
+      │
+      │ Creates/sets up:
+      │ - Virtual address space
+      │ - Code/text mapping
+      │ - Data/BSS mappings
+      │ - Stack
+      │ - Heap setup
+      │ - Shared libraries
+      │ - Page tables
+      │ - CPU execution state
+      ↓
+9. VIRTUAL ADDRESS SPACE
       │
       │ Example:
-      │ Code → 0x00400000
-      │ Data → 0x00600000
-      │ Stack → high address
       │
+      │ Code  → 0x00400000
+      │ Data  → 0x00600000
+      │ Heap  → ...
+      │ Stack → high addresses
       ↓
-8. KERNEL CREATES/SETS PAGE TABLES
+10. PAGE TABLES
       │
-      │ Page tables tell the MMU:
+      │ Kernel establishes mappings such as:
       │
-      │ "Virtual page X → Physical frame Y"
+      │ Virtual Page → Physical Frame
       │
-      │ and also permissions:
-      │ Read / Write / Execute / User / Kernel
-      │
+      │ and permissions:
+      │ Read / Write / Execute
+      │ User / Kernel
       ↓
-9. PROCESS IS READY TO RUN
+11. PROCESS BECOMES RUNNABLE
       │
-      │ OS scheduler gives the process CPU time.
-      │ CPU starts at the program's entry point.
-      │
+      │ Scheduler places it in the
+      │ runnable/ready queue.
       ↓
-10. CPU FETCHES AN INSTRUCTION
+12. SCHEDULER SELECTS PROCESS
       │
-      │ CPU's instruction pointer contains a
-      │ VIRTUAL address.
+      │ CPU switches to this process.
+      │
+      │ CPU enters user-mode execution.
+      ↓
+13. CPU STARTS AT ENTRY POINT
+      │
+      │ Instruction Pointer/RIP contains
+      │ the virtual address of the program's
+      │ entry point.
       │
       │ Example:
       │ RIP = 0x00401000
-      │
       ↓
-11. MMU RECEIVES VIRTUAL ADDRESS
+14. INSTRUCTION FETCH
       │
-      │ MMU asks:
-      │ "Where is virtual page 0x00401
-      │  physically located?"
-      │
+      │ CPU generates a virtual address.
       ↓
-12. MMU LOOKS AT PAGE TABLE
+15. MMU
       │
-      │ Page table says:
+      │ MMU translates:
       │
-      │ Virtual page 0x00401
-      │          ↓
-      │ Physical frame 0x8A321
-      │
+      │ Virtual Address
+      │       ↓
+      │    Page Table
+      │       ↓
+      │ Physical Address
       ↓
-13. IS THE PAGE PRESENT IN RAM?
+16. PAGE PRESENT?
       │
-      ├────────────── YES ──────────────┐
-      │                                  │
-      │                                  ↓
-      │                         14. PHYSICAL ADDRESS
-      │                                  │
-      │                         Virtual address
-      │                                  ↓
-      │                              MMU translation
-      │                                  ↓
-      │                         Physical address
-      │                                  │
-      │                                  ↓
-      │                            15. RAM
-      │                                  │
-      │                         Instruction is read
-      │                                  │
-      │                                  ↓
-      │                            16. EXECUTE
+      ├──────────── YES ───────────────┐
+      │                                │
+      │                                ↓
+      │                         17. PHYSICAL RAM
+      │                                │
+      │                         CPU reads instruction
+      │                                │
+      │                                ↓
+      │                         18. EXECUTE
       │
       │
-      └────────────── NO ───────────────┐
-                                         │
-                                         ↓
-                                14. PAGE FAULT
-                                         │
-                                         │ CPU tells kernel:
-                                         │ "I need this page."
-                                         ↓
-                                  15. KERNEL
-                                         │
-                                         │ Finds the required data
-                                         │ in executable/storage.
-                                         ↓
-                                  16. LOAD PAGE
-                                         │
-                                         │ Storage → RAM
-                                         ↓
-                                  17. UPDATE PAGE TABLE
-                                         │
-                                         │ Virtual page
-                                         │       ↓
-                                         │ Physical frame
-                                         ↓
-                                  18. CPU RETRIES
-                                         │
-                                         ↓
-                                  19. MMU TRANSLATES
-                                         │
-                                         ↓
-                                  20. PHYSICAL RAM
-                                         │
-                                         ↓
-                                  21. EXECUTE
+      └──────────── NO ────────────────┐
+                                       │
+                                       ↓
+                                17. PAGE FAULT
+                                       │
+                                       │ CPU traps into
+                                       │ kernel mode.
+                                       ↓
+                                18. KERNEL
+                                       │
+                                       │ Finds/maps required
+                                       │ page from:
+                                       │ - executable
+                                       │ - shared library
+                                       │ - swap
+                                       │ - zero-filled memory
+                                       ↓
+                                19. PHYSICAL RAM
+                                       │
+                                       │ Page is loaded/created
+                                       ↓
+                                20. UPDATE PAGE TABLE
+                                       │
+                                       │ Virtual Page
+                                       │       ↓
+                                       │ Physical Frame
+                                       ↓
+                                21. RETURN FROM
+                                    PAGE FAULT
+                                       │
+                                       ↓
+                                22. CPU RETRIES
+                                       │
+                                       ↓
+                                23. MMU TRANSLATES
+                                       │
+                                       ↓
+                                24. PHYSICAL RAM
+                                       │
+                                       ↓
+                                25. EXECUTE
+
 ```
 
 ---
