@@ -299,6 +299,7 @@ Advantages: no reboot, smaller kernel image, easier driver updates.
 
 
 --------------------------------------------------------------------------------------------------------------------------------
+********************************************************************************************************************************
 --------------------------------------------------------------------------------------------------------------------------------
 
 ## IPC — Inter-Process Communication
@@ -460,57 +461,15 @@ Shared Memory   → shared RAM
 Socket          → communication endpoint
 mmap()          → file/shared memory mapped into address space
 
-
+**
 --------------------------------------------------------------------------------------------------------------------------------
---------------------------------------------------------------------------------------------------------------------------------
+********************************************************************************************************************************
+--------------------------------------------------------------------------------------------------------------------------------**
 
-## 3 — Process Management
+## 2 IPC — Inter-Process Communication
 
-# **Operating System - Process Management Handbook**
 
-Complete interview notes covering processes, scheduling, IPC, synchronization, execution models, and CPU scheduling.
-
-1. What is a Process?
-
-2. Program vs Process
-
-3. Components of a Process
-
-4. Process Memory Layout
-
-5. Process Control Block (PCB)
-
-6. Process States
-
-7. State Transition Diagram
-
-8. Process Scheduling
-
-9. Types of Schedulers
-
-10. Scheduling Queues
-
-11. Context Switching
-
-12. Types of Processes
-
-13. Inter Process Communication (IPC)
-
-14. Process Synchronization
-
-15. Process vs Thread
-
-16. Deadlock
-
-17. CPU Scheduling Algorithms
-
-18. Advantages of Process Management
-
-20. Process Execution Models
-
-21. Concurrency vs Parallelism
-
-22. Interview Questions
+## 3 Process Management
 
 # **1. What is a Process?**
 
@@ -1431,7 +1390,12 @@ perf strace
 
 - Reduce unnecessary threads. Increase task granularity. Minimize lock contention. Use appropriate scheduling policies. Pin critical threads using CPU affinity if beneficial. Profile before optimizing to identify the real bottleneck.
 
-# **PART A.4 — File System (VFS)**
+
+**--------------------------------------------------------------------------------------------------------------------------------
+********************************************************************************************************************************
+--------------------------------------------------------------------------------------------------------------------------------**
+
+## 4 — File System (VFS)
 
 # Linux VFS + Filesystem: mkfs → mount → open → read/write
 
@@ -1700,9 +1664,11 @@ Why are timer interrupts important? Explain mode switching.
 
 How does a system call switch from user mode to kernel mode? Difference between system call and interrupt. How does Linux handle system calls? What happens internally when read() is called? Why are system calls slower than normal function calls? How do interrupts help in multitasking?
 
-# **PART A.6 — Memory Management**
+**--------------------------------------------------------------------------------------------------------------------------------
+********************************************************************************************************************************
+--------------------------------------------------------------------------------------------------------------------------------**
 
-# **Operating System - Memory Management Handbook**
+## 6 — Memory Management
 
 Complete interview notes covering memory hierarchy, allocation techniques, paging, segmentation, virtual memory, fragmentation, swapping, and modern OS memory management.
 
