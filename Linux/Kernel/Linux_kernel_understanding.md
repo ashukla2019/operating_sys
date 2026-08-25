@@ -484,8 +484,11 @@ A process is a program currently in execution.
 It has:
 
 CPU state: PC, registers
+
 Memory: virtual address space, stack, heap
+
 Resources: open files, etc.
+
 PCB: OS information used to manage the process
 
 ```text
