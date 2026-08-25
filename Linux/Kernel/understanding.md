@@ -1,25 +1,184 @@
 ## **High Level Linux Architecture**
 Core component of the Kernel:
-Process management - Thread scheduling - Virtual memory - Device drivers - File systems - Networking - Security - Inter-process communication - Interrupt handling - Power management
+1) Process management
+2) Thread scheduling
+3) Virtual memory
+4) Device drivers
+5) File systems 
+6) Networking 
+7) Security 
+8) Inter-process communication
+9) Interrupt handling
 
 ---------------------
 
 ## **User Space vs Kernel Space**
 
-User space = applications with limited privileges.
-
-Kernel space = OS with full privileges.
-CPU modes enforce this separation for protection and stability.
+**User space** = applications run with limited privileges.
+**Kernel space** = OS with full privileges. CPU modes enforce this separation for protection and stability.
 
 ------------------------
 
 ## **CPU Modes**
-CPU mode = the privilege level at which the CPU is executing instructions.
+**User mode** runs applications with restricted privileges, while **kernel mode** runs the OS with full privileges.
+**Virtual memory + page tables** map each process's virtual addresses to physical memory and define permissions like read/write/execute. These permissions are stored in Page tables:
 
-There are mainly two modes:
-User mode — low privilege; normal applications run here.
-Kernel mode — high privilege; the operating system runs here.
-The CPU uses hardware protection so a user program cannot directly perform privileged operations.
+```
+Virtual Page    Physical Frame    Permissions
+------------------------------------------------
+0x1000          0x5000            User, Read/Write
+0x2000          0x6000            User, Read/Execute
+0x3000          0x7000            Kernel, Read/Write
+```
+
+The **CPU/MMU** checks these permissions and blocks unauthorised access, such as user programs accessing kernel memory or another process's memory.
+**System calls** provide a controlled way for user programs to request privileged operations from the kernel.
+
+```
+1. SOURCE CODE
+      │
+      │ You write C/C++ code.
+      │ Example: int x = 10;
+      ↓
+2. COMPILER
+      │
+      │ Converts source code → machine/assembly code.
+      │
+      ↓
+3. LINKER
+      │
+      │ Combines your code + libraries and creates
+      │ the final executable file.
+      │
+      ↓
+4. EXECUTABLE
+      │
+      │ Stored on SSD/HDD.
+      │ It contains code, data, etc.
+      │
+      ↓
+5. YOU RUN THE PROGRAM
+      │
+      │ OS receives a request to execute the file.
+      │
+      ↓
+6. OS KERNEL CREATES A PROCESS
+      │
+      │ Kernel creates process information:
+      │ - process ID
+      │ - CPU state
+      │ - virtual address space
+      │ - page tables
+      │
+      ↓
+7. VIRTUAL ADDRESS SPACE
+      │
+      │ Kernel gives the process its own virtual
+      │ address space.
+      │
+      │ Example:
+      │ Code → 0x00400000
+      │ Data → 0x00600000
+      │ Stack → high address
+      │
+      ↓
+8. KERNEL CREATES/SETS PAGE TABLES
+      │
+      │ Page tables tell the MMU:
+      │
+      │ "Virtual page X → Physical frame Y"
+      │
+      │ and also permissions:
+      │ Read / Write / Execute / User / Kernel
+      │
+      ↓
+9. PROCESS IS READY TO RUN
+      │
+      │ OS scheduler gives the process CPU time.
+      │ CPU starts at the program's entry point.
+      │
+      ↓
+10. CPU FETCHES AN INSTRUCTION
+      │
+      │ CPU's instruction pointer contains a
+      │ VIRTUAL address.
+      │
+      │ Example:
+      │ RIP = 0x00401000
+      │
+      ↓
+11. MMU RECEIVES VIRTUAL ADDRESS
+      │
+      │ MMU asks:
+      │ "Where is virtual page 0x00401
+      │  physically located?"
+      │
+      ↓
+12. MMU LOOKS AT PAGE TABLE
+      │
+      │ Page table says:
+      │
+      │ Virtual page 0x00401
+      │          ↓
+      │ Physical frame 0x8A321
+      │
+      ↓
+13. IS THE PAGE PRESENT IN RAM?
+      │
+      ├────────────── YES ──────────────┐
+      │                                  │
+      │                                  ↓
+      │                         14. PHYSICAL ADDRESS
+      │                                  │
+      │                         Virtual address
+      │                                  ↓
+      │                              MMU translation
+      │                                  ↓
+      │                         Physical address
+      │                                  │
+      │                                  ↓
+      │                            15. RAM
+      │                                  │
+      │                         Instruction is read
+      │                                  │
+      │                                  ↓
+      │                            16. EXECUTE
+      │
+      │
+      └────────────── NO ───────────────┐
+                                         │
+                                         ↓
+                                14. PAGE FAULT
+                                         │
+                                         │ CPU tells kernel:
+                                         │ "I need this page."
+                                         ↓
+                                  15. KERNEL
+                                         │
+                                         │ Finds the required data
+                                         │ in executable/storage.
+                                         ↓
+                                  16. LOAD PAGE
+                                         │
+                                         │ Storage → RAM
+                                         ↓
+                                  17. UPDATE PAGE TABLE
+                                         │
+                                         │ Virtual page
+                                         │       ↓
+                                         │ Physical frame
+                                         ↓
+                                  18. CPU RETRIES
+                                         │
+                                         ↓
+                                  19. MMU TRANSLATES
+                                         │
+                                         ↓
+                                  20. PHYSICAL RAM
+                                         │
+                                         ↓
+                                  21. EXECUTE
+```
 
 -----------------------
 
