@@ -10,10 +10,7 @@ Core component of the Kernel:
 8) Inter-process communication
 9) Interrupt handling
 
-
 ---
-
-
 ## **User Space vs Kernel Space**
 
 **User space** = applications run with limited privileges.
@@ -316,7 +313,6 @@ A Microkernel keeps only minimal functionality inside the kernel **(IPC, Interru
 
 **Advantages:** better isolation, better reliability, easier debugging. **Disadvantages:** more IPC, slower than monolithic kernels.
 
-
 ---
 
 ---
@@ -480,27 +476,17 @@ mmap()          → file/shared memory mapped into address space
 
 ## 3 Process Management
 
-## 1. What is a Process?
+1. What is a Process?
+Process = Program + Execution State + Resources
 
-A **process is a program in execution**.
+A process is a program currently in execution.
 
-A process is the basic unit of:
+It has:
 
-- CPU scheduling
-- Resource allocation
-- Process management
-- Protection and isolation
-
-Unlike a program stored on disk, a process has execution state and resources such as:
-
-- Program Counter (PC)
-- CPU registers
-- Stack
-- Heap
-- Open files
-- Process state
-- Virtual address space
-- Process Control Block (PCB)
+CPU state: PC, registers
+Memory: virtual address space, stack, heap
+Resources: open files, etc.
+PCB: OS information used to manage the process
 
 ```text
 Program on disk
@@ -515,20 +501,7 @@ Running Process
 
 ---
 
-## 2. Program vs Process
-
-| Program | Process |
-|---|---|
-| Passive entity | Active entity |
-| Stored on disk | Running/executing entity |
-| Collection of instructions | Instructions + execution state |
-| No execution state | Has execution state |
-| Does not directly consume CPU | Uses CPU |
-| No PCB | Has PCB |
-
----
-
-## 3. Process Memory Layout
+## 2. Process Memory Layout
 
 A process has its own virtual address space.
 
@@ -596,7 +569,7 @@ Stores the address of the next instruction to execute.
 
 ---
 
-## 4. Process Control Block (PCB)
+## 3. Process Control Block (PCB)
 
 The PCB is maintained by the OS and contains the information required to manage and resume a process.
 
@@ -628,7 +601,7 @@ A classical OS textbook calls this information the PCB.
 
 ---
 
-## 5. Process States
+## 4. Process States
 
 A process changes state during its lifetime.
 
@@ -686,7 +659,7 @@ These allow processes to be temporarily removed from active memory to reduce mem
 
 ---
 
-## 6. Process Scheduling
+## 5. Process Scheduling
 
 The CPU is limited while many processes may be runnable.
 
@@ -735,7 +708,7 @@ Runs very frequently, so it must be fast.
 
 ---
 
-## 7. Scheduling Queues
+## 6. Scheduling Queues
 
 ### Job Queue
 Contains processes/jobs known to the system.
@@ -758,7 +731,7 @@ Examples:
 
 ---
 
-## 8. CPU Scheduling Algorithms
+## 7. CPU Scheduling Algorithms
 
 ### FCFS — First Come First Serve
 Runs processes in arrival order.
@@ -808,7 +781,7 @@ Processes can move between queues based on their behavior. Interactive processes
 
 ---
 
-## 9. Context Switching
+## 8. Context Switching
 
 A context switch occurs when the CPU stops executing one process/thread and starts another.
 
@@ -849,7 +822,7 @@ It performs no application work and introduces overhead from:
 
 ---
 
-## 10. Independent vs Cooperating Processes
+## 9. Independent vs Cooperating Processes
 
 ### Independent Process
 Does not share data or depend on other processes.
@@ -868,7 +841,7 @@ Cooperating processes commonly use IPC (Inter-Process Communication).
 
 ---
 
-## 11. Process vs Thread
+## 10. Process vs Thread
 
 | Process | Thread |
 |---|---|
@@ -883,7 +856,7 @@ Cooperating processes commonly use IPC (Inter-Process Communication).
 
 ---
 
-## 12. Types of Processes
+## 11. Types of Processes
 
 ### Based on Execution
 
@@ -923,7 +896,7 @@ Example: Web server
 
 ---
 
-## 13. Process Creation in Linux
+## 12. Process Creation in Linux
 
 Linux primarily uses:
 - `fork()`
@@ -946,7 +919,7 @@ Linux does not immediately copy all process memory. It mainly creates process me
 
 ---
 
-## 14. Copy-on-Write (CoW)
+## 13. Copy-on-Write (CoW)
 
 During `fork()`, shared pages are initially marked so that a write causes a page fault.
 
@@ -973,7 +946,7 @@ When a process writes:
 
 ---
 
-## 15. fork() vs vfork() vs clone()
+## 14. fork() vs vfork() vs clone()
 
 | Feature | fork() | vfork() | clone() |
 |---|---|---|---|
@@ -984,7 +957,7 @@ When a process writes:
 
 ---
 
-## 16. exec()
+## 15. exec()
 
 The `exec()` family replaces the current process image with a new program.
 
@@ -1016,7 +989,7 @@ After successful `exec()`:
 
 ---
 
-## 17. wait() and waitpid()
+## 16. wait() and waitpid()
 
 When a child exits, its exit status remains available until the parent collects it.
 
@@ -1034,7 +1007,7 @@ If the parent fails to collect the status, the child becomes a **Zombie**.
 
 ---
 
-## 18. Zombie and Orphan Processes
+## 17. Zombie and Orphan Processes
 
 ### Zombie
 A process that has already exited, but whose parent has not collected its exit status.
@@ -1069,7 +1042,7 @@ Linux re-parents orphan processes to an appropriate reaper, typically PID 1 (`sy
 
 ---
 
-## 19. Deadlock
+## 18. Deadlock
 
 A deadlock occurs when processes/threads wait forever for resources held by each other.
 
@@ -1099,7 +1072,7 @@ P1 → P2 → P3 → P1
 
 ---
 
-## 20. Process Execution Models
+## 19. Process Execution Models
 
 | Model | Meaning |
 |---|---|
@@ -1112,7 +1085,7 @@ P1 → P2 → P3 → P1
 
 ---
 
-## 21. Concurrency vs Parallelism
+## 20. Concurrency vs Parallelism
 
 ### Concurrency
 Multiple tasks are in progress and their execution may overlap. Can occur on one CPU through scheduling.
@@ -1132,7 +1105,7 @@ Multiple tasks execute simultaneously. Requires multiple CPU cores/CPUs.
 
 ---
 
-## 22. Real-Time Processing
+## 21. Real-Time Processing
 
 Real-time systems must meet timing requirements.
 
@@ -1146,7 +1119,7 @@ Occasional deadline misses are acceptable.
 
 ---
 
-## 23. Linux Scheduling
+## 22. Linux Scheduling
 
 Linux uses different scheduling policies. For normal tasks, modern Linux uses the fair scheduling framework; historically this was called the **Completely Fair Scheduler (CFS)**.
 
@@ -1163,7 +1136,7 @@ Represents weighted CPU time consumed by a task. Tasks with lower effective `vru
 
 ---
 
-## 24. Real-Time Scheduling Policies
+## 23. Real-Time Scheduling Policies
 
 | Policy | Description |
 |---|---|
@@ -1188,7 +1161,7 @@ P1 → P2 → P3 → P1
 
 ---
 
-## 25. CPU Affinity
+## 24. CPU Affinity
 
 CPU affinity binds a process/thread to one or more CPUs.
 
@@ -1209,7 +1182,7 @@ CPU1 ← Process B
 
 ---
 
-## 26. Signals
+## 25. Signals
 
 Signals provide asynchronous notification to processes.
 
@@ -1224,7 +1197,7 @@ Signals provide asynchronous notification to processes.
 
 ---
 
-## 27. Linux Process Debugging Commands
+## 26. Linux Process Debugging Commands
 
 | Command | Purpose |
 |---|---|
@@ -1245,7 +1218,7 @@ Signals provide asynchronous notification to processes.
 
 ---
 
-## 28. Common Production Scenarios
+## 27. Common Production Scenarios
 
 ### Scenario 1 — Zombie Processes
 
