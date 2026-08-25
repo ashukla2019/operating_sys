@@ -2229,13 +2229,13 @@ Linux divides physical memory into zones. Common zones DMA DMA32 Normal HighMem 
 
 Huge Pages use larger page sizes. Advantages Fewer page table entries Better TLB efficiency Improved performance for large memory workloads Linux also supports **Transparent Huge Pages (THP)** .
 
-# **37. Out Of Memory (OOM) Killer ⭐⭐⭐⭐**
+# 37. Out Of Memory (OOM) Killer 
 
 When the system cannot satisfy memory requests, Linux invokes the **OOM Killer** . Responsibilities
 
 Select a victim process Free memory Prevent complete system failure Useful files /proc/<pid>/oom_score /proc/<pid>/oom_score_adj
 
-# **38. Memory Debugging Commands ⭐⭐⭐⭐⭐**
+# 38. Memory Debugging Commands 
 
 |**Command**|**Purpose**|
 |---|---|
@@ -2250,7 +2250,7 @@ Select a victim process Free memory Prevent complete system failure Useful files
 |valgrind|Detect memory leaks|
 |AddressSanitizer|Detect memory corruption|
 
-# **39. Production Scenarios ⭐⭐⭐⭐⭐**
+# 39. Production Scenarios 
 
 **Scenario 1 – Memory Usage Continuously Increasing**
 
@@ -2331,9 +2331,7 @@ Although Copy-on-Write makes <mark>fork()</mark> efficient, creating and copying
 --------------------------------------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------------------------------------------
 
-7 — Interrupts (Deep Dive)
-
-# **Linux Interrupts**
+## 7 — Interrupts (Deep Dive)
 
 ## **1. What Is an Interrupt?**
 
