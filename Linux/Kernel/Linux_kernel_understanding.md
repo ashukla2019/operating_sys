@@ -1154,12 +1154,12 @@ CPU affinity binds a process/thread to one or more CPUs.
 CPU0 ← Process A
 CPU1 ← Process B
 ```
+Why use CPU affinity?
+**Improved cache performance:** Keeping a process on the same core allows it to reuse data already in that core's CPU cache, reducing cache misses.
+**Reduced context switching overhead:** Prevents unnecessary migration between cores.
+**Predictable performance:** Useful for real-time systems, low-latency applications, databases, and high-performance computing.
+**Resource isolation:** You can dedicate certain cores to critical workloads while leaving others for background tasks.
 
-**Potential benefits:**
-- Better cache locality
-- Fewer CPU migrations
-- More predictable execution
-- Useful for real-time/high-performance workloads
 
 **Commands/APIs:**
 - `taskset`
@@ -1168,7 +1168,6 @@ CPU1 ← Process B
 ---
 
 ## 25. Signals
-
 Signals provide asynchronous notification to processes.
 
 | Signal | Purpose |
