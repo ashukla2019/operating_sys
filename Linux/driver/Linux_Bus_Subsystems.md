@@ -12,30 +12,44 @@ Every driver type follows the same two-phase shape. Keep this split in your head
 The whole thing end to end, before we zoom into each piece:
 
 ```
-                 		Power on
-                 		   |
-                            ↓
-                         HARDWARE
-                            |
-                            ↓
-              PCI / USB / I2C / SPI / Platform
-                            |
-                            ↓
-                       DISCOVERY
-                            |
-                            ↓
-                    Device structure
-                            |
-                            ↓
-                    DRIVER MATCHING
-                            |
-                            ↓
-                          probe()
-                            |
-                            ↓
-                  Driver initializes hardware
-                            |
-                            ↓
+                          Power on
+                             |
+                             ↓
+   1.                    HARDWARE
+                             |
+                             ↓
+   2.        PCI / USB / I2C / SPI / Platform
+             (bus/subsystem detects or is told
+              a device exists — Section 1)
+                             |
+                             ↓
+   3.                   DISCOVERY
+                             |
+                             ↓
+   4.              Device structure
+             (generic struct device created —
+              Section 1)
+                             |
+                             ↓
+   5.              DRIVER MATCHING
+             (Vendor ID / compatible string
+              matched to a registered driver —
+              Section 2)
+                             |
+                             ↓
+   6.                    probe()
+             (driver's init callback runs —
+              Section 2)
+                             |
+                             ↓
+   7.        Driver initializes hardware
+             (MMIO, IRQ, DMA, resources —
+              Section 2)
+                             |
+                             ↓
+   8.  Driver registers with a kernel interface — this is
+       the fork point (Section 3):
+                             |
              +--------------+--------------+
              |              |              |
              ↓              ↓              ↓
@@ -48,14 +62,17 @@ The whole thing end to end, before we zoom into each piece:
           /dev/...       /dev/...       ethX / eventX
              |              |              |
              +--------------+--------------+
-                            |
-                            ↓
-                         USERSPACE
+                             |
+                             ↓
+   9.                  USERSPACE
+             (application interacts via
+              open/read/write, block I/O,
+              or sockets — Sections 4–6)
 
-          Character → cdev
-          Block     → block layer
-          Network   → net_device/network stack
-          Input     → input subsystem
+          Character → cdev              (Section 4)
+          Block     → block layer       (Section 5)
+          Network   → net_device/network stack  (Section 6)
+          Input     → input subsystem   (not covered in detail here)
 ```
 
 Everything down to "Driver initializes hardware" (Sections 1–2) is identical no matter what kind of driver this turns out to be. The fork at the bottom is Section 3 — and Sections 4, 5, 6 each zoom into one branch of that fork.
