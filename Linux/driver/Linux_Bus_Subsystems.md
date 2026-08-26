@@ -1,5 +1,15 @@
 # Linux Driver Lifecycle — Complete Flow
 
+This file has three parts, each zoomed to a different level of detail:
+
+- **Part 1** — the full lifecycle at a glance (boot → probe → runtime → removal)
+- **Part 2** — zoomed into the character-device registration steps referenced in Part 1
+- **Part 3** — zoomed into the device-model / `/dev` node creation referenced in Part 1
+
+Part 1 intentionally stays high-level; the mechanics it waves at (`alloc_chrdev_region()` → ... → `/dev/mydevice`) are spelled out step-by-step in Parts 2 and 3, so they aren't repeated twice.
+
+---
+
 ## Part 1: End-to-End Driver Lifecycle (Boot → Probe → Runtime → Removal)
 
 ```
@@ -63,25 +73,10 @@
                          |                             |
                          ↓                             ↓
                   Character device              Other interface
-                         |                    Network / Block /
-                         |                    Input / etc.
-                         ↓
-               alloc_chrdev_region()
-                         |
-                         ↓
-                    Major + Minor
-                         |
-                         ↓
-                     cdev_init()
-                         |
-                         ↓
-                      cdev_add()
-                         |
-                         ↓
-                    class_create()
-                         |
-                         ↓
-                    device_create()
+                  (see Parts 2 & 3               Network / Block /
+                   for the full,                 Input / etc.
+                   step-by-step
+                   breakdown)
                          |
                          ↓
                    /dev/mydevice
@@ -111,16 +106,16 @@
                          |
                          ↓
                    Device removed
-
 ```
 
 ---
 
 ## Part 2: Character Device Registration — Step by Step
 
+*(This is the detailed breakdown of the "Character device" branch in Part 1, up through `my_fops` being wired to the driver's callbacks.)*
+
 ```
                          KERNEL
-                           |
                            |
                            |  1. Allocate device number
                            |     - Reserve major/minor
@@ -209,9 +204,10 @@
 
 ## Part 3: Device-Model Layer — class_create() → device_create() → /dev
 
+*(This picks up right after Part 2's `cdev_add()` and shows how `240:0` actually becomes the `/dev/mydevice` node an application can open — continuing the numbering from Part 2.)*
+
 ```
                     KERNEL DEVICE MODEL
-                           |
                            |
                            |  6. Create a logical
                            |     device class
@@ -222,7 +218,6 @@
                            |
                            ↓
                  /sys/class/mydevice/
-                           |
                            |
                            |  7. Create a device-model
                            |     device associated with
@@ -237,7 +232,6 @@
               | mydevice                |
               | dev = 240:0             |
               +-------------------------+
-                           |
                            |
                            |  8. Device node is created/
                            |     managed through devtmpfs
