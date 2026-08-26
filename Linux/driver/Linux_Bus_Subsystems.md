@@ -3,7 +3,7 @@
 ## Part 1: End-to-End Driver Lifecycle (Boot → Probe → Runtime → Removal)
 
 ```
-                                                   LINUX BOOT
+                         LINUX BOOT
                              |
                              ↓
                 Initialize kernel subsystems
