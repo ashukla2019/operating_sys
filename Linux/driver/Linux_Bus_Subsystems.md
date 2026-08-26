@@ -3,165 +3,115 @@
 ## Part 1: End-to-End Driver Lifecycle (Boot → Probe → Runtime → Removal)
 
 ```
-                              Linux boots
-                                  |
-                                  ↓
-              Kernel initializes frameworks/subsystems
-                                  |
-        +-------------------------+-------------------------+
-        |                         |                         |
-        ↓                         ↓                         ↓
-   PCI subsystem             USB subsystem           Platform subsystem
-        |                         |                         |
-        ↓                         ↓                         ↓
-   PCI enumeration          USB enumeration         Device Tree / ACPI
-        |                         |                         |
-        ↓                         ↓                         ↓
-   PCI device found         USB device found        Platform device info
-   (GPU/NVMe/NIC)           (Keyboard/etc.)         (UART/GPIO/etc.)
-        |                         |                         |
-        ↓                         ↓                         ↓
-   struct pci_dev            struct usb_device       struct platform_device
-        |                         |                         |
-        +-------------------------+-------------------------+
-                                  |
-                    +-------------+-------------+
-                    |                           |
-                    ↓                           ↓
-               I2C subsystem               SPI subsystem
-                    |                           |
-                    ↓                           ↓
-              Device Tree/ACPI             Device Tree/ACPI
-                    |                           |
-                    ↓                           ↓
-                I2C device                  SPI device
-              (Sensor/RTC)               (Flash/Sensor)
-                    |                           |
-                    ↓                           ↓
-              struct i2c_client             struct spi_device
-                    |                           |
-                    +-------------+-------------+
-                                  |
-                                  ↓
-                 Each device has a generic
-                    struct device inside it
-                                  |
-                                  ↓
-              Driver matching on corresponding bus
-                                  |
-              +-------------------+-------------------+
-              |                                       |
-              ↓                                       ↓
-          No match                                  Match
-              |                                       |
-              ↓                                       ↓
-      Device remains unbound                    Driver bound
-                                                      |
-                                                      ↓
-                                                   probe()
-                                                      |
-                                                      ↓
-                                             Driver initializes:
-                                             - Resources
-                                             - Registers
-                                             - IRQ
-                                             - DMA
-                                             - Hardware
-                                                      |
-                                                      ↓
-                                             Register with the
-                                           appropriate kernel subsystem
-                                                      |
-                                                      ↓
-                                             probe() succeeds
-                                                      |
-                                                      ↓
-                                             +----------------+
-                                             |  DEVICE READY  |
-                                             +----------------+
-                                                      |
-                                                      ↓
-                                             NORMAL OPERATION
-                                                      |
-                              +-----------------------+-----------------------+
-                              |                       |                       |
-                              ↓                       ↓                       ↓
-                       Kernel/App request       Driver ↔ Device          Device event
-                              |                 communication                 |
-                              ↓                       |                       ↓
-                         Subsystem                    |                      IRQ
-                              |                       |                       |
-                              +-----------+-----------+-----------------------+
-                                          |
-                                          ↓
-                                  Driver handles request
-                                          |
-                                          ↓
-                                  Device continues running
-                                          |
-                                          |
-                         +----------------+----------------+
-                         |                                 |
-                         ↓                                 ↓
-              If character device                  If another interface
-                  is needed:                           is used:
-                         |                                 |
-                         ↓                                 ↓
-             alloc_chrdev_region()                 Network / Block /
-                         |                         Input / etc. subsystem
+                                                   LINUX BOOT
+                             |
+                             ↓
+                Initialize kernel subsystems
+                             |
+        +--------------------+--------------------+
+        |                    |                    |
+        ↓                    ↓                    ↓
+       PCI                  USB              Platform
+        |                    |                    |
+   Enumeration          Enumeration        DT / ACPI
+        |                    |                    |
+        ↓                    ↓                    ↓
+   PCI device           USB device       Platform device
+        |                    |                    |
+        ↓                    ↓                    ↓
+ struct pci_dev       struct usb_device  struct platform_device
+        |                    |                    |
+        +--------------------+--------------------+
+                             |
+                      I2C / SPI devices
+                             |
+                             ↓
+                    Device representation
+                  (contains struct device)
+                             |
+                             ↓
+                    DRIVER MATCHING
+                             |
+                  +----------+----------+
+                  |                     |
+               No match               Match
+                  |                     |
+                  ↓                     ↓
+              Unbound                Driver
+                                        |
+                                        ↓
+                                      probe()
+                                        |
+                                        ↓
+                              Initialize hardware
+                              - Registers
+                              - IRQ
+                              - DMA
+                              - Resources
+                                        |
+                                        ↓
+                                Register with
+                             kernel subsystem/interface
+                                        |
+                                        ↓
+                                  DEVICE READY
+                                        |
+                                        ↓
+                               NORMAL OPERATION
+                                        |
+                         +--------------+--------------+
+                         |                             |
+                         ↓                             ↓
+                  Character device              Other interface
+                         |                    Network / Block /
+                         |                    Input / etc.
                          ↓
-                  Major + Minor
+               alloc_chrdev_region()
                          |
                          ↓
-                    cdev_init()
+                    Major + Minor
                          |
                          ↓
-                    cdev_add()
+                     cdev_init()
                          |
                          ↓
-                  class_create()
+                      cdev_add()
                          |
                          ↓
-                  device_create()
+                    class_create()
                          |
                          ↓
-                  /dev/mydevice
+                    device_create()
                          |
                          ↓
-                    Application
+                   /dev/mydevice
                          |
                          ↓
-                  open/read/write/
-                     ioctl/close
+                     Application
                          |
                          ↓
-                    Driver
+                open/read/write/ioctl
                          |
                          ↓
-              Hardware registers /
-                    DMA / IRQ
+                       Driver
                          |
                          ↓
-                       Device
+                  Hardware
+                  /   |   \
+              Registers DMA IRQ
 
 
-                  DEVICE REMOVED / UNBOUND
-                              |
-                              ↓
-                           remove()
-                              |
-                              ↓
-                      Driver cleanup:
-                      - Stop hardware
-                      - Free IRQ
-                      - Free DMA
-                      - Unmap registers
-                      - Remove cdev
-                      - Destroy device
-                      - Release resources
-                              |
-                              ↓
-                       Device removed
+              DEVICE REMOVED / UNBOUND
+                         |
+                         ↓
+                      remove()
+                         |
+                         ↓
+                    Driver cleanup
+                         |
+                         ↓
+                   Device removed
+
 ```
 
 ---
