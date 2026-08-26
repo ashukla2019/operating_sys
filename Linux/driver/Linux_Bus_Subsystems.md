@@ -9,6 +9,57 @@ Every driver type follows the same two-phase shape. Keep this split in your head
 
 **Don't mix these two.** Matching identity (Vendor ID, `compatible` string) and device-number identity (major:minor) are unrelated systems that happen to both point at "your driver."
 
+The whole thing end to end, before we zoom into each piece:
+
+```
+                 		Power on
+                 		   |
+                            ↓
+                         HARDWARE
+                            |
+                            ↓
+              PCI / USB / I2C / SPI / Platform
+                            |
+                            ↓
+                       DISCOVERY
+                            |
+                            ↓
+                    Device structure
+                            |
+                            ↓
+                    DRIVER MATCHING
+                            |
+                            ↓
+                          probe()
+                            |
+                            ↓
+                  Driver initializes hardware
+                            |
+                            ↓
+             +--------------+--------------+
+             |              |              |
+             ↓              ↓              ↓
+          Character        Block        Network/Input
+             |              |              |
+             ↓              ↓              ↓
+            cdev       Block subsystem   net_device /
+             |                         input subsystem
+             ↓              ↓              ↓
+          /dev/...       /dev/...       ethX / eventX
+             |              |              |
+             +--------------+--------------+
+                            |
+                            ↓
+                         USERSPACE
+
+          Character → cdev
+          Block     → block layer
+          Network   → net_device/network stack
+          Input     → input subsystem
+```
+
+Everything down to "Driver initializes hardware" (Sections 1–2) is identical no matter what kind of driver this turns out to be. The fork at the bottom is Section 3 — and Sections 4, 5, 6 each zoom into one branch of that fork.
+
 ---
 
 ## 1. Phase A — Discovery per bus type
@@ -102,7 +153,7 @@ On teardown, `remove()` does the mirror image: stop hardware, free IRQ/DMA, unma
 | Graphics (DRM) | `drm_device` + KMS/GEM | `/dev/dri/card0` |
 | Input | `input_dev` | `/dev/input/event*` |
 
-Everything before this fork (discovery → matching → resource acquisition in `probe()`) is identical in concept across all of these. The rest of this document follows the **character-device** path in detail, since that's the canonical one to know cold.
+Everything before this fork (discovery → matching → resource acquisition in `probe()`) is identical in concept across all of these. Sections 4–6 walk the three most commonly asked-about branches — character, block, network — in the same numbered style.
 
 ---
 
@@ -175,7 +226,127 @@ Physical device → struct device (device model)
 
 ---
 
-## 5. Study path for interview prep
+## 5. Phase B — Block device: from probe() to /dev/sda
+
+Same fork point as Section 4, different registration. A block driver doesn't use `cdev`/`file_operations` at all — it registers a request queue and a disk object instead.
+
+```
+                         KERNEL (post-probe)
+                           |
+   1. Allocate a disk object
+                           ↓
+                  blk_alloc_disk() / alloc_disk()
+                           |
+   2. Set up the request queue (blk-mq)
+      — how the driver receives I/O requests (reads/writes)
+                           ↓
+             blk_mq_alloc_tag_set() + blk_mq_init_queue()
+                           |
+   3. Attach block_device_operations
+      (open/release/ioctl — NOT read/write; I/O goes via bios, not fops)
+                           ↓
+                    disk->fops = &my_block_fops
+                           |
+   4. Set device name, capacity, and register with the kernel
+                           ↓
+                    add_disk()
+                           |
+   5. Kernel creates the device-model entry + uevent → udev
+                           ↓
+                    /dev/mydisk  (or /dev/nvme0n1, /dev/sda, ...)
+                           |
+   6. Application issues I/O
+                           ↓
+              read()/write() via filesystem, or raw block I/O
+                           |
+                           ↓
+                   Block layer builds a struct bio
+                           |
+                           ↓
+              blk-mq dispatches it as a struct request
+                           |
+                           ↓
+                  driver's queue_rq() callback
+                           |
+                           ↓
+                DRIVER → DMA transfer, NVMe/SCSI command, etc.
+                           |
+                           ↓
+                       HARDWARE (disk/SSD/controller)
+```
+
+Key differences from character devices:
+- No `open()`/`read()`/`write()` file_operations doing the actual data transfer — the **bio → request → queue_rq()** path carries the data. `block_device_operations` only covers control-plane calls (open, ioctl, media detection).
+- I/O is asynchronous and queued/batched (`blk-mq`), not a single synchronous syscall per operation — this is what enables request merging, I/O scheduling, and multi-queue parallelism across CPUs.
+- Still gets a device node under `/dev`, still goes through the same `class`/`device_create`/uevent/udev machinery as a char device once `add_disk()` runs — that part of Phase B *is* shared.
+
+---
+
+## 6. Phase B — Network device: from probe() to ethX (no /dev node)
+
+The interface most different from the char-device model. A NIC driver never creates a `/dev` entry at all — the "device" userspace sees is a named network interface, accessed through sockets, not `open()`.
+
+```
+                         KERNEL (post-probe)
+                           |
+   1. Allocate a net_device struct
+                           ↓
+                    alloc_etherdev() / alloc_netdev()
+                           |
+   2. Attach net_device_ops
+      (open, stop, start_xmit, set_mac_address, ...)
+                           ↓
+                    dev->netdev_ops = &my_netdev_ops
+                           |
+   3. Set MAC address, MTU, feature flags, IRQ/NAPI handlers
+                           ↓
+                    (still inside probe())
+                           |
+   4. Register the interface with the network stack
+                           ↓
+                    register_netdev()
+                           |
+   5. Kernel assigns a name (eth0, enp3s0, ...) — no /dev node,
+      no major/minor, no udev device file
+                           ↓
+                    Interface visible to `ip link` / userspace
+                           |
+   6. Interface brought up
+                           ↓
+              ifconfig eth0 up  /  ip link set eth0 up
+                           |
+                           ↓
+                  my_netdev_ops->ndo_open() called
+                           |
+                           ↓
+                Driver enables IRQ, starts DMA rings
+                           |
+   7. Application sends/receives data
+                           ↓
+              socket() → send()/recv() (no /dev, no fd on a char device)
+                           |
+                           ↓
+                     Network stack (TCP/IP)
+                           |
+                           ↓
+              ndo_start_xmit() (TX)  /  NAPI poll + IRQ (RX)
+                           |
+                           ↓
+                DRIVER → DMA descriptor rings
+                           |
+                           ↓
+                       HARDWARE (NIC)
+```
+
+Key differences from character/block devices:
+- **No device node at all.** No `alloc_chrdev_region()`, no `cdev`, no `class_create()`/`device_create()`, no udev involvement. The "handle" is the interface name (`eth0`), managed entirely by the network stack (`rtnetlink`/`ip link`).
+- Userspace never calls `open("/dev/...")` on it — it calls `socket()` and lets the network stack route packets to the right `net_device`.
+- RX is typically interrupt + NAPI poll driven (mitigates interrupt storms under load) rather than a blocking `read()` call.
+- `ndo_open()`/`ndo_stop()` are the closest analogue to `file_operations` open/release, but they're triggered by `ip link set up/down`, not by an application opening a path.
+
+---
+
+## 7. Study path for interview prep
 
 ```
 L1  User/kernel boundary — syscalls, VFS
@@ -197,4 +368,4 @@ Application → syscall → VFS → char/block interface → driver
    → Linux device model → bus → PCIe → DMA/MMIO/IRQ → hardware
 ```
 
-...and being able to explain **why** a character driver and a block/storage driver diverge after `probe()` (Section 3 above) even though everything before that point is the same.
+...and being able to explain **why** character, block, and network drivers diverge after `probe()` (Section 3 above) even though everything before that point — discovery, matching, resource acquisition — is the same. That divergence (Sections 4–6) is a favorite senior-level interview probe precisely because it separates people who memorized one API from people who understand the layered architecture.
